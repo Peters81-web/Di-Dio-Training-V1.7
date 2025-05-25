@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pianificatore Allenamenti</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/enhanced-design.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">Pianificatore Allenamenti</h1>
+            <div class="nav-links">
+                <button onclick="window.location.href='/dashboard'" class="btn">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </button>
+                <button onclick="window.location.href='/stats'" class="btn">
+                    <i class="fas fa-chart-line"></i>
+                    Statistiche
+                </button>
+                <button id="notificationsBtn" class="btn">
+                    <i class="fas fa-bell"></i>
+                    Notifiche
+                    <span class="notification-badge" id="notificationCount">0</span>
+                </button>
+                <button id="logoutBtn" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Esci
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container" style="padding-top: 1rem; padding-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 700;">I Tuoi Programmi</h2>
+            <button id="newProgramBtn" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Nuovo Programma
+            </button>
+        </div>
+        <div id="programsList" class="programs-grid">
+            <!-- Programmi verranno inseriti qui dinamicamente -->
+        </div>
+    </main>
+
+    <!-- Modal Nuovo Programma -->
+<div id="programModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Crea Nuovo Programma</h2>
+            <button type="button" class="modal-close" onclick="closeModal('programModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="programForm">
+            <div class="form-group">
+                <label for="programName">Nome Programma</label>
+                <input
+                    type="text"
+                    id="programName"
+                    class="form-control"
+                    required
+                    placeholder="Es. Preparazione Maratona"
+                >
+            </div>
+                
+                <div class="form-group">
+                    <label for="programDescription">Descrizione</label>
+                    <textarea
+                        id="programDescription"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Inserisci una descrizione del programma"
+                    ></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="programDuration">Durata (settimane)</label>
+                    <input
+                        type="number"
+                        id="programDuration"
+                        class="form-control"
+                        min="1"
+                        max="52"
+                        required
+                        placeholder="Es. 12"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="programStart">Data Inizio</label>
+                    <input
+                        type="date"
+                        id="programStart"
+                        class="form-control"
+                        required
+                    >
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('programModal')">
+                        Annulla
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Salva Programma
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/planner.js"></script>
+</body>
+</html>

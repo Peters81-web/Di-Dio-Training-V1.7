@@ -1,0 +1,254 @@
+/* Stile per gli editor di testo formattati */
+.editor-wrapper {
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: white;
+}
+
+.formatting-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 6px;
+    background-color: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.formatting-toolbar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: #4b5563;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.formatting-toolbar button:hover {
+    background-color: #e5e7eb;
+    color: #1f2937;
+}
+
+.formatting-toolbar button:active {
+    background-color: #d1d5db;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: #d1d5db;
+    margin: 0 4px;
+}
+
+.wysiwyg-editor {
+    min-height: 100px;
+    padding: 12px;
+    overflow-y: auto;
+    background-color: white;
+    border: none;
+    outline: none;
+    line-height: 1.5;
+}
+
+.wysiwyg-editor:focus {
+    outline: none;
+}
+
+.wysiwyg-editor strong {
+    font-weight: bold;
+}
+
+.wysiwyg-editor em {
+    font-style: italic;
+}
+
+.wysiwyg-editor u {
+    text-decoration: underline;
+}
+
+.wysiwyg-editor ul, 
+.wysiwyg-editor ol {
+    margin-left: 1.5rem;
+}
+
+.wysiwyg-editor ul li {
+    list-style-type: disc;
+}
+
+.wysiwyg-editor ol li {
+    list-style-type: decimal;
+}
+
+/* Miglioramenti per le card degli allenamenti */
+.workout-card {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background-color: white;
+    padding: 1.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.workout-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.workout-card:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    background-color: #4361ee;
+}
+
+.workout-card[data-workout-type="forza"]:before {
+    background-color: #e74c3c;
+}
+
+.workout-card[data-workout-type="flessibilita"]:before {
+    background-color: #9b59b6;
+}
+
+.workout-card[data-workout-type="hiit"]:before {
+    background-color: #f39c12;
+}
+
+.workout-card[data-workout-type="recupero"]:before {
+    background-color: #2ecc71;
+}
+
+/* Stili per le icone delle attività */
+.activity-icon-container {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    border-radius: 50%;
+    margin-right: 12px;
+    font-size: 1.25rem;
+}
+
+/* Stili per il modal di dettaglio allenamento */
+.workout-details {
+    padding: 1rem 0;
+}
+
+.detail-item {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-section {
+    margin-top: 1.5rem;
+}
+
+.detail-section h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #4361ee;
+}
+
+/* Stile per il bottone di modifica */
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+/* Utilities */
+.d-flex {
+    display: flex;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.mt-auto {
+    margin-top: auto;
+}
+
+.fs-xl {
+    font-size: 1.25rem;
+}
+
+.fs-xxl {
+    font-size: 1.75rem;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .formatting-toolbar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+    
+    .workout-card .d-flex.justify-between {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .workout-card .d-flex.gap-2 {
+        justify-content: space-between;
+        width: 100%;
+    }
+}
+
+.nav-links .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  background-color: transparent;
+  color: white; /* Assicurati che il testo sia visibile */
+  border: 1px solid white;
+  padding: 8px 15px;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.nav-links .btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}

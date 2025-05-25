@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profilo Utente | DiDio Training</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+    <!-- CSS aggiuntivo per il profilo -->
+    <link rel="stylesheet" href="/css/profile-enhanced.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">
+                <i class="fas fa-user-circle mr-2"></i>
+                Profilo Utente
+            </h1>
+            <div class="nav-links">
+                <button onclick="window.location.href='/dashboard'" class="btn">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </button>
+                <button onclick="window.location.href='/stats'" class="btn">
+                    <i class="fas fa-chart-line"></i>
+                    Statistiche
+                </button>
+                <button id="logoutBtn" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container profile-container">
+        <!-- Scheda profilo con foto -->
+        <div class="profile-card main-profile-card">
+            <div class="profile-header">
+                <div class="profile-photo-container">
+                    <div class="profile-photo" id="profilePhotoDisplay">
+                        <!-- Immagine di default o caricata dall'utente -->
+                        <img src="/images/default-avatar.jpg" alt="Foto profilo" id="profileImage">
+                        <div class="profile-photo-overlay" id="changePhotoOverlay">
+                            <i class="fas fa-camera"></i>
+                            <span>Cambia foto</span>
+                        </div>
+                    </div>
+                    <input type="file" id="profilePhotoInput" accept="image/*" style="display: none;">
+                </div>
+                <div class="profile-info">
+                    <h2 id="displayUsername">Nome Utente</h2>
+                    <p id="displayEmail" class="user-email">email@esempio.com</p>
+                    <p id="memberSince">Membro dal: <span>Aprile 2025</span></p>
+                </div>
+            </div>
+            
+            <div class="profile-actions">
+                <button class="btn btn-primary btn-edit-profile" id="editProfileBtn">
+                    <i class="fas fa-pencil-alt"></i> Modifica Profilo
+                </button>
+            </div>
+        </div>
+
+        <!-- Form informazioni personali -->
+        <div class="profile-card" id="personalInfoCard">
+            <h3 class="card-title"><i class="fas fa-user"></i> Informazioni Personali</h3>
+            <form id="personalInfoForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="username">Nome Utente</label>
+                        <input type="text" id="username" class="form-control" autocomplete="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fullName">Nome Completo</label>
+                        <input type="text" id="fullName" class="form-control" autocomplete="name" placeholder="Il tuo nome e cognome">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="birthdate">Data di Nascita</label>
+                        <input type="date" id="birthdate" class="form-control" autocomplete="bday">
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Genere</label>
+                        <select id="gender" class="form-control" autocomplete="sex">
+                            <option value="">Preferisco non specificare</option>
+                            <option value="male">Uomo</option>
+                            <option value="female">Donna</option>
+                            <option value="other">Altro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Città</label>
+                    <input type="text" id="location" class="form-control" autocomplete="address-level2" placeholder="La tua città">
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">Biografia</label>
+                    <textarea id="bio" class="form-control" rows="3" placeholder="Raccontaci qualcosa su di te e i tuoi obiettivi di fitness..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salva Informazioni</button>
+            </form>
+        </div>
+
+        <!-- Form misure corporee -->
+        <div class="profile-card" id="bodyMeasurementsCard">
+            <h3 class="card-title"><i class="fas fa-weight"></i> Misure Corporee</h3>
+            <form id="bodyMeasurementsForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="height">Altezza (<span class="height-unit">cm</span>)</label>
+                        <input type="number" id="height" class="form-control" min="1" max="300" placeholder="Es. 175">
+                    </div>
+                    <div class="form-group">
+                        <label for="weight">Peso (<span class="weight-unit">kg</span>)</label>
+                        <input type="number" id="weight" class="form-control" min="1" max="300" step="0.1" placeholder="Es. 70.5">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bodyFat">Percentuale Grasso Corporeo (%)</label>
+                        <input type="number" id="bodyFat" class="form-control" min="1" max="60" step="0.1" placeholder="Es. 15.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="muscleMass">Massa Muscolare (<span class="weight-unit">kg</span>)</label>
+                        <input type="number" id="muscleMass" class="form-control" min="1" max="150" step="0.1" placeholder="Es. 50.2">
+                    </div>
+                </div>
+
+                <div class="measurements-progress">
+                    <h4>Evoluzione</h4>
+                    <div id="weightProgressChart" class="measurement-chart"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Aggiorna Misure</button>
+            </form>
+        </div>
+
+        <!-- Preferenze -->
+        <div class="profile-card" id="preferencesCard">
+            <h3 class="card-title"><i class="fas fa-cog"></i> Preferenze</h3>
+            <form id="preferencesForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="distanceUnit">Unità di Distanza</label>
+                        <select id="distanceUnit" class="form-control">
+                            <option value="km">Chilometri (km)</option>
+                            <option value="mi">Miglia (mi)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="weightUnit">Unità di Peso</label>
+                        <select id="weightUnit" class="form-control">
+                            <option value="kg">Chilogrammi (kg)</option>
+                            <option value="lb">Libbre (lb)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="weekStartDay">Inizio Settimana</label>
+                        <select id="weekStartDay" class="form-control">
+                            <option value="1">Lunedì</option>
+                            <option value="0">Domenica</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="calorieCalculation">Calcolo Calorie</label>
+                        <select id="calorieCalculation" class="form-control">
+                            <option value="auto">Automatico</option>
+                            <option value="manual">Manuale</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notifiche</label>
+                    <div class="checkbox-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="emailNotifications" checked>
+                            <span class="checkmark"></span>
+                            Notifiche via email
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="workoutReminders" checked>
+                            <span class="checkmark"></span>
+                            Promemoria allenamenti
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="progressUpdates" checked>
+                            <span class="checkmark"></span>
+                            Aggiornamenti progressi
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salva Preferenze</button>
+            </form>
+        </div>
+
+        <!-- Obiettivi di fitness -->
+        <div class="profile-card" id="fitnessGoalsCard">
+            <h3 class="card-title"><i class="fas fa-bullseye"></i> Obiettivi di Fitness</h3>
+            <form id="fitnessGoalsForm">
+                <div class="form-group">
+                    <label for="primaryGoal">Obiettivo Principale</label>
+                    <select id="primaryGoal" class="form-control">
+                        <option value="weight_loss">Perdita di peso</option>
+                        <option value="muscle_gain">Aumento massa muscolare</option>
+                        <option value="endurance">Miglioramento resistenza</option>
+                        <option value="strength">Aumento forza</option>
+                        <option value="flexibility">Miglioramento flessibilità</option>
+                        <option value="overall_health">Benessere generale</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="targetWeight">Peso Obiettivo (<span class="weight-unit">kg</span>)</label>
+                        <input type="number" id="targetWeight" class="form-control" min="1" max="300" step="0.1" placeholder="Es. 65.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="weeklyWorkouts">Allenamenti Settimanali</label>
+                        <input type="number" id="weeklyWorkouts" class="form-control" min="1" max="14" placeholder="Es. 4">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="goalDescription">Descrizione Obiettivo</label>
+                    <textarea id="goalDescription" class="form-control" rows="3" placeholder="Descrivi in dettaglio i tuoi obiettivi..."></textarea>
+                </div>
+
+                <div class="goals-section">
+                    <h4>Obiettivi Specifici</h4>
+                    <div class="goals-list" id="specificGoalsList">
+                        <!-- Gli obiettivi specifici verranno aggiunti qui dinamicamente -->
+                    </div>
+                    <div class="goal-item add-goal-container">
+                        <input type="text" class="form-control goal-input" placeholder="Aggiungi un obiettivo..." id="newGoalInput">
+                        <button type="button" class="btn btn-sm btn-primary" id="addGoalBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salva Obiettivi</button>
+            </form>
+        </div>
+
+        <!-- Scheda progressi -->
+        <div class="profile-card stats-card">
+            <h3 class="card-title"><i class="fas fa-medal"></i> I tuoi progressi</h3>
+            <div class="stats-summary">
+                <div class="stat-item">
+                    <span class="stat-label">Allenamenti Totali</span>
+                    <span class="stat-value" id="totalWorkouts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Questo Mese</span>
+                    <span class="stat-value" id="monthlyWorkouts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Attività Preferita</span>
+                    <span class="stat-value" id="favoriteActivity">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Tempo Totale</span>
+                    <span class="stat-value" id="totalTime">0h</span>
+                </div>
+            </div>
+            <div class="recent-activities">
+                <h4><i class="fas fa-history"></i> Attività Recenti</h4>
+                <div class="activities-list" id="recentActivitiesList">
+                    <!-- Attività recenti verranno caricate qui dinamicamente -->
+                    <div class="loading-activities">
+                        <i class="fas fa-spinner fa-spin"></i> Caricamento attività...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal per il crop della foto -->
+    <div id="photoCropModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ritaglia la tua foto</h2>
+                <button class="modal-close" id="closeCropModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="crop-container">
+                <div id="cropArea">
+                    <!-- L'immagine da ritagliare verrà inserita qui -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelCropBtn">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-primary" id="saveCropBtn">
+                    Applica
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.12/dist/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/profile-enhanced.js"></script>
+</body>
+</html>
