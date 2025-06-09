@@ -1,0 +1,409 @@
+/* reports.css - Stili per la pagina di report avanzati */
+
+.reports-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding-bottom: 3rem;
+}
+
+.reports-header {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+}
+
+.reports-header h2 {
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.reports-header p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.report-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.date-range-selector {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+#generateReportBtn, #exportReportBtn {
+    align-self: end;
+    height: 42px;
+}
+
+.report-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.report-section {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.report-section:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+}
+
+.report-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--text-primary);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.report-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.report-card {
+    background-color: var(--background-color);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.report-card:hover {
+    background-color: var(--primary-light);
+}
+
+.report-card-icon {
+    background-color: var(--primary-color);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.report-card-content {
+    flex-grow: 1;
+}
+
+.report-card-content h4 {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+}
+
+.report-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.report-card-trend {
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.report-card-trend.positive {
+    color: var(--success-color);
+}
+
+.report-card-trend.negative {
+    color: var(--danger-color);
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.report-chart {
+    min-height: 300px;
+}
+
+.chart-container {
+    width: 100%;
+    height: 280px;
+    position: relative;
+}
+
+#goalProgress {
+    grid-row: span 2;
+}
+
+#goalsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 650px;
+    overflow-y: auto;
+}
+
+.goal-item {
+    background-color: var(--background-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.goal-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.goal-status {
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+.goal-status.completed {
+    background-color: var(--success-light);
+    color: var(--success-color);
+}
+
+.goal-status.in-progress {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.goal-status.not-started {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.goal-progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.goal-progress-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 3px;
+}
+
+.workouts-table-container {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.workouts-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.workouts-table th,
+.workouts-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.workouts-table th {
+    font-weight: 600;
+    color: var(--text-primary);
+    background-color: var(--background-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.workouts-table tbody tr:hover {
+    background-color: var(--primary-light);
+}
+
+.workouts-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.intensity-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 80px;
+}
+
+.intensity-low {
+    background-color: var(--success-light);
+    color: var(--success-color);
+}
+
+.intensity-medium {
+    background-color: var(--warning-light);
+    color: var(--warning-color);
+}
+
+.intensity-high {
+    background-color: var(--danger-light);
+    color: var(--danger-color);
+}
+
+.no-data-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.no-data-message i {
+    font-size: 2rem;
+    color: var(--border-color);
+}
+
+.report-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: var(--border-radius);
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(67, 97, 238, 0.3);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal esportazione */
+.export-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.export-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.export-option:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.export-option.selected {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.export-option i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+.export-options-additional {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.checkbox-group {
+    margin-top: 1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #goalProgress {
+        grid-row: auto;
+    }
+    
+    .report-filters {
+        grid-template-columns: 1fr;
+    }
+    
+    .date-range-selector {
+        grid-template-columns: 1fr;
+    }
+    
+    .report-cards {
+        grid-template-columns: 1fr;
+    }
+}
