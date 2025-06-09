@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiche Allenamenti - DiDio Training</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/enhanced-design.css">
+    <link rel="stylesheet" href="/css/stats-enhanced.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">
+                <i class="fas fa-chart-line mr-2"></i>
+                Statistiche Allenamenti
+            </h1>
+            <div class="nav-links">
+                <button onclick="window.location.href='/dashboard'" class="btn">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </button>
+                <button onclick="window.location.href='/planner'" class="btn">
+                    <i class="fas fa-calendar-alt"></i>
+                    Pianificatore
+                </button>
+                <button id="resetDataBtn" class="btn btn-warning">
+                    <i class="fas fa-trash-alt"></i>
+                    Reset Dati
+                </button>
+                <button id="logoutBtn" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Esci
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="stats-container">
+        <!-- Metriche di Performance -->
+        <section class="stats-section">
+            <h2 class="section-title">
+                <i class="fas fa-tachometer-alt"></i>
+                Panoramica Generale
+            </h2>
+            <div id="performanceMetrics">
+                <!-- Le metriche verranno inserite qui dinamicamente -->
+            </div>
+        </section>
+
+        <!-- Grafici principali -->
+        <div class="chart-grid">
+            <section class="stats-section">
+                <h3 class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Distribuzione Attività
+                </h3>
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </section>
+
+            <section class="stats-section">
+                <h3 class="section-title">
+                    <i class="fas fa-chart-line"></i>
+                    Progressi Settimanali
+                </h3>
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Grafici avanzati -->
+        <div class="advanced-charts">
+            <section class="chart-section">
+                <h3>
+                    <i class="fas fa-weight"></i>
+                    Andamento Peso
+                </h3>
+                <div class="chart-container">
+                    <canvas id="weightTrendChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-section">
+                <h3>
+                    <i class="fas fa-running"></i>
+                    Distanza per Attività
+                </h3>
+                <div class="chart-container">
+                    <canvas id="distanceByActivityChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-section">
+                <h3>
+                    <i class="fas fa-fire"></i>
+                    Calorie per Giorno
+                </h3>
+                <div class="chart-container">
+                    <canvas id="caloriesBurnedChart"></canvas>
+                </div>
+            </section>
+
+            <section class="chart-section">
+                <h3>
+                    <i class="fas fa-heartbeat"></i>
+                    Frequenza Cardiaca
+                </h3>
+                <div class="chart-container">
+                    <canvas id="heartRateChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Achievements -->
+        <section class="stats-section">
+            <h2 class="section-title">
+                <i class="fas fa-trophy"></i>
+                I Tuoi Traguardi
+            </h2>
+            <div id="achievementsList">
+                <!-- Gli achievements verranno inseriti qui dinamicamente -->
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/stats-fixed.js"></script>
+</body>
+</html>
