@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Salvataggio Allenamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .uuid-list {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .uuid-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .log-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Salvataggio Allenamento</h1>
+    
+    <div id="step1">
+        <h2>Passo 1: Carica le attività dal database</h2>
+        <button id="loadActivitiesBtn">Carica Attività</button>
+        <div id="activitiesResult" class="result"></div>
+        
+        <div id="activitiesTable" style="display: none;">
+            <h3>Attività disponibili nel database:</h3>
+            <table id="activities-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Qui verranno inserite le attività -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="step2" style="display: none; margin-top: 30px;">
+        <h2>Passo 2: Test di salvataggio con UUID selezionato</h2>
+        
+        <div class="form-group">
+            <label for="activitySelector">Seleziona attività:</label>
+            <select id="activitySelector">
+                <option value="">-- Seleziona --</option>
+                <!-- Le opzioni verranno aggiunte via JavaScript -->
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="workoutName">Nome allenamento:</label>
+            <input type="text" id="workoutName" value="Test Allenamento">
+        </div>
+        
+        <div class="form-group">
+            <label for="duration">Durata (minuti):</label>
+            <input type="number" id="duration" value="30">
+        </div>
+        
+        <button id="testSaveBtn">Testa Salvataggio</button>
+        <div id="saveResult" class="result"></div>
+    </div>
+    
+    <div id="step3" style="display: none; margin-top: 30px;">
+        <h2>Passo 3: Verifica UUID</h2>
+        <button id="showAllUuidsBtn">Mostra tutti gli UUID</button>
+        <div id="uuidList" class="uuid-list" style="display: none;"></div>
+    </div>
+    
+    <div id="logContainer" class="log-container">
+        <h3>Log di debug:</h3>
+        <div id="logEntries"></div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Configurazione Supabase
+        const SUPABASE_URL = 'https://mzcrogljyijgyzcxczcr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Y3JvZ2xqeWlqZ3l6Y3hjemNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2NTg4NzQsImV4cCI6MjA1NTIzNDg3NH0.NRvCsTtpEZ6HSMkEwsGc9IrnOVqwtfoVNS7CTKPCB5A';
+        
+        // Crea client Supabase
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Elementi DOM
+        const loadActivitiesBtn = document.getElementById('loadActivitiesBtn');
+        const activitiesResult = document.getElementById('activitiesResult');
+        const activitiesTable = document.getElementById('activitiesTable');
+        const activitiesTableBody = document.querySelector('#activities-table tbody');
+        const activitySelector = document.getElementById('activitySelector');
+        const testSaveBtn = document.getElementById('testSaveBtn');
+        const saveResult = document.getElementById('saveResult');
+        const showAllUuidsBtn = document.getElementById('showAllUuidsBtn');
+        const uuidList = document.getElementById('uuidList');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        const logEntries = document.getElementById('logEntries');
+        
+        // Funzione per aggiungere log
+        function addLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            logEntries.appendChild(logEntry);
+            logEntries.scrollTop = logEntries.scrollHeight;
+            console.log(message);
+        }
+        
+        // Carica attività dal database
+        loadActivitiesBtn.addEventListener('click', async () => {
+            addLog('Caricamento attività...');
+            
+            try {
+                // Verifica autenticazione
+                const { data: { session }, error: authError } = await supabase.auth.getSession();
+                
+                if (authError || !session) {
+                    throw new Error('Utente non autenticato');
+                }
+                
+                addLog('Utente autenticato: ' + session.user.email);
+                
+                // Carica attività
+                const { data: activities, error } = await supabase
+                    .from('activities')
+                    .select('*')
+                    .order('name');
+                
+                if (error) {
+                    throw error;
+                }
+                
+                if (!activities || activities.length === 0) {
+                    activitiesResult.innerHTML = '<span class="error">Nessuna attività trovata nel database!</span>';
+                    return;
+                }
+                
+                // Mostra le attività in tabella
+                activitiesTableBody.innerHTML = '';
+                activities.forEach(activity => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${activity.id}</td>
+                        <td>${activity.name}</td>
+                    `;
+                    activitiesTableBody.appendChild(row);
+                    
+                    // Aggiungi al selettore
+                    const option = document.createElement('option');
+                    option.value = activity.id;
+                    option.textContent = activity.name;
+                    activitySelector.appendChild(option);
+                });
+                
+                // Mostra la tabella
+                activitiesTable.style.display = 'block';
+                
+                // Abilita il passo 2
+                step2.style.display = 'block';
+                
+                // Abilita il passo 3
+                step3.style.display = 'block';
+                
+                // Aggiorna il risultato
+                activitiesResult.innerHTML = `<span class="success">Caricate ${activities.length} attività con successo!</span>`;
+                
+                // Salva le attività per uso futuro
+                window.activities = activities;
+                
+                addLog(`Caricate ${activities.length} attività`);
+                
+            } catch (error) {
+                addLog('Errore: ' + error.message);
+                activitiesResult.innerHTML = `<span class="error">Errore: ${error.message}</span>`;
+            }
+        });
+        
+        // Test di salvataggio con UUID selezionato
+        testSaveBtn.addEventListener('click', async () => {
+            const activityId = activitySelector.value;
+            const workoutName = document.getElementById('workoutName').value;
+            const duration = document.getElementById('duration').value;
+            
+            if (!activityId) {
+                saveResult.innerHTML = '<span class="error">Seleziona un\'attività!</span>';
+                return;
+            }
+            
+            addLog(`Test salvataggio con activity_id: ${activityId}`);
+            
+            try {
+                // Verifica autenticazione
+                const { data: { session }, error: authError } = await supabase.auth.getSession();
+                
+                if (authError || !session) {
+                    throw new Error('Utente non autenticato');
+                }
+                
+                // Prepara i dati
+                const workoutData = {
+                    name: workoutName,
+                    activity_id: activityId, // UUID dell'attività
+                    total_duration: parseInt(duration),
+                    difficulty: 'intermedio',
+                    objective: 'Test di salvataggio',
+                    user_id: session.user.id,
+                    created_at: new Date().toISOString(),
+                    warmup: 'Test warmup',
+                    main_phase: 'Test main phase',
+                    cooldown: 'Test cooldown',
+                    notes: 'Test notes'
+                };
+                
+                addLog(`Dati da salvare: ${JSON.stringify(workoutData)}`);
+                
+                // Tenta di salvare
+                const { data, error } = await supabase
+                    .from('workout_plans')
+                    .insert([workoutData])
+                    .select();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                // Successo
+                saveResult.innerHTML = `<span class="success">Allenamento salvato con successo! ID: ${data[0].id}</span>`;
+                addLog(`Allenamento salvato con successo: ${data[0].id}`);
+                
+            } catch (error) {
+                addLog('Errore: ' + error.message);
+                saveResult.innerHTML = `<span class="error">Errore: ${error.message}</span>`;
+            }
+        });
+        
+        // Mostra tutti gli UUID
+        showAllUuidsBtn.addEventListener('click', async () => {
+            addLog('Recupero dettagli UUID...');
+            
+            if (!window.activities) {
+                addLog('Nessuna attività caricata');
+                uuidList.innerHTML = '<span class="error">Carica prima le attività!</span>';
+                uuidList.style.display = 'block';
+                return;
+            }
+            
+            try {
+                // Costruisci la lista di tutti gli UUID
+                let uuidHtml = '<h3>UUID delle attività:</h3>';
+                
+                window.activities.forEach(activity => {
+                    uuidHtml += `
+                        <div class="uuid-item">
+                            <strong>Nome:</strong> ${activity.name}<br>
+                            <strong>UUID:</strong> ${activity.id}<br>
+                            <strong>Codice JavaScript:</strong> <code>'${activity.name.toLowerCase().replace(/\s+/g, '_')}': '${activity.id}'</code>
+                        </div>
+                    `;
+                });
+                
+                // Aggiungi codice di mappatura
+                uuidHtml += '<h3>Mappatura per il codice JavaScript:</h3>';
+                uuidHtml += '<pre>const activityUuids = {\n';
+                
+                window.activities.forEach((activity, index) => {
+                    const key = activity.name.toLowerCase().replace(/\s+/g, '_');
+                    uuidHtml += `  '${key}': '${activity.id}'${index < window.activities.length - 1 ? ',' : ''}\n`;
+                });
+                
+                uuidHtml += '};</pre>';
+                
+                // Mostra i risultati
+                uuidList.innerHTML = uuidHtml;
+                uuidList.style.display = 'block';
+                
+                addLog('UUID recuperati e visualizzati');
+                
+            } catch (error) {
+                addLog('Errore: ' + error.message);
+                uuidList.innerHTML = `<span class="error">Errore: ${error.message}</span>`;
+                uuidList.style.display = 'block';
+            }
+        });
+        
+        // Messaggio iniziale
+        addLog('Pagina di test caricata. Inizia caricando le attività.');
+    </script>
+</body>
+</html>
