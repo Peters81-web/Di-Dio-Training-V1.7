@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const { data: workouts, error } = await supabaseClient
                 .from('completed_workouts')
-                .select('heart_rate, completed_at')
+                .select('heart_rate_avg, completed_at')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', tenDaysAgo.toISOString())
                 .not('heart_rate', 'is', null)
