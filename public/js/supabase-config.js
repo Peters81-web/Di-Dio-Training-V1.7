@@ -1,6 +1,6 @@
 // Configurazione centralizzata di Supabase
-const SUPABASE_URL = 'https://dxpfcurxdqybwfbhwtmp.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_9tTZfX6NqTYr4pGwT3K7kQ_HIgt_KLr';
+const SUPABASE_URL = 'https://szybzycjdqlhpgdlcoou.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
 
 // Crea e memorizza il client Supabase una sola volta
 const supabaseClientInstance = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
