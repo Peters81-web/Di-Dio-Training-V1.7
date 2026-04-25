@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             workouts.push({
                 name:           workoutName,
-                date:           startDate.toISOString(),
+            scheduled_date: startDate.toISOString().split('T')[0],
                 activity_id:    activityId,
                 warmup,
                 main_phase:     mainPhase,
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         elements.workoutPreviewList.innerHTML           = '';
 
         generatedWorkouts.forEach((workout, index) => {
-            const workoutDate   = new Date(workout.date);
+                        const workoutDate    = new Date(workout.scheduled_date);
             const formattedDate = workoutDate.toLocaleDateString('it-IT', {
                 weekday: 'long', day: 'numeric', month: 'long'
             });
