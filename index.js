@@ -71,7 +71,7 @@ app.put('/api/workouts/:id', (req, res) => {
 
 // ─── API AI Trainer (Groq) ────────────────────────────────────────────────────────────────
 app.post('/api/generate-plan', async (req, res) => {
-  const { prompt, planType, fitnessLevel } = req.body || {};
+  const { prompt, planType, fitnessLevel, activityType } = req.body || {};
 
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Il campo prompt è obbligatorio.' });
@@ -93,6 +93,7 @@ app.post('/api/generate-plan', async (req, res) => {
 
   const userMessage = `Crea un piano di allenamento ${planTypeText} per un atleta di livello ${levelText}.
 Obiettivo e preferenze dell'utente: ${prompt.trim()}
+${activityType ? `\nL'utente ha scelto un tipo di attività specifico: orienta prevalentemente il piano verso esercizi e sessioni di quel tipo.` : ''}
 
 Struttura obbligatoria:
 1. Una breve introduzione che spiega l'approccio del piano (2-3 righe).
