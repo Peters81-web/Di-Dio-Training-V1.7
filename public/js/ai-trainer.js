@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const elements = {
         planType:                  document.getElementById('planType'),
         fitnessLevel:              document.getElementById('fitnessLevel'),
+        activityType:              document.getElementById('activityType'),
         aiPrompt:                  document.getElementById('aiPrompt'),
         generatePlanBtn:           document.getElementById('generatePlanBtn'),
         aiResponseContainer:       document.getElementById('aiResponseContainer'),
@@ -65,6 +66,16 @@ document.addEventListener('DOMContentLoaded', async function () {
                 .order('name');
             if (error) throw error;
             workoutActivities = data || [];
+
+            // Popola il menu a tendina "Tipo di Attività"
+            if (elements.activityType) {
+                workoutActivities.forEach(activity => {
+                    const option = document.createElement('option');
+                    option.value = activity.id;
+                    option.textContent = `${activity.icon || ''} ${activity.name}`.trim();
+                    elements.activityType.appendChild(option);
+                });
+            }
         } catch (error) {
             console.error('Error loading activities:', error);
         }
@@ -96,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         const prompt       = elements.aiPrompt.value.trim();
         const planType     = elements.planType.value;
         const fitnessLevel = elements.fitnessLevel.value;
+        const activityType = elements.activityType?.value || '';
 
         if (!prompt) {
             showToast('Descrivi il tuo obiettivo per generare un piano', 'warning');
@@ -107,9 +119,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         elements.aiResponseContainer.style.display = 'none';
 
         try {
-            const aiText = await callGeneratePlanAPI(prompt, planType, fitnessLevel);
+            const aiText = await callGeneratePlanAPI(prompt, planType, fitnessLevel, activityType);
 
-            generatedWorkouts = parseAIResponse(aiText, planType);
+            generatedWorkouts = parseAIResponse(aiText, planType, activityType);
             displayAIResponse(aiText);
 
             elements.aiResponseContainer.style.display = 'block';
@@ -126,11 +138,11 @@ document.addEventListener('DOMContentLoaded', async function () {
      * Chiama il backend Express che a sua volta chiama OpenAI.
      * La chiave API non viene mai esposta al browser.
      */
-    async function callGeneratePlanAPI(prompt, planType, fitnessLevel) {
+    async function callGeneratePlanAPI(prompt, planType, fitnessLevel, activityType) {
         const response = await fetch('/api/generate-plan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, planType, fitnessLevel })
+            body: JSON.stringify({ prompt, planType, fitnessLevel, activityType })
         });
 
         if (!response.ok) {
@@ -158,8 +170,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             startDate.setHours(0, 0, 0, 0);
             startDate.setDate(startDate.getDate() + dayNumber - 1);
 
-            // Individua l'attività più appropriata
-            const activityId = resolveActivityId(workoutName);
+            // Usa l'attività scelta dall'utente, altrimenti risolvi automaticamente
+            const activityId = activityType || resolveActivityId(workoutName);
 
             // Estrai le sezioni del giorno
             const dayContent  = extractDayContent(response, dayNumber);
@@ -317,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         elements.aiPrompt.value    = '';
         elements.planType.value    = 'weekly';
         elements.fitnessLevel.value = 'beginner';
+        if (elements.activityType) elements.activityType.value = '';
         elements.aiResponseContainer.style.display     = 'none';
         elements.workoutPreviewContainer.style.display = 'none';
         generatedWorkouts = [];
