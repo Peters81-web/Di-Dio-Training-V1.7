@@ -1,132 +1,179 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Trainer - DiDio Training</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/enhanced-design.css">
-    <link rel="stylesheet" href="/css/ai-trainer.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Trainer - DiDio Training</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/enhanced-design.css">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <h1 class="navbar-brand">
-                <i class="fas fa-robot mr-2"></i>
-                AI Trainer
-            </h1>
-            <div class="nav-links">
-                <button onclick="window.location.href='/dashboard'" class="btn">
-                    <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
-                </button>
-                <button onclick="window.location.href='/weekly_summary'" class="btn">
-                    <i class="fas fa-calendar-week"></i>
-                    <span>Riepilogo Settimanale</span>
-                </button>
-                <button onclick="window.location.href='/stats'" class="btn">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Statistiche</span>
-                </button>
-                <button id="logoutBtn" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Esci</span>
-                </button>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="container ai-trainer-container">
-        <div class="ai-card intro-card">
-            <div class="card-icon">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div class="card-content">
-                <h2>Il tuo Personal Trainer AI</h2>
-                <p>Descrivi i tuoi obiettivi di fitness, livello di esperienza e preferenze, e l'AI creerà un piano di allenamento personalizzato per te. Il piano verrà automaticamente integrato nel tuo calendario.</p>
-            </div>
-        </div>
+  <!-- Loading Overlay -->
+  <div id="aiLoadingOverlay" style="display:none;" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p>L'AI sta creando il tuo piano personalizzato...</p>
+  </div>
 
-        <div class="ai-card prompt-card">
-            <h3>Crea il tuo piano di allenamento</h3>
-            
-            <div class="form-group">
-                <label for="planType">Tipo di Piano</label>
-                <select id="planType" class="form-control">
-                    <option value="weekly">Piano Settimanale</option>
-                    <option value="monthly">Piano Mensile</option>
-                    <option value="custom">Piano Personalizzato</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="fitnessLevel">Livello di Fitness</label>
-                <select id="fitnessLevel" class="form-control">
-                    <option value="beginner">Principiante</option>
-                    <option value="intermediate">Intermedio</option>
-                    <option value="advanced">Avanzato</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="aiPrompt">Descrivi il tuo obiettivo</label>
-                <textarea id="aiPrompt" class="form-control" rows="5" placeholder="Esempio: Voglio migliorare la resistenza per prepararmi a una gara di 10km tra 2 mesi. Ho a disposizione 4 giorni a settimana per allenarmi e preferisco alternare corsa, nuoto e allenamento con i pesi..."></textarea>
-            </div>
-            
-            <button id="generatePlanBtn" class="btn btn-primary">
-                <i class="fas fa-magic"></i> Genera Piano di Allenamento
-            </button>
-        </div>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <h1 class="navbar-brand">
+        <i class="fas fa-robot mr-2"></i>
+        AI Trainer
+      </h1>
 
-        <div id="aiResponseContainer" class="ai-card response-card" style="display: none;">
-            <h3>Il tuo piano personalizzato</h3>
-            <div id="aiResponse" class="ai-response"></div>
-            
-            <div class="response-actions">
-                <button id="saveWorkoutsBtn" class="btn btn-success">
-                    <i class="fas fa-save"></i> Salva Allenamenti
-                </button>
-                <button id="regenerateBtn" class="btn btn-secondary">
-                    <i class="fas fa-redo-alt"></i> Rigenera Piano
-                </button>
-                <button id="newPlanBtn" class="btn btn-outline">
-                    <i class="fas fa-plus"></i> Nuovo Piano
-                </button>
-            </div>
-        </div>
+      <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <i class="fas fa-bars"></i>
+      </button>
 
-        <!-- Preview degli allenamenti da salvare -->
-        <div id="workoutPreviewContainer" class="ai-card preview-card" style="display: none;">
-            <h3>Anteprima degli allenamenti</h3>
-            <p class="preview-info">Verifica e personalizza i tuoi allenamenti prima di salvarli.</p>
-            
-            <div id="workoutPreviewList" class="preview-list"></div>
-            
-            <div class="preview-actions">
-                <button id="confirmSaveBtn" class="btn btn-primary">
-                    <i class="fas fa-check"></i> Conferma e Salva
-                </button>
-                <button id="cancelSaveBtn" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Annulla
-                </button>
-            </div>
-        </div>
-    </main>
-
-    <!-- Loading Overlay -->
-    <div id="aiLoadingOverlay" class="ai-loading-overlay" style="display: none;">
-        <div class="ai-loading-spinner"></div>
-        <p>L'IA sta creando il tuo piano personalizzato...</p>
+      <div class="nav-links" id="navLinks">
+        <button onclick="window.location.href='/dashboard'" class="btn">
+          <i class="fas fa-home"></i>
+          Dashboard
+        </button>
+        <button onclick="window.location.href='/planner'" class="btn">
+          <i class="fas fa-calendar-alt"></i>
+          Pianificatore
+        </button>
+        <button onclick="window.location.href='/stats'" class="btn">
+          <i class="fas fa-chart-line"></i>
+          Statistiche
+        </button>
+        <button id="logoutBtn" class="btn btn-danger">
+          <i class="fas fa-sign-out-alt"></i>
+          Esci
+        </button>
+      </div>
     </div>
+  </nav>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/js/app-core.js"></script>
-    <script src="/js/utils.js"></script>
-    <script src="/js/supabase-config.js"></script>
-    <script src="/js/ai-trainer.js"></script>
+  <!-- Main Content -->
+  <main class="stats-container">
+
+    <!-- Intro -->
+    <section class="stats-section">
+      <h2 class="section-title">
+        <i class="fas fa-robot mr-2"></i>
+        Il tuo Personal Trainer AI
+      </h2>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+        Descrivi i tuoi obiettivi di fitness, livello di esperienza e preferenze, e l'AI creerà un piano di allenamento personalizzato per te. Il piano verrà automaticamente integrato nel tuo calendario.
+      </p>
+    </section>
+
+    <!-- Form -->
+    <section class="stats-section">
+      <h2 class="section-title">
+        <i class="fas fa-magic mr-2"></i>
+        Crea il tuo piano di allenamento
+      </h2>
+
+      <div class="form-group" style="margin-top:1.5rem;">
+        <label for="planType" style="display:block; margin-bottom:0.5rem; font-weight:500;">Tipo di Piano</label>
+        <select id="planType" class="form-control">
+          <option value="weekly">Piano Settimanale</option>
+          <option value="monthly">Piano Mensile</option>
+          <option value="custom">Piano Personalizzato</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="fitnessLevel" style="display:block; margin-bottom:0.5rem; font-weight:500;">Livello di Fitness</label>
+        <select id="fitnessLevel" class="form-control">
+          <option value="beginner">Principiante</option>
+          <option value="intermediate">Intermedio</option>
+          <option value="advanced">Avanzato</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="activityType" style="display:block; margin-bottom:0.5rem; font-weight:500;">Tipo di Attività</label>
+        <select id="activityType" class="form-control">
+          <option value="">Seleziona attività (opzionale)</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="aiPrompt" style="display:block; margin-bottom:0.5rem; font-weight:500;">Descrivi il tuo obiettivo</label>
+        <textarea id="aiPrompt" class="form-control" rows="5"
+          placeholder="Es: Voglio migliorare la resistenza cardiovascolare, mi alleno 3 volte a settimana e ho 45 minuti per sessione..."
+        ></textarea>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <button id="generatePlanBtn" class="btn btn-primary">
+          <i class="fas fa-magic"></i>
+          Genera Piano di Allenamento
+        </button>
+      </div>
+    </section>
+
+    <!-- Risposta AI -->
+    <section id="aiResponseContainer" class="stats-section" style="display:none;">
+      <h2 class="section-title">
+        <i class="fas fa-clipboard-list mr-2"></i>
+        Il tuo piano personalizzato
+      </h2>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+        <button id="saveWorkoutsBtn" class="btn btn-success">
+          <i class="fas fa-save"></i>
+          Salva Allenamenti
+        </button>
+        <button id="regenerateBtn" class="btn btn-warning">
+          <i class="fas fa-redo"></i>
+          Rigenera Piano
+        </button>
+        <button id="newPlanBtn" class="btn">
+          <i class="fas fa-plus"></i>
+          Nuovo Piano
+        </button>
+      </div>
+      <div id="aiResponse" style="margin-top:1.5rem;"></div>
+    </section>
+
+    <!-- Anteprima workout -->
+    <section id="workoutPreviewContainer" class="stats-section" style="display:none;">
+      <h2 class="section-title">
+        <i class="fas fa-eye mr-2"></i>
+        Anteprima degli allenamenti
+      </h2>
+      <p style="color: var(--text-secondary); margin-top:0.5rem;">Verifica e personalizza i tuoi allenamenti prima di salvarli.</p>
+      <div id="workoutPreviewList" style="margin-top:1rem;"></div>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.5rem;">
+        <button id="confirmSaveBtn" class="btn btn-success">
+          <i class="fas fa-check"></i>
+          Conferma e Salva
+        </button>
+        <button id="cancelSaveBtn" class="btn">
+          <i class="fas fa-times"></i>
+          Annulla
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const navLinks = document.getElementById('navLinks');
+      if (mobileMenuToggle && navLinks) {
+        mobileMenuToggle.addEventListener('click', function() {
+          navLinks.classList.toggle('active');
+          const icon = this.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('fa-bars');
+            icon.classList.toggle('fa-times');
+          }
+        });
+      }
+    });
+  </script>
+
+  <script src="/js/supabase-config.js"></script>
+  <script src="/js/ai-trainer.js"></script>
 </body>
+</html>
