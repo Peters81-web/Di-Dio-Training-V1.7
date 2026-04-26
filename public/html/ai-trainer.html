@@ -4,63 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Trainer - DiDio Training</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/enhanced-design.css">
-  <link rel="stylesheet" href="/css/ai-trainer.css">
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
-
-  <!-- Loading Overlay -->
   <div id="aiLoadingOverlay" style="display:none;" class="loading-overlay">
     <div class="loading-spinner"></div>
     <p>L'AI sta creando il tuo piano personalizzato...</p>
   </div>
 
-  <!-- Navbar -->
   <nav class="navbar">
-    <div class="container">
-      <h1 class="navbar-brand">
-        <i class="fas fa-robot mr-2"></i>
-        AI Trainer
-      </h1>
-      <div class="nav-links">
-        <button onclick="window.location.href='/dashboard'" class="btn">
-          <i class="fas fa-home"></i>
-          <span>Dashboard</span>
-        </button>
-        <button onclick="window.location.href='/weekly_summary'" class="btn">
-          <i class="fas fa-calendar-week"></i>
-          <span>Riepilogo Settimanale</span>
-        </button>
-        <button onclick="window.location.href='/stats'" class="btn">
-          <i class="fas fa-chart-line"></i>
-          <span>Statistiche</span>
-        </button>
-        <button id="logoutBtn" class="btn btn-danger">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Esci</span>
-        </button>
-      </div>
+    <div class="nav-brand">DiDio Training</div>
+    <div class="nav-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/weekly_summary">Riepilogo Settimanale</a>
+      <a href="/stats">Statistiche</a>
+      <button id="logoutBtn" class="btn btn-outline">Esci</button>
     </div>
   </nav>
 
-  <!-- Main Content -->
-  <main class="container ai-trainer-container">
+  <main class="container">
+    <h1>AI Trainer</h1>
+    <h2>Il tuo Personal Trainer AI</h2>
+    <p>Descrivi i tuoi obiettivi di fitness, livello di esperienza e preferenze, e l'AI creerà un piano di allenamento personalizzato per te. Il piano verrà automaticamente integrato nel tuo calendario.</p>
 
-    <div class="ai-card intro-card">
-      <div class="card-icon">
-        <i class="fas fa-robot"></i>
-      </div>
-      <div class="card-content">
-        <h2>Il tuo Personal Trainer AI</h2>
-        <p>Descrivi i tuoi obiettivi di fitness, livello di esperienza e preferenze, e l'AI creerà un piano di allenamento personalizzato per te.
-        Il piano verrà automaticamente integrato nel tuo calendario.</p>
-      </div>
-    </div>
-
-    <div class="ai-card prompt-card">
+    <section class="ai-form-section">
       <h3>Crea il tuo piano di allenamento</h3>
 
       <div class="form-group">
@@ -90,57 +57,29 @@
 
       <div class="form-group">
         <label for="aiPrompt">Descrivi il tuo obiettivo</label>
-        <textarea
-          id="aiPrompt"
-          class="form-control"
-          rows="5"
+        <textarea id="aiPrompt" class="form-control" rows="5"
           placeholder="Es: Voglio migliorare la resistenza cardiovascolare, mi alleno 3 volte a settimana e ho 45 minuti per sessione..."
         ></textarea>
       </div>
 
-      <button id="generatePlanBtn" class="btn btn-primary btn-lg btn-block">
-        <i class="fas fa-magic"></i>
-        Genera Piano di Allenamento
-      </button>
-    </div>
+      <button id="generatePlanBtn" class="btn btn-primary">Genera Piano di Allenamento</button>
+    </section>
 
-    <!-- AI Response -->
-    <div id="aiResponseContainer" class="ai-card response-card" style="display:none;">
+    <div id="aiResponseContainer" style="display:none;">
       <h3>Il tuo piano personalizzato</h3>
-      <div id="aiResponse" class="ai-response-content"></div>
-      <div class="response-actions">
-        <button id="saveWorkoutsBtn" class="btn btn-success">
-          <i class="fas fa-save"></i>
-          Salva Allenamenti
-        </button>
-        <button id="regenerateBtn" class="btn btn-outline">
-          <i class="fas fa-redo"></i>
-          Rigenera Piano
-        </button>
-        <button id="newPlanBtn" class="btn btn-outline">
-          <i class="fas fa-plus"></i>
-          Nuovo Piano
-        </button>
-      </div>
+      <div id="aiResponse"></div>
+      <button id="saveWorkoutsBtn" class="btn btn-success">Salva Allenamenti</button>
+      <button id="regenerateBtn" class="btn btn-outline">Rigenera Piano</button>
+      <button id="newPlanBtn" class="btn btn-outline">Nuovo Piano</button>
     </div>
 
-    <!-- Workout Preview -->
-    <div id="workoutPreviewContainer" class="ai-card preview-card" style="display:none;">
+    <div id="workoutPreviewContainer" style="display:none;">
       <h3>Anteprima degli allenamenti</h3>
       <p>Verifica e personalizza i tuoi allenamenti prima di salvarli.</p>
       <div id="workoutPreviewList"></div>
-      <div class="preview-actions">
-        <button id="confirmSaveBtn" class="btn btn-success">
-          <i class="fas fa-check"></i>
-          Conferma e Salva
-        </button>
-        <button id="cancelSaveBtn" class="btn btn-outline">
-          <i class="fas fa-times"></i>
-          Annulla
-        </button>
-      </div>
+      <button id="confirmSaveBtn" class="btn btn-success">Conferma e Salva</button>
+      <button id="cancelSaveBtn" class="btn btn-outline">Annulla</button>
     </div>
-
   </main>
 
   <script src="/js/supabase-config.js"></script>
