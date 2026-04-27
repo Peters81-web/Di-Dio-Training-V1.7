@@ -226,6 +226,171 @@ document.addEventListener('DOMContentLoaded', async function () {
             alert('Errore durante il salvataggio degli allenamenti: ' + error.message);
         }
     }
+    let generatedWorkouts = [];
+let currentGeneratedActivityType = 'running';
+
+function getSelectedActivityType() {
+  const el = document.getElementById('activityType');
+  return el ? el.value : 'running';
+}
+
+function buildAiPrompt(formData) {
+  const activityType = getSelectedActivityType();
+
+  return `
+Crea un piano di allenamento di tipo "${activityType}".
+
+Obiettivo: ${formData.objective}
+Livello: ${formData.level}
+Durata piano: ${formData.duration}
+Giorni a settimana: ${formData.daysPerWeek}
+Note utente: ${formData.notes || 'Nessuna'}
+
+Formato richiesto:
+### Giorno 1: Titolo
+Obiettivo: ...
+Riscaldamento: ...
+Fase Principale: ...
+Defaticamento: ...
+Note e Consigli: ...
+
+### Giorno 2: Titolo
+...
+`;
+}
+
+function inferActivityTypeFromText(workout) {
+  const text = [
+    workout?.activity_type,
+    workout?.name,
+    workout?.objective,
+    workout?.main_phase,
+    workout?.notes,
+    workout?.rawText
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (/(corsa|running|ripetute|resistenza|velocit|jogging|fartlek)/.test(text)) return 'running';
+  if (/(palestra|gym|forza|manubri|bilanciere|squat|stacchi|push|pull)/.test(text)) return 'gym';
+  if (/(yoga|saluto al sole)/.test(text)) return 'yoga';
+  if (/(cicl|bike|cycling|bici|spin)/.test(text)) return 'cycling';
+  if (/(mobilit|stretching|flessibilit|mobility)/.test(text)) return 'mobility';
+  if (/(cammin|walking|passeggiata|passo)/.test(text)) return 'walking';
+
+  return currentGeneratedActivityType || 'gym';
+}
+
+function normalizeWorkout(workout, fallbackType) {
+  return {
+    ...workout,
+    activity_type: workout.activity_type || inferActivityTypeFromText(workout) || fallbackType || 'gym'
+  };
+}
+
+async function generatePlan() {
+  const objective = document.getElementById('objective')?.value || '';
+  const level = document.getElementById('level')?.value || '';
+  const duration = document.getElementById('duration')?.value || '';
+  const daysPerWeek = document.getElementById('daysPerWeek')?.value || '';
+  const notes = document.getElementById('notes')?.value || '';
+  const activityType = getSelectedActivityType();
+
+  currentGeneratedActivityType = activityType;
+
+  const formData = {
+    objective,
+    level,
+    duration,
+    daysPerWeek,
+    notes,
+    activityType
+  };
+
+  const prompt = buildAiPrompt(formData);
+
+  // Qui resta la tua chiamata AI attuale
+  const aiText = await callAiModel(prompt);
+
+  const parsed = parseAiWorkoutPlan(aiText) || [];
+  generatedWorkouts = parsed.map(w => normalizeWorkout(w, activityType));
+
+  console.log('Allenamenti parsati:', generatedWorkouts.length, generatedWorkouts);
+  renderGeneratedPlan(aiText);
+}
+
+function parseAiWorkoutPlan(text) {
+  const blocks = text
+    .split(/(?=^###\s)/gm)
+    .map(b => b.trim())
+    .filter(Boolean);
+
+  const workouts = blocks.map((block, index) => {
+    const nameMatch = block.match(/^###\s*(.+)$/m);
+
+    const extractSection = (label) => {
+      const regex = new RegExp(`${label}\\s*:?\\s*([\\s\\S]*?)(?=\\n(?:Obiettivo|Riscaldamento|Fase Principale|Defaticamento|Note e Consigli)\\s*:|$)`, 'i');
+      const match = block.match(regex);
+      return match ? match[1].trim() : '';
+    };
+
+    const name = nameMatch ? nameMatch[1].trim() : `Allenamento ${index + 1}`;
+    const objective = extractSection('Obiettivo');
+    const warmup = extractSection('Riscaldamento');
+    const main_phase = extractSection('Fase Principale');
+    const cooldown = extractSection('Defaticamento');
+    const notes = extractSection('Note e Consigli');
+
+    const isRestDay = /riposo attivo|riposo/i.test(name) && !main_phase;
+
+    if (isRestDay) return null;
+
+    return {
+      name,
+      objective,
+      warmup,
+      main_phase,
+      cooldown,
+      notes,
+      rawText: block
+    };
+  }).filter(Boolean);
+
+  return workouts;
+}
+
+async function saveGeneratedWorkouts() {
+  if (!generatedWorkouts || !generatedWorkouts.length) {
+    alert('Nessun allenamento da salvare.');
+    return;
+  }
+
+  const activityType = getSelectedActivityType();
+
+  const workoutsToSave = generatedWorkouts.map((workout, index) => ({
+    user_id: currentUser.id,
+    activity_id: null,
+    activity_type: workout.activity_type || activityType,
+    name: workout.name || `Allenamento ${index + 1}`,
+    objective: workout.objective || document.getElementById('objective')?.value || '',
+    warmup: workout.warmup || '',
+    main_phase: workout.main_phase || '',
+    cooldown: workout.cooldown || '',
+    notes: workout.notes || '',
+    difficulty: document.getElementById('level')?.value || 'intermedio',
+    scheduled_date: workout.scheduled_date || null
+  }));
+
+  const { error } = await supabase
+    .from('workout_plans')
+    .insert(workoutsToSave);
+
+  if (error) {
+    console.error('Error saving workouts:', error);
+    alert(`Errore durante il salvataggio degli allenamenti: ${error.message}`);
+    return;
+  }
+
+  alert('Allenamenti salvati con successo.');
+}
 
     await init();
 }());
