@@ -2,8 +2,7 @@
 // STATO GLOBALE AI TRAINER
 // =========================
 let generatedPlanText = '';
-let generatedWorkouts = [];
-let currentGeneratedActivityType = 'running';
+
 
 // =========================
 // HELPERS
