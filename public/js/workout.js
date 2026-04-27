@@ -1,246 +1,250 @@
-/**
- * workout.js - VERSIONE SEMPLIFICATA
- * Gestione degli allenamenti utilizzando app-core.js
- */
+document.addEventListener('DOMContentLoaded', async function () {
+  const supabaseClient = window.supabaseClient || createSupabaseClient();
+  let currentUser = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inizializzazione workout.js');
-    
-    // Verifica se siamo in modalità creazione/modifica
-    if (window.location.pathname.includes('/workout')) {
-        setupWorkoutForm();
-    }
-});
+  const elements = {
+    workoutCardsContainer: document.getElementById('workoutCardsContainer'),
+    logoutBtn: document.getElementById('logoutBtn')
+  };
 
-/**
- * Configura il form per la creazione o modifica di un allenamento
- */
-function setupWorkoutForm() {
-    console.log('Configurazione del form di allenamento');
-    
-    // Popola il selettore delle attività
-    populateActivityTypes();
-    
-    // Gestisci il form
-    const workoutForm = document.getElementById('workoutForm');
-    if (workoutForm) {
-        workoutForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Controlla se siamo in modalità modifica
-            const workoutId = new URLSearchParams(window.location.search).get('id');
-            if (workoutId) {
-                await updateWorkout(workoutId);
-            } else {
-                await createNewWorkout();
-            }
-        });
-    }
-    
-    // Se siamo in modalità modifica, carica i dati esistenti
-    const workoutId = new URLSearchParams(window.location.search).get('id');
-    if (workoutId) {
-        loadWorkoutForEditing(workoutId);
-    }
-}
+  async function init() {
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
 
-/**
- * Popola il dropdown dei tipi di attività
- */
-function populateActivityTypes() {
-    const activityTypeSelect = document.getElementById('activityType');
-    if (!activityTypeSelect) return;
-    
-    activityTypeSelect.innerHTML = '';
-    
-    // Opzione placeholder
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = 'Seleziona attività';
-    activityTypeSelect.appendChild(placeholderOption);
-    
-    // Opzioni di attività
-    const activityOptions = [
-        { id: 1, name: 'Corsa' },
-        { id: 2, name: 'Ciclismo' },
-        { id: 3, name: 'Nuoto' },
-        { id: 4, name: 'Forza' },
-        { id: 5, name: 'Yoga' }
-    ];
-    
-    activityOptions.forEach(activity => {
-        const option = document.createElement('option');
-        option.value = window.AppCore.activityUuids[activity.id.toString()];
-        option.textContent = activity.name;
-        activityTypeSelect.appendChild(option);
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+
+      currentUser = session.user;
+      bindGlobalEvents();
+      await loadWorkouts();
+    } catch (error) {
+      console.error('Errore inizializzazione workout:', error);
+    }
+  }
+
+  function bindGlobalEvents() {
+    if (elements.logoutBtn) {
+      elements.logoutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '/';
+      });
+    }
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return 'Data non disponibile';
+
+    const date = new Date(dateString + 'T12:00:00');
+    return date.toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
     });
-}
+  }
 
-/**
- * Crea un nuovo allenamento
- */
-async function createNewWorkout() {
-    console.log('Creazione nuovo allenamento');
-    
-    try {
-        // Verifica autenticazione
-        const session = await window.AppCore.checkAuth();
-        if (!session) return;
-        
-        // Validazione campi
-        const workoutName = document.getElementById('workoutName').value.trim();
-        const activityUuid = document.getElementById('activityType').value;
-        const duration = parseInt(document.getElementById('duration').value);
-        const difficulty = document.getElementById('difficulty').value;
-        const objective = document.getElementById('objective').value.trim();
-        
-        if (!workoutName || !activityUuid || !duration || duration < 1) {
-            throw new Error('Compila tutti i campi obbligatori');
-        }
-        
-        // Prepara i dati
-        const workoutData = {
-            name: workoutName,
-            activity_id: activityUuid,
-            total_duration: duration,
-            difficulty: difficulty,
-            objective: objective,
-            user_id: session.user.id,
-            created_at: new Date().toISOString(),
-            warmup: window.AppCore.getRichTextContent('warmup'),
-            main_phase: window.AppCore.getRichTextContent('mainPhase'),
-            cooldown: window.AppCore.getRichTextContent('cooldown'),
-            notes: window.AppCore.getRichTextContent('notes')
-        };
-        
-        console.log('Dati allenamento:', workoutData);
-        
-        // Invia a Supabase
-        const supabaseClient = window.supabaseClient;
-        const { data, error } = await supabaseClient
-            .from('workout_plans')
-            .insert([workoutData]);
-            
-        if (error) throw error;
-        
-        window.AppCore.showToast('Allenamento salvato con successo!', 'success');
-        
-        setTimeout(() => {
-            window.location.href = '/dashboard';
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Errore durante il salvataggio:', error);
-        window.AppCore.showToast('Errore: ' + error.message, 'error');
-    }
-}
+  function escapeHtml(text) {
+    return (text || '')
+      .toString()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-/**
- * Carica un allenamento per la modifica
- */
-async function loadWorkoutForEditing(workoutId) {
-    console.log('Caricamento allenamento per modifica, ID:', workoutId);
-    
-    try {
-        const supabaseClient = window.supabaseClient;
-        
-        const { data, error } = await supabaseClient
-            .from('workout_plans')
-            .select('*')
-            .eq('id', workoutId)
-            .single();
-            
-        if (error) throw error;
-        
-        if (!data) {
-            throw new Error('Allenamento non trovato');
-        }
-        
-        // Popola il form con i dati
-        document.getElementById('workoutName').value = data.name || '';
-        document.getElementById('activityType').value = data.activity_id || '';
-        document.getElementById('duration').value = data.total_duration || '';
-        document.getElementById('difficulty').value = data.difficulty || 'intermedio';
-        document.getElementById('objective').value = data.objective || '';
-        
-        // Imposta il contenuto degli editor di testo
-        window.AppCore.setRichTextContent('warmup', data.warmup || '');
-        window.AppCore.setRichTextContent('mainPhase', data.main_phase || '');
-        window.AppCore.setRichTextContent('cooldown', data.cooldown || '');
-        window.AppCore.setRichTextContent('notes', data.notes || '');
-        
-        // Aggiorna il titolo della pagina
-        document.querySelector('.navbar-brand').innerHTML = '<i class="fas fa-dumbbell mr-2"></i> Modifica Allenamento';
-        
-        // Aggiorna il pulsante di salvataggio
-        const saveBtn = document.querySelector('button[type="submit"]');
-        if (saveBtn) {
-            saveBtn.innerHTML = '<i class="fas fa-save"></i> Aggiorna Allenamento';
-        }
-        
-    } catch (error) {
-        console.error('Errore durante il caricamento:', error);
-        window.AppCore.showToast('Errore nel caricamento dell\'allenamento', 'error');
-    }
-}
+  function getWorkoutTypeLabel(workout) {
+    const type = (workout.activity_type || '').toLowerCase();
 
-/**
- * Aggiorna un allenamento esistente
- */
-async function updateWorkout(workoutId) {
-    console.log('Aggiornamento allenamento, ID:', workoutId);
-    
-    try {
-        // Validazione campi
-        const workoutName = document.getElementById('workoutName').value.trim();
-        const activityUuid = document.getElementById('activityType').value;
-        const duration = parseInt(document.getElementById('duration').value);
-        const difficulty = document.getElementById('difficulty').value;
-        const objective = document.getElementById('objective').value.trim();
-        
-        if (!workoutName || !activityUuid || !duration || duration < 1) {
-            throw new Error('Compila tutti i campi obbligatori');
-        }
-        
-        // Prepara i dati
-        const workoutData = {
-            name: workoutName,
-            activity_id: activityUuid,
-            total_duration: duration,
-            difficulty: difficulty,
-            objective: objective,
-            warmup: window.AppCore.getRichTextContent('warmup'),
-            main_phase: window.AppCore.getRichTextContent('mainPhase'),
-            cooldown: window.AppCore.getRichTextContent('cooldown'),
-            notes: window.AppCore.getRichTextContent('notes')
-        };
-        
-        console.log('Dati aggiornamento:', workoutData);
-        
-        // Invia a Supabase
-        const supabaseClient = window.supabaseClient;
-        const { data, error } = await supabaseClient
-            .from('workout_plans')
-            .update(workoutData)
-            .eq('id', workoutId);
-            
-        if (error) throw error;
-        
-        window.AppCore.showToast('Allenamento aggiornato con successo!', 'success');
-        
-        setTimeout(() => {
-            window.location.href = '/dashboard';
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Errore durante l\'aggiornamento:', error);
-        window.AppCore.showToast('Errore: ' + error.message, 'error');
-    }
-}
-
-// Definisci formatText se non esiste
-if (typeof window.formatText !== 'function') {
-    window.formatText = function(command) {
-        document.execCommand(command, false, null);
+    const labelMap = {
+      running: 'Corsa',
+      gym: 'Palestra',
+      yoga: 'Yoga',
+      cycling: 'Ciclismo',
+      mobility: 'Mobilità',
+      walking: 'Camminata'
     };
-}
+
+    return labelMap[type] || 'Allenamento';
+  }
+
+  function getWorkoutIconClass(workout) {
+    const type = (workout.activity_type || '').toLowerCase();
+
+    const iconMap = {
+      running: 'fas fa-running',
+      gym: 'fas fa-dumbbell',
+      yoga: 'fas fa-spa',
+      cycling: 'fas fa-biking',
+      mobility: 'fas fa-child-reaching',
+      walking: 'fas fa-walking'
+    };
+
+    return iconMap[type] || 'fas fa-dumbbell';
+  }
+
+  function askAverageHeartRate(existingValue = '') {
+    const input = prompt('Inserisci la frequenza cardiaca media (BPM):', existingValue);
+
+    if (input === null) return null;
+
+    const bpm = parseInt(input.trim(), 10);
+
+    if (Number.isNaN(bpm) || bpm < 40 || bpm > 240) {
+      alert('Inserisci un valore valido tra 40 e 240 BPM.');
+      return undefined;
+    }
+
+    return bpm;
+  }
+
+  async function completeWorkout(workoutId, existingHeartRate = '') {
+    const averageHeartRate = askAverageHeartRate(existingHeartRate);
+
+    if (averageHeartRate === undefined) return;
+    if (averageHeartRate === null) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('workout_plans')
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+          average_heart_rate: averageHeartRate
+        })
+        .eq('id', workoutId)
+        .eq('user_id', currentUser.id)
+        .select();
+
+      if (error) throw error;
+
+      alert('Allenamento completato con successo.');
+      await loadWorkouts();
+    } catch (error) {
+      console.error('Errore completamento allenamento:', error);
+      alert('Errore durante il completamento dell’allenamento: ' + error.message);
+    }
+  }
+
+  async function markWorkoutIncomplete(workoutId) {
+    try {
+      const { error } = await supabaseClient
+        .from('workout_plans')
+        .update({
+          completed: false,
+          completed_at: null,
+          average_heart_rate: null
+        })
+        .eq('id', workoutId)
+        .eq('user_id', currentUser.id)
+        .select();
+
+      if (error) throw error;
+
+      alert('Allenamento riportato a non completato.');
+      await loadWorkouts();
+    } catch (error) {
+      console.error('Errore reset allenamento:', error);
+      alert('Errore durante il reset dell’allenamento: ' + error.message);
+    }
+  }
+
+  function createWorkoutCard(workout) {
+    const iconClass = getWorkoutIconClass(workout);
+    const typeLabel = getWorkoutTypeLabel(workout);
+
+    return `
+      <div class="workout-card" data-id="${escapeHtml(workout.id)}">
+        <div class="workout-card-header">
+          <div class="workout-card-icon">
+            <i class="${iconClass}"></i>
+          </div>
+          <div>
+            <div class="workout-card-type">${escapeHtml(typeLabel)}</div>
+            <h3 class="workout-card-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
+          </div>
+        </div>
+
+        <div class="workout-card-body">
+          <p><strong>Data:</strong> ${escapeHtml(formatDate(workout.scheduled_date))}</p>
+          <p><strong>Obiettivo:</strong> ${escapeHtml(workout.objective || 'Nessun obiettivo')}</p>
+          <p><strong>Difficoltà:</strong> ${escapeHtml(workout.difficulty || 'intermedio')}</p>
+          <p><strong>Stato:</strong> ${workout.completed ? 'Completato' : 'Da completare'}</p>
+          ${workout.average_heart_rate ? `<p><strong>FC media:</strong> ${escapeHtml(workout.average_heart_rate)} BPM</p>` : ''}
+        </div>
+
+        <div class="workout-card-actions">
+          ${
+            workout.completed
+              ? `
+                <button class="btn btn-secondary reset-workout-btn" data-workout-id="${workout.id}">
+                  Annulla completamento
+                </button>
+              `
+              : `
+                <button class="btn btn-primary complete-workout-btn" data-workout-id="${workout.id}" data-heart-rate="${workout.average_heart_rate || ''}">
+                  Completa
+                </button>
+              `
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  function bindWorkoutActions() {
+    document.querySelectorAll('.complete-workout-btn').forEach((button) => {
+      button.addEventListener('click', async function () {
+        const workoutId = this.dataset.workoutId;
+        const existingHeartRate = this.dataset.heartRate || '';
+        await completeWorkout(workoutId, existingHeartRate);
+      });
+    });
+
+    document.querySelectorAll('.reset-workout-btn').forEach((button) => {
+      button.addEventListener('click', async function () {
+        const workoutId = this.dataset.workoutId;
+        await markWorkoutIncomplete(workoutId);
+      });
+    });
+  }
+
+  async function loadWorkouts() {
+    try {
+      const { data, error } = await supabaseClient
+        .from('workout_plans')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+
+      if (!elements.workoutCardsContainer) return;
+
+      if (!data || data.length === 0) {
+        elements.workoutCardsContainer.innerHTML = `
+          <div class="empty-state">
+            <p>Nessun allenamento disponibile.</p>
+          </div>
+        `;
+        return;
+      }
+
+      elements.workoutCardsContainer.innerHTML = data.map(createWorkoutCard).join('');
+      bindWorkoutActions();
+    } catch (error) {
+      console.error('Errore caricamento workout:', error);
+      if (elements.workoutCardsContainer) {
+        elements.workoutCardsContainer.innerHTML = `
+          <div class="empty-state">
+            <p>Errore nel caricamento degli allenamenti.</p>
+          </div>
+        `;
+      }
+    }
+  }
+
+  await init();
+});
