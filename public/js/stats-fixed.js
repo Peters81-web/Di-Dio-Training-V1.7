@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', async function () {
-  const supabaseClient = window.supabaseClient || createSupabaseClient();
+ const SUPABASE_URL = 'https://szybzycjdqlhpgdlcoou.supabase.co';
+ const SUPABASE_ANON_KEY = 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
+
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   let currentUser = null;
   let heartRateChartInstance = null;
 
