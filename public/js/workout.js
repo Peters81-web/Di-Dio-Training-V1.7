@@ -210,6 +210,14 @@ async function completeWorkout(workoutId, existingHeartRate = '') {
       button.addEventListener('click', async function () {
         const workoutId = this.dataset.workoutId;
         const existingHeartRate = this.dataset.heartRate || '';
+        
+          console.log('Click pulsante Completa, workoutId:', workoutId);
+
+      if (!workoutId) {
+        alert('ID allenamento mancante.');
+        return;
+      }
+        
         await completeWorkout(workoutId, existingHeartRate);
       });
     });
