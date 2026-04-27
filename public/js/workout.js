@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function () {
-const SUPABASE_URL = 'https://szybzycjdqlhpgdlcoou.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
- const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = window.supabaseClient || window.createSupabaseClient();
   let currentUser = null;
 
   const elements = {
@@ -174,22 +172,13 @@ const SUPABASE_ANON_KEY = 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
           <p><strong>Obiettivo:</strong> ${escapeHtml(workout.objective || 'Nessun obiettivo')}</p>
           <p><strong>Difficoltà:</strong> ${escapeHtml(workout.difficulty || 'intermedio')}</p>
           <p><strong>Stato:</strong> ${workout.completed ? 'Completato' : 'Da completare'}</p>
-          ${workout.average_heart_rate ? `<p><strong>FC media:</strong> ${escapeHtml(workout.average_heart_rate)} BPM</p>` : ''}
+          ${workout.average_heart_rate ? `<p><strong>FC media:</strong> ${escapeHtml(String(workout.average_heart_rate))} BPM</p>` : ''}
         </div>
 
         <div class="workout-card-actions">
-          ${
-            workout.completed
-              ? `
-                <button class="btn btn-secondary reset-workout-btn" data-workout-id="${workout.id}">
-                  Annulla completamento
-                </button>
-              `
-              : `
-                <button class="btn btn-primary complete-workout-btn" data-workout-id="${workout.id}" data-heart-rate="${workout.average_heart_rate || ''}">
-                  Completa
-                </button>
-              `
+          ${workout.completed
+            ? `<button class="btn btn-secondary reset-workout-btn" data-workout-id="${workout.id}">Annulla completamento</button>`
+            : `<button class="btn btn-primary complete-workout-btn" data-workout-id="${workout.id}" data-heart-rate="${workout.average_heart_rate || ''}">Completa</button>`
           }
         </div>
       </div>
@@ -238,6 +227,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
       bindWorkoutActions();
     } catch (error) {
       console.error('Errore caricamento workout:', error);
+
       if (elements.workoutCardsContainer) {
         elements.workoutCardsContainer.innerHTML = `
           <div class="empty-state">
