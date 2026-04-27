@@ -100,33 +100,53 @@ document.addEventListener('DOMContentLoaded', async function () {
     return bpm;
   }
 
-  async function completeWorkout(workoutId, existingHeartRate = '') {
-    const averageHeartRate = askAverageHeartRate(existingHeartRate);
+async function completeWorkout(workoutId, existingHeartRate = '') {
+  console.log('completeWorkout chiamata con workoutId:', workoutId);
 
-    if (averageHeartRate === undefined) return;
-    if (averageHeartRate === null) return;
+  const input = prompt('Inserisci la frequenza cardiaca media (BPM):', existingHeartRate);
 
-    try {
-      const { error } = await supabaseClient
-        .from('workout_plans')
-        .update({
-          completed: true,
-          completed_at: new Date().toISOString(),
-          average_heart_rate: averageHeartRate
-        })
-        .eq('id', workoutId)
-        .eq('user_id', currentUser.id)
-        .select();
-
-      if (error) throw error;
-
-      alert('Allenamento completato con successo.');
-      await loadWorkouts();
-    } catch (error) {
-      console.error('Errore completamento allenamento:', error);
-      alert('Errore durante il completamento dell’allenamento: ' + error.message);
-    }
+  if (input === null) {
+    console.log('Completamento annullato dall’utente');
+    return;
   }
+
+  const averageHeartRate = parseInt(input.trim(), 10);
+
+  if (Number.isNaN(averageHeartRate) || averageHeartRate < 40 || averageHeartRate > 240) {
+    alert('Inserisci un valore valido tra 40 e 240 BPM.');
+    return;
+  }
+
+  try {
+    const payload = {
+      completed: true,
+      completed_at: new Date().toISOString(),
+      average_heart_rate: averageHeartRate
+    };
+
+    console.log('Update payload:', payload);
+
+    const { data, error } = await supabaseClient
+      .from('workout_plans')
+      .update(payload)
+      .eq('id', workoutId)
+      .eq('user_id', currentUser.id)
+      .select();
+
+    if (error) {
+      console.error('Errore Supabase update:', error);
+      throw error;
+    }
+
+    console.log('Workout aggiornato con successo:', data);
+    alert('Allenamento completato con successo.');
+
+    await loadWorkouts();
+  } catch (error) {
+    console.error('Errore completamento allenamento:', error);
+    alert('Errore durante il completamento dell’allenamento: ' + error.message);
+  }
+}
 
   async function markWorkoutIncomplete(workoutId) {
     try {
