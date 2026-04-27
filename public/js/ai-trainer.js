@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 elements.aiResponseContainer.style.display = 'none';
                 elements.workoutPreviewContainer.style.display = 'none';
                 elements.aiPrompt.value = '';
+                generatedWorkouts = [];
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         }
@@ -94,6 +95,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         elements.aiLoadingOverlay.style.display = 'flex';
+        generatedWorkouts = [];
 
         try {
             const response = await fetch('/api/generate-plan', {
@@ -113,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 elements.aiResponse.innerHTML = marked.parse(data.text);
                 elements.aiResponseContainer.style.display = 'block';
                 generatedWorkouts = parseAIResponse(data.text);
+                console.log('Allenamenti parsati:', generatedWorkouts.length, generatedWorkouts);
             }
 
         } catch (error) {
@@ -120,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (elements.aiResponse) {
                 elements.aiResponse.innerHTML = '<div class="error-message">Errore: ' + error.message + '</div>';
             }
-            alert('Si è verificato un errore durante la generazione del piano. Riprova.');
+            alert('Si \u00e8 verificato un errore durante la generazione del piano. Riprova.');
         } finally {
             elements.aiLoadingOverlay.style.display = 'none';
         }
@@ -128,21 +131,41 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function parseAIResponse(text) {
         const workouts = [];
-        const days = text.split(/^###/gm).filter(function(d) { return d.trim(); });
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
 
-        days.forEach(function(day, index) {
-            const workoutName = day.split('\n')[0].trim();
-            const warmup = day.includes('#### Riscaldamento') ? day.split('#### Riscaldamento')[1].split('####')[0].trim() : '';
-            const mainPhase = day.includes('#### Fase Principale') ? day.split('#### Fase Principale')[1].split('####')[0].trim() : '';
-            const cooldown = day.includes('#### Defaticamento') ? day.split('#### Defaticamento')[1].split('####')[0].trim() : '';
-            const notes = day.includes('#### Note e Consigli') ? day.split('#### Note e Consigli')[1].trim() : '';
+        // Divide il testo su ogni riga che inizia con ### (con eventuale spazio prima)
+        // Usa lookahead per preservare il delimitatore
+        const dayBlocks = text.split(/(?=^###\s)/m).filter(function(block) {
+            return block.trim().startsWith('###');
+        });
 
-            if (warmup || mainPhase) {
+        console.log('Blocchi giorno trovati:', dayBlocks.length);
+
+        dayBlocks.forEach(function(day) {
+            // Estrai il nome del giorno dalla prima riga (es. "### Giorno 1: Corsa")
+            const firstLine = day.split('\n')[0].replace(/^#+\s*/, '').trim();
+
+            // Salta i giorni di riposo attivo
+            const isRest = /riposo/i.test(firstLine);
+
+            // Estrai le sezioni con regex case-insensitive
+            function extractSection(sectionName) {
+                const regex = new RegExp('####\\s*' + sectionName + '[^\\n]*\\n([\\s\\S]*?)(?=####|$)', 'i');
+                const match = day.match(regex);
+                return match ? match[1].trim() : '';
+            }
+
+            const warmup    = extractSection('Riscaldamento');
+            const mainPhase = extractSection('Fase Principale');
+            const cooldown  = extractSection('Defaticamento');
+            const notes     = extractSection('Note e Consigli');
+
+            // Salva solo se c\'e\' almeno riscaldamento o fase principale (non i giorni riposo puri)
+            if (!isRest && (warmup || mainPhase)) {
                 workouts.push({
-                    name: workoutName.replace(':',''),
-                    scheduled_date: startDate.toISOString().split('T')[0],
+                    name: firstLine.replace(/^Giorno\s*\d+:\s*/i, '').trim() || firstLine,
+                    scheduled_date: new Date(startDate).toISOString().split('T')[0],
                     warmup: warmup,
                     main_phase: mainPhase,
                     cooldown: cooldown,
@@ -150,8 +173,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                     total_duration: 45,
                     objective: "Piano generato dall'AI Trainer"
                 });
-                startDate.setDate(startDate.getDate() + 1);
             }
+
+            // Avanza di un giorno per ogni blocco (riposo incluso)
+            startDate.setDate(startDate.getDate() + 1);
         });
 
         return workouts;
@@ -159,18 +184,19 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function showPreview() {
         if (generatedWorkouts.length === 0) {
-            alert('Nessun allenamento da salvare.');
+            alert('Nessun allenamento da salvare. Genera prima un piano.');
             return;
         }
 
         if (elements.workoutPreviewList) {
             elements.workoutPreviewList.innerHTML = generatedWorkouts.map(function(w, i) {
-                return '<div class="preview-item"><div class="preview-item-header"><span class="preview-item-number">' + (i + 1) + '</span><h4>' + w.name + '</h4></div><div class="preview-item-details"><p><strong>Data:</strong> ' + new Date(w.scheduled_date).toLocaleDateString('it-IT') + '</p>' + (w.warmup ? '<p><strong>Riscaldamento:</strong> ' + w.warmup + '</p>' : '') + (w.main_phase ? '<p><strong>Fase Principale:</strong> ' + w.main_phase + '</p>' : '') + (w.cooldown ? '<p><strong>Defaticamento:</strong> ' + w.cooldown + '</p>' : '') + (w.notes ? '<p><strong>Note:</strong> ' + w.notes + '</p>' : '') + '</div></div>';
+                return '<div class="preview-item"><div class="preview-item-header"><span class="preview-item-number">' + (i + 1) + '</span><h4>' + w.name + '</h4></div><div class="preview-item-details"><p><strong>Data:</strong> ' + new Date(w.scheduled_date + 'T12:00:00').toLocaleDateString('it-IT') + '</p>' + (w.warmup ? '<p><strong>Riscaldamento:</strong> ' + w.warmup + '</p>' : '') + (w.main_phase ? '<p><strong>Fase Principale:</strong> ' + w.main_phase + '</p>' : '') + (w.cooldown ? '<p><strong>Defaticamento:</strong> ' + w.cooldown + '</p>' : '') + (w.notes ? '<p><strong>Note:</strong> ' + w.notes + '</p>' : '') + '</div></div>';
             }).join('');
         }
 
         if (elements.workoutPreviewContainer) {
             elements.workoutPreviewContainer.style.display = 'block';
+            elements.workoutPreviewContainer.scrollIntoView({ behavior: 'smooth' });
         }
     }
 
@@ -197,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         } catch (error) {
             console.error('Error saving workouts:', error);
-            alert('Errore durante il salvataggio degli allenamenti.');
+            alert('Errore durante il salvataggio degli allenamenti: ' + error.message);
         }
     }
 
