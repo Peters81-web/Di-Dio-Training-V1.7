@@ -7,16 +7,17 @@
     }
   ],
   "routes": [
-    { "src": "/dashboard", "dest": "/" },
-    { "src": "/planner", "dest": "/" },
-    { "src": "/workout", "dest": "/" },
-    { "src": "/stats", "dest": "/" },
-    { "src": "/weekly_summary", "dest": "/" },
-    { "src": "/profile", "dest": "/" },
-    { "src": "/register", "dest": "/" },
-    { "src": "/reports", "dest": "/" },
-    { "src": "/api/(.*)", "dest": "/index.js" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.js"
+    }
   ]
 }
