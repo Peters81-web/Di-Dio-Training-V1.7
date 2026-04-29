@@ -644,12 +644,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                 completed_at: new Date(formData.completedDate).toISOString(),
                 actual_duration: formData.actualDuration,
                 perceived_difficulty: formData.perceivedDifficulty,
-                distance: formData.distance,
-                calories_burned: formData.caloriesBurned,
-                heart_rate_avg: formData.heartRateAvg,
-                notes: formData.notes,
-                rating: formData.rating
-            };
+                average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null,
+                distance: formData.distance > 0 ? formData.distance : null,
+               calories_burned: formData.caloriesBurned > 0 ? formData.caloriesBurned : null,
+               notes: formData.notes || null,
+               rating: formData.rating
+             };
             
             const { error } = await supabaseClient
                 .from('completed_workouts')
