@@ -1,0 +1,562 @@
+/*
+ * DiDio Training App - Mobile Responsive Fix
+ * Corregge e consolida tutti i problemi di responsività
+ * Coprire: navbar, dashboard, stats, modals, forms, charts
+ * Breakpoints: 992px | 768px | 576px | 480px | 360px
+ */
+
+/* ============================================================
+   1. VIEWPORT SAFETY + BASE MOBILE
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
+/* ============================================================
+   2. NAVBAR — Fix completo per mobile
+   ============================================================ */
+
+@media (max-width: 992px) {
+
+  /* Struttura navbar */
+  .navbar .container,
+  nav .container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    position: relative;
+    padding: 0.5rem 1rem;
+  }
+
+  .navbar-brand {
+    order: 1;
+    flex: 1;
+    font-size: 1.1rem;
+  }
+
+  /* Pulsante hamburger — visibile solo su mobile */
+  .mobile-menu-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    order: 2;
+    margin-left: auto;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    font-size: 1.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    z-index: 10;
+  }
+
+  .mobile-menu-toggle:hover {
+    background: rgba(255,255,255,0.25);
+  }
+
+  /* Menu chiuso di default */
+  .nav-links {
+    display: none !important;
+    width: 100%;
+    flex-basis: 100%;
+    order: 3;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    background: inherit;
+  }
+
+  /* Menu aperto */
+  .nav-links.active {
+    display: flex !important;
+    animation: fadeInDown 0.25s ease-out;
+  }
+
+  /* Link/pulsanti nel menu mobile */
+  .nav-links a,
+  .nav-links button,
+  .navbar .btn {
+    width: 100%;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+
+  /* Navbar della pagina Stats (ha struttura diversa) */
+  .navbar-links {
+    display: none !important;
+    flex-direction: column;
+    width: 100%;
+    order: 3;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .navbar-links.active {
+    display: flex !important;
+  }
+
+  .navbar-links a {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+  }
+
+  .btn-logout {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.25rem;
+  }
+}
+
+/* ============================================================
+   3. LAYOUT GENERALE — Tablet e Mobile
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Tipografia */
+  h1, .h1 { font-size: 1.6rem; }
+  h2, .h2 { font-size: 1.35rem; }
+  h3, .h3 { font-size: 1.15rem; }
+
+  /* Grid → 1 colonna su mobile */
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Form row → 1 colonna */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Stats KPI grid → 2 colonne su tablet */
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card,
+  .kpi-card {
+    padding: 1rem;
+  }
+
+  .stat-value,
+  .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  /* Toast full-width su mobile */
+  .toast,
+  .toast-container .toast {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 1rem;
+    max-width: calc(100% - 1.5rem);
+    min-width: unset;
+  }
+
+  /* Bottoni azioni workout → stack verticale */
+  .workout-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .workout-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.625rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* Tabella settimanale → card style su mobile */
+  .summary-table thead {
+    display: none;
+  }
+
+  .summary-table,
+  .summary-table tbody,
+  .summary-table tr,
+  .summary-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .summary-table tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-light, #f0f0f0);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .summary-table td {
+    padding: 0.6rem 0.75rem 0.6rem 40%;
+    position: relative;
+    text-align: left;
+    min-height: 44px;
+    border-bottom: 1px solid #f5f5f5;
+    font-size: 0.875rem;
+  }
+
+  .summary-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0.75rem;
+    width: 35%;
+    font-weight: 600;
+    color: var(--text-secondary, #6c757d);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .summary-table .day-cell {
+    padding-left: 0.75rem;
+    background-color: var(--primary-light, #eaefff);
+    font-weight: 700;
+    border-radius: 0;
+  }
+
+  .summary-table .day-cell::before {
+    display: none;
+  }
+}
+
+/* ============================================================
+   4. MODAL — Fix mobile completo
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  .modal {
+    padding: 0.5rem;
+    align-items: flex-end; /* Slide dal basso su mobile */
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 1.25rem;
+    border-radius: 16px 16px 0 0; /* Bottom sheet style */
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+    max-width: calc(100% - 40px);
+    line-height: 1.3;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  /* Form dentro modal */
+  .modal .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .modal .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   5. PAGINA STATISTICHE — Grafici responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+  /* Navbar stats page */
+  .stats-page {
+    padding: 16px 12px 48px;
+  }
+
+  .stats-header h1 {
+    font-size: 1.4rem;
+  }
+
+  /* Periodo filter → scroll orizzontale */
+  .period-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 6px;
+    scrollbar-width: none;
+  }
+
+  .period-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .period-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+  }
+
+  /* KPI grid → 2 colonne */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .kpi-card {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .kpi-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .kpi-value {
+    font-size: 1.4rem;
+  }
+
+  .kpi-label {
+    font-size: 0.75rem;
+  }
+
+  /* Grafici → 1 colonna */
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .chart-card {
+    padding: 16px;
+  }
+
+  .chart-container {
+    height: 200px !important;
+  }
+
+  .chart-container.tall {
+    height: 220px !important;
+  }
+
+  /* Tabella recenti → scroll orizzontale */
+  .recent-table-card {
+    padding: 16px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recent-table {
+    min-width: 520px; /* Forza scroll orizzontale se troppo stretta */
+  }
+}
+
+/* ============================================================
+   6. SMARTPHONE PICCOLI (< 480px)
+   ============================================================ */
+
+@media (max-width: 480px) {
+
+  /* 1 colonna per le KPI */
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-card,
+  .kpi-card {
+    padding: 0.75rem;
+  }
+
+  .stat-icon,
+  .kpi-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .stat-value,
+  .kpi-value {
+    font-size: 1.25rem;
+  }
+
+  /* Bottoni principali più grandi (touch target >= 44px) */
+  .btn {
+    min-height: 44px;
+    padding: 0.625rem 0.875rem;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  /* Auth card */
+  .auth-card {
+    padding: 1.25rem;
+  }
+
+  .auth-title {
+    font-size: 1.5rem;
+  }
+
+  /* Footer */
+  footer {
+    padding: 1rem 0;
+    margin-top: 2rem;
+  }
+}
+
+/* ============================================================
+   7. SCHERMI MOLTO PICCOLI (< 360px)
+   ============================================================ */
+
+@media (max-width: 360px) {
+
+  .navbar-brand {
+    font-size: 1rem;
+  }
+
+  /* KPI 1 colonna */
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Bottoni azioni — solo icona */
+  .workout-actions .btn .btn-text {
+    display: none;
+  }
+
+  .workout-actions .btn i {
+    margin-right: 0;
+    font-size: 1rem;
+  }
+
+  .workout-actions .btn {
+    padding: 0.75rem;
+    min-height: 44px;
+  }
+
+  /* Modal → full screen */
+  .modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    border-radius: 12px 12px 0 0;
+    max-height: 95vh;
+    padding: 1rem;
+  }
+}
+
+/* ============================================================
+   8. TOUCH & SAFE AREA
+   ============================================================ */
+
+/* Aree sicure per iPhone con notch */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .navbar,
+  nav {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+
+  .toast,
+  .toast-container {
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+  }
+
+  .modal-content {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Migliora tap feedback su touch screen */
+@media (hover: none) and (pointer: coarse) {
+
+  /* Rimuovi hover transform su touch (evita "ghost hover") */
+  .btn:hover,
+  .card:hover,
+  .workout-card:hover,
+  .stat-card:hover,
+  .kpi-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-md, 0 4px 8px rgba(0,0,0,0.08));
+  }
+
+  /* Mantieni l'active state per feedback visivo */
+  .btn:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  /* Tooltip nascosti su touch (non funzionano) */
+  .tooltip .tooltip-text {
+    display: none;
+  }
+}
+
+/* ============================================================
+   9. LANDSCAPE MODE — telefono in orizzontale
+   ============================================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+
+  .modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .auth-page {
+    padding: 1rem;
+  }
+
+  .auth-card {
+    padding: 1rem 1.5rem;
+  }
+
+  .auth-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+}
