@@ -656,10 +656,29 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .insert([completedWorkoutData]);
                 
             if (error) throw error;
+
+             const { error: updateError } = await supabaseClient
+    .from('workout_plans')
+    .update({
+        completed: true,
+        completed_at: completedWorkoutData.completed_at,
+        average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
+    })
+    .eq('id', formData.workoutId)
+    .eq('user_id', currentUser.id);
+
+if (updateError) {
+    console.warn('Attenzione: workout completato ma errore aggiornamento piano:', updateError.message);
+    // Non bloccare il flusso — l'insert è già andato
+}
             
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
-            
+
+            workouts = workouts.filter(w => w.id !== formData.workoutId);
+            displayWorkouts(workouts);
+
+            await loadWeeklyStats();
             // Ricarica statistiche settimanali
             await loadWeeklyStats();
             
