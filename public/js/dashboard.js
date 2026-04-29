@@ -644,7 +644,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 completed_at: new Date(formData.completedDate).toISOString(),
                 actual_duration: formData.actualDuration,
                 perceived_difficulty: formData.perceivedDifficulty,
-                average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null,
+                // ✅ CORRETTO — nome colonna reale nel DB
+                heart_rate_avg: formData.heartRateAvg > 0 ? formData.heartRateAvg : null,
                 distance: formData.distance > 0 ? formData.distance : null,
                calories_burned: formData.caloriesBurned > 0 ? formData.caloriesBurned : null,
                notes: formData.notes || null,
