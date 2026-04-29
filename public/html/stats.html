@@ -4,30 +4,117 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Statistiche - Di Dio Training</title>
-  <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- ① Supabase CDN — DEVE venire PRIMA di supabase-config.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- ② Config Supabase — inclusa UNA SOLA VOLTA -->
   <script src="/js/supabase-config.js"></script>
+  <!-- ③ Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
   <style>
-    /* ── Layout pagina ─────────────────────────────────────── */
-    .stats-page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
-
-    /* ── Header ────────────────────────────────────────────── */
-    .stats-header { margin-bottom: 28px; }
-    .stats-header h1 { font-size: 1.8rem; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
-    .stats-header p  { color: #6c757d; font-size: 0.95rem; }
-
-    /* ── Filtro periodo ────────────────────────────────────── */
-    .period-filter { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
-    .period-btn {
-      padding: 8px 18px; border-radius: 20px; border: 2px solid #e0e0e0;
-      background: #fff; color: #555; font-size: 0.875rem; font-weight: 500;
-      cursor: pointer; transition: all 0.2s;
+    /* ── Reset / base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f4f6fb;
+      color: #333;
+      min-height: 100vh;
     }
-    .period-btn:hover  { border-color: #4e54c8; color: #4e54c8; }
-    .period-btn.active { background: #4e54c8; border-color: #4e54c8; color: #fff; }
 
-    /* ── KPI cards ─────────────────────────────────────────── */
+    /* ── Navbar — identica alle altre pagine ─────────────── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .navbar-brand {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #4e54c8;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .navbar-links a {
+      padding: 6px 14px;
+      border-radius: 8px;
+      color: #555;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .navbar-links a:hover  { background: #f0f1ff; color: #4e54c8; }
+    .navbar-links a.active { background: #4e54c8; color: #fff; }
+    .btn-logout {
+      padding: 7px 16px;
+      background: #4e54c8;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-logout:hover { background: #3a40b0; }
+
+    /* ── Layout pagina ────────────────────────────────────── */
+    .stats-page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    .stats-header { margin-bottom: 24px; }
+    .stats-header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+    .stats-header p { color: #6c757d; font-size: 0.95rem; }
+
+    /* ── Filtro periodo ───────────────────────────────────── */
+    .period-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .period-btn {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 2px solid #e0e0e0;
+      background: #fff;
+      color: #555;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .period-btn:hover       { border-color: #4e54c8; color: #4e54c8; }
+    .period-btn.active      { background: #4e54c8; border-color: #4e54c8; color: #fff; }
+
+    /* ── KPI cards ────────────────────────────────────────── */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -44,18 +131,23 @@
       gap: 16px;
     }
     .kpi-icon {
-      width: 48px; height: 48px; border-radius: 12px;
+      width: 48px; height: 48px;
+      border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; flex-shrink: 0;
+      font-size: 1.3rem;
+      flex-shrink: 0;
     }
     .kpi-icon.blue   { background: #e8eaff; color: #4e54c8; }
     .kpi-icon.green  { background: #e6f9f0; color: #28a745; }
     .kpi-icon.red    { background: #ffe8e8; color: #e53935; }
     .kpi-icon.orange { background: #fff3e0; color: #f57c00; }
-    .kpi-value { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; line-height: 1; }
+    .kpi-value {
+      font-size: 1.6rem; font-weight: 700;
+      color: #1a1a2e; line-height: 1;
+    }
     .kpi-label { font-size: 0.8rem; color: #6c757d; margin-top: 4px; }
 
-    /* ── Grafici ───────────────────────────────────────────── */
+    /* ── Grafici ──────────────────────────────────────────── */
     .charts-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -72,79 +164,84 @@
     }
     .chart-card.full-width { grid-column: 1 / -1; }
     .chart-title {
-      font-size: 1rem; font-weight: 600; color: #1a1a2e;
-      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+      font-size: 1rem; font-weight: 600;
+      color: #1a1a2e; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
     }
     .chart-title i { color: #4e54c8; }
-    .chart-container { position: relative; height: 240px; }
-    .chart-container.tall   { height: 280px; }
+    .chart-container          { position: relative; height: 240px; }
+    .chart-container.tall     { height: 280px; }
 
-    /* ── Tabella ultimi allenamenti ────────────────────────── */
+    /* ── Tabella recenti ──────────────────────────────────── */
     .recent-table-card {
-      background: #fff; border-radius: 14px;
-      padding: 22px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-      margin-bottom: 28px; overflow-x: auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 28px;
+      overflow-x: auto;
     }
+    .section-title {
+      font-size: 1rem; font-weight: 600;
+      color: #1a1a2e; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title i { color: #4e54c8; }
     .recent-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     .recent-table th {
       text-align: left; padding: 10px 14px;
       border-bottom: 2px solid #f0f0f0;
-      color: #6c757d; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
+      color: #6c757d; font-weight: 600;
+      font-size: 0.78rem; text-transform: uppercase;
     }
-    .recent-table td { padding: 12px 14px; border-bottom: 1px solid #f8f8f8; color: #333; }
+    .recent-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f8f8f8;
+      color: #333;
+    }
     .recent-table tr:last-child td { border-bottom: none; }
+
+    /* ── Badge ────────────────────────────────────────────── */
     .badge {
-      padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600;
     }
-    .badge-done   { background: #e6f9f0; color: #28a745; }
-    .badge-todo   { background: #f0f0f0; color: #888; }
+    .badge-done            { background: #e6f9f0; color: #28a745; }
+    .badge-todo            { background: #f0f0f0; color: #888; }
     .badge-diff-facile     { background: #e6f9f0; color: #28a745; }
     .badge-diff-intermedio { background: #fff3e0; color: #f57c00; }
     .badge-diff-avanzato   { background: #ffe8e8; color: #e53935; }
 
-    /* ── Empty / loading state ─────────────────────────────── */
+    /* ── Empty / loading ──────────────────────────────────── */
     .state-box {
       text-align: center; padding: 48px 24px; color: #aaa;
     }
     .state-box i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
     .state-box p { font-size: 0.95rem; }
-
-    /* ── Navbar (coerente con il resto dell'app) ───────────── */
-    .top-nav {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 24px; background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 0;
-    }
-    .top-nav .nav-brand { font-weight: 700; font-size: 1.1rem; color: #4e54c8; }
-    .top-nav .nav-links { display: flex; gap: 20px; align-items: center; }
-    .top-nav .nav-links a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
-    .top-nav .nav-links a:hover { color: #4e54c8; }
-    .top-nav .btn-logout {
-      padding: 7px 16px; background: #4e54c8; color: #fff;
-      border-radius: 8px; border: none; font-size: 0.875rem;
-      font-weight: 600; cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Navbar -->
-  <nav class="top-nav">
-    <span class="nav-brand"><i class="fas fa-dumbbell"></i> Di Dio Training</span>
-    <div class="nav-links">
-      <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
-      <a href="/planner"><i class="fas fa-calendar"></i> Planner</a>
-      <a href="/stats"><i class="fas fa-chart-line"></i> Statistiche</a>
-      <a href="/ai-trainer"><i class="fas fa-robot"></i> AI Trainer</a>
-      <button class="btn-logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a class="navbar-brand" href="/dashboard">
+      <i class="fas fa-dumbbell"></i> Di Dio Training
+    </a>
+    <div class="navbar-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/planner">Planner</a>
+      <a href="/stats" class="active">Statistiche</a>
+      <a href="/ai-trainer">AI Trainer</a>
+      <button class="btn-logout" id="logoutBtn">Logout</button>
     </div>
   </nav>
 
-  <div class="stats-page">
+  <!-- PAGINA -->
+  <main class="stats-page">
 
     <!-- Header -->
     <div class="stats-header">
-      <h1><i class="fas fa-chart-line" style="color:#4e54c8;margin-right:10px;"></i>Le tue Statistiche</h1>
+      <h1><i class="fas fa-chart-line" style="color:#4e54c8;margin-right:8px;"></i>Le tue Statistiche</h1>
       <p>Monitora i tuoi progressi e l'andamento degli allenamenti</p>
     </div>
 
@@ -156,7 +253,7 @@
       <button class="period-btn" data-period="0">Tutto</button>
     </div>
 
-    <!-- KPI Cards -->
+    <!-- KPI -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-icon blue"><i class="fas fa-calendar-check"></i></div>
@@ -188,64 +285,72 @@
       </div>
     </div>
 
-    <!-- Grafici -->
+    <!-- Grafici riga 1 -->
     <div class="charts-grid">
 
-      <!-- Andamento BPM nel tempo -->
-      <div class="chart-card full-width">
-        <div class="chart-title"><i class="fas fa-heartbeat"></i> Andamento Frequenza Cardiaca (BPM)</div>
-        <div class="chart-container tall" id="bpmEmptyState" style="display:none;">
-          <div class="state-box">
-            <i class="fas fa-heartbeat"></i>
-            <p>Completa degli allenamenti con BPM registrato per vedere il grafico</p>
-          </div>
+      <!-- BPM -->
+      <div class="chart-card">
+        <div class="chart-title">
+          <i class="fas fa-heartbeat"></i> Andamento Frequenza Cardiaca (BPM)
         </div>
-        <div class="chart-container tall" id="bpmChartWrapper">
+        <div id="bpmChartWrapper" class="chart-container" style="display:none;">
           <canvas id="bpmChart"></canvas>
+        </div>
+        <div id="bpmEmptyState" class="state-box">
+          <i class="fas fa-heart-broken"></i>
+          <p>Completa degli allenamenti con BPM registrato per vedere il grafico</p>
         </div>
       </div>
 
       <!-- Distribuzione attività -->
       <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-running"></i> Distribuzione Attività</div>
-        <div class="chart-container" id="activityEmptyState" style="display:none;">
-          <div class="state-box">
-            <i class="fas fa-running"></i>
-            <p>Nessuna attività registrata nel periodo selezionato</p>
-          </div>
+        <div class="chart-title">
+          <i class="fas fa-pie-chart"></i> Distribuzione Attività
         </div>
-        <div class="chart-container" id="activityChartWrapper">
+        <div id="activityChartWrapper" class="chart-container" style="display:none;">
           <canvas id="activityChart"></canvas>
         </div>
+        <div id="activityEmptyState" class="state-box">
+          <i class="fas fa-running"></i>
+          <p>Nessuna attività registrata nel periodo selezionato</p>
+        </div>
       </div>
 
-      <!-- Allenamenti per settimana -->
-      <div class="chart-card">
-        <div class="chart-title"><i class="fas fa-bar-chart"></i> Allenamenti Completati per Settimana</div>
-        <div class="chart-container" id="weeklyEmptyState" style="display:none;">
-          <div class="state-box">
-            <i class="fas fa-bar-chart"></i>
-            <p>Nessun dato disponibile per il periodo selezionato</p>
-          </div>
+    </div>
+
+    <!-- Grafici riga 2 -->
+    <div class="charts-grid">
+      <div class="chart-card full-width">
+        <div class="chart-title">
+          <i class="fas fa-bar-chart"></i> Allenamenti Completati per Settimana
         </div>
-        <div class="chart-container" id="weeklyChartWrapper">
+        <div id="weeklyChartWrapper" class="chart-container tall" style="display:none;">
           <canvas id="weeklyChart"></canvas>
         </div>
+        <div id="weeklyEmptyState" class="state-box">
+          <i class="fas fa-calendar-times"></i>
+          <p>Nessun dato disponibile per il periodo selezionato</p>
+        </div>
       </div>
-
     </div>
 
     <!-- Tabella ultimi allenamenti -->
     <div class="recent-table-card">
-      <div class="chart-title"><i class="fas fa-list"></i> Ultimi Allenamenti</div>
+      <div class="section-title">
+        <i class="fas fa-list-ul"></i> Ultimi Allenamenti
+      </div>
       <div id="recentTableWrapper">
-        <div class="state-box"><i class="fas fa-spinner fa-spin"></i><p>Caricamento...</p></div>
+        <div class="state-box">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Caricamento...</p>
+        </div>
       </div>
     </div>
 
-  </div>
+  </main>
 
-  <script src="/js/supabase-config.js"></script>
+  <!-- stats-fixed.js caricato PER ULTIMO, dopo tutti gli script sopra -->
   <script src="/js/stats-fixed.js"></script>
+
 </body>
 </html>
