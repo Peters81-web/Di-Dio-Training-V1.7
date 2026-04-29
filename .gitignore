@@ -1,0 +1,24 @@
+# ─── Dipendenze Node ──────────────────────────────────────────────
+node_modules/
+
+# ─── Variabili d'ambiente (MAI committare credenziali reali) ──────
+.env
+.env.local
+.env.development
+.env.production
+
+# ─── Vercel ───────────────────────────────────────────────────────
+.vercel/
+
+# ─── File di sistema macOS ────────────────────────────────────────
+.DS_Store
+
+# ─── Log ──────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ─── Editor ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
