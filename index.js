@@ -1,93 +1,127 @@
 const express = require('express');
-const path = require('path');
-const cors = require('cors');
-const fs = require('fs');
+const path    = require('path');
+const cors    = require('cors');
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// ─── Logger condizionale (niente noise in produzione) ────────────────────────
+const IS_DEV = process.env.NODE_ENV !== 'production';
+const log     = IS_DEV ? (...a) => console.log(...a)   : () => {};
+const logErr  = (...a) => console.error(...a); // errori sempre visibili
 
-// Imposta la cartella statica
+// ─── CORS (solo origini autorizzate) ─────────────────────────────────────────
+const allowedOrigins = IS_DEV
+  ? ['http://localhost:3000']
+  : ['https://di-dio-training-v1-7.vercel.app'];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT'],
+  optionsSuccessStatus: 200
+}));
+
+app.use(express.json({ limit: '50kb' })); // limite payload JSON
+
+// ─── Cartella statica ─────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Log delle configurazioni
-console.log(`Directory root: ${__dirname}`);
-console.log(`Directory public: ${path.join(__dirname, 'public')}`);
+// ─── Mappa statica HTML (zero disk scan per ogni richiesta) ───────────────────
+const HTML_DIR = path.join(__dirname, 'public', 'html');
+const HTML_MAP = {
+  'index.html':          path.join(__dirname, 'public', 'index.html'),
+  'register.html':       path.join(HTML_DIR, 'register.html'),
+  'dashboard.html':      path.join(HTML_DIR, 'dashboard.html'),
+  'planner.html':        path.join(HTML_DIR, 'planner.html'),
+  'ai-trainer.html':     path.join(HTML_DIR, 'ai-trainer.html'),
+  'workout.html':        path.join(HTML_DIR, 'workout.html'),
+  'profile.html':        path.join(HTML_DIR, 'profile.html'),
+  'stats.html':          path.join(HTML_DIR, 'stats.html'),
+  'weekly_summary.html': path.join(HTML_DIR, 'weekly_summary.html'),
+  'reports.html':        path.join(HTML_DIR, 'reports.html'),
+};
 
-// Funzione per inviare file HTML
 function sendHtmlFile(res, filename) {
-  const paths = [
-    path.join(__dirname, filename),
-    path.join(__dirname, 'public', filename),
-    path.join(__dirname, 'public', 'html', filename)
-  ];
-
-  for (const filePath of paths) {
-    console.log(`Cercando ${filename} in: ${filePath}`);
-    if (fs.existsSync(filePath)) {
-      console.log(`File trovato: ${filePath}`);
-      return res.sendFile(filePath);
-    }
+  const filePath = HTML_MAP[filename];
+  if (!filePath) {
+    return res.status(404).send(`Pagina non trovata: ${filename}`);
   }
-
-  console.error(`File ${filename} non trovato in nessun percorso`);
-  return res.status(404).send(`File ${filename} non trovato. Verifica la struttura delle tue cartelle`);
+  return res.sendFile(filePath);
 }
 
-// Rotte per le pagine HTML
-app.get('/', (req, res) => sendHtmlFile(res, 'index.html'));
-app.get('/register', (req, res) => sendHtmlFile(res, 'register.html'));
-app.get('/dashboard', (req, res) => sendHtmlFile(res, 'dashboard.html'));
-app.get('/planner', (req, res) => sendHtmlFile(res, 'planner.html'));
-app.get('/ai-trainer', (req, res) => sendHtmlFile(res, 'ai-trainer.html'));
-app.get('/workout', (req, res) => sendHtmlFile(res, 'workout.html'));
-app.get('/profile', (req, res) => sendHtmlFile(res, 'profile.html'));
-app.get('/stats', (req, res) => sendHtmlFile(res, 'stats.html'));
+// ─── Rate limiter per endpoint AI (evita abusi e costi esplosivi) ─────────────
+// NOTA: installa il pacchetto con: npm install express-rate-limit
+// poi decommentare le righe qui sotto e rimuovere il middleware placeholder
+let aiLimiter;
+try {
+  const rateLimit = require('express-rate-limit');
+  aiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minuto
+    max: 5,              // max 5 richieste per IP al minuto
+    message: { error: 'Troppe richieste. Attendi un minuto prima di rigenerare il piano.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+} catch {
+  // Se express-rate-limit non è installato, usa un middleware vuoto (non blocca)
+  log('⚠️  express-rate-limit non installato: rate limiting disabilitato.');
+  aiLimiter = (req, res, next) => next();
+}
+
+// ─── Costanti validazione ─────────────────────────────────────────────────────
+const VALID_PLAN_TYPES   = ['weekly', 'monthly', 'custom'];
+const VALID_LEVELS       = ['beginner', 'intermediate', 'advanced'];
+const MAX_PROMPT_LENGTH  = 2000;
+
+// ─── Rotte pagine HTML ────────────────────────────────────────────────────────
+app.get('/',               (req, res) => sendHtmlFile(res, 'index.html'));
+app.get('/register',       (req, res) => sendHtmlFile(res, 'register.html'));
+app.get('/dashboard',      (req, res) => sendHtmlFile(res, 'dashboard.html'));
+app.get('/planner',        (req, res) => sendHtmlFile(res, 'planner.html'));
+app.get('/ai-trainer',     (req, res) => sendHtmlFile(res, 'ai-trainer.html'));
+app.get('/workout',        (req, res) => sendHtmlFile(res, 'workout.html'));
+app.get('/profile',        (req, res) => sendHtmlFile(res, 'profile.html'));
+app.get('/stats',          (req, res) => sendHtmlFile(res, 'stats.html'));
 app.get('/weekly_summary', (req, res) => sendHtmlFile(res, 'weekly_summary.html'));
-app.get('/reports', (req, res) => sendHtmlFile(res, 'reports.html'));
+app.get('/reports',        (req, res) => sendHtmlFile(res, 'reports.html'));
 
-// ─── API workouts (demo) ──────────────────────────────────────────────────────────────────
-app.get('/api/workouts', (req, res) => {
-  res.json({
-    success: true,
-    workouts: [
-      { id: 1, title: 'Allenamento Nuoto', content: 'Descrizione allenamento nuoto', type: 'nuoto' },
-      { id: 2, title: 'Allenamento Corsa', content: 'Descrizione allenamento corsa', type: 'corsa' }
-    ]
-  });
-});
-
-app.put('/api/workouts/:id', (req, res) => {
-  const { id } = req.params;
-  const { title, content, type } = req.body;
-  res.json({
-    success: true,
-    message: `Allenamento ${id} aggiornato con successo`,
-    workout: { id, title, content, type }
-  });
-});
-
-// ─── API AI Trainer (Groq) ────────────────────────────────────────────────────────────────
-app.post('/api/generate-plan', async (req, res) => {
+// ─── API AI Trainer (Groq) ────────────────────────────────────────────────────
+app.post('/api/generate-plan', aiLimiter, async (req, res) => {
   const { prompt, planType, fitnessLevel, activityType } = req.body || {};
 
+  // Validazione input
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Il campo prompt è obbligatorio.' });
+  }
+  if (prompt.trim().length > MAX_PROMPT_LENGTH) {
+    return res.status(400).json({ error: `Il prompt non può superare ${MAX_PROMPT_LENGTH} caratteri.` });
+  }
+  if (planType && !VALID_PLAN_TYPES.includes(planType)) {
+    return res.status(400).json({ error: 'Tipo piano non valido. Usa: weekly, monthly, custom.' });
+  }
+  if (fitnessLevel && !VALID_LEVELS.includes(fitnessLevel)) {
+    return res.status(400).json({ error: 'Livello fitness non valido. Usa: beginner, intermediate, advanced.' });
   }
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
+    logErr('GROQ_API_KEY non configurata nelle variabili d\'ambiente.');
     return res.status(500).json({ error: 'Chiave Groq non configurata sul server.' });
   }
 
-  // Traduci i parametri
-  const planTypeMap = { weekly: 'settimanale (7 giorni)', monthly: 'mensile (4 settimane)', custom: 'personalizzato' };
-  const levelMap = { beginner: 'principiante', intermediate: 'intermedio', advanced: 'avanzato' };
+  // Mappa parametri
+  const planTypeMap = {
+    weekly:  'settimanale (7 giorni)',
+    monthly: 'mensile (4 settimane)',
+    custom:  'personalizzato'
+  };
+  const levelMap = {
+    beginner:     'principiante',
+    intermediate: 'intermedio',
+    advanced:     'avanzato'
+  };
 
-  const planTypeText = planTypeMap[planType] || 'settimanale (7 giorni)';
-  const levelText = levelMap[fitnessLevel] || 'intermedio';
+  const planTypeText = planTypeMap[planType]   || 'settimanale (7 giorni)';
+  const levelText    = levelMap[fitnessLevel]  || 'intermedio';
 
   const systemPrompt = `Sei un personal trainer professionista italiano. Crea piani di allenamento dettagliati, pratici e motivanti in italiano. Struttura sempre la risposta in Markdown con sezioni chiare.`;
 
@@ -120,22 +154,22 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type':  'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
+        model:       'llama-3.3-70b-versatile',
+        messages:    [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
+          { role: 'user',   content: userMessage  }
         ],
-        max_tokens: 3000,
+        max_tokens:  3000,
         temperature: 0.7
       })
     });
 
     if (!groqRes.ok) {
       const errData = await groqRes.json().catch(() => ({}));
-      console.error('Groq error:', errData);
+      logErr('Groq API error:', errData);
       return res.status(502).json({ error: errData.error?.message || 'Errore nella chiamata a Groq.' });
     }
 
@@ -149,20 +183,21 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
     return res.json({ text });
 
   } catch (err) {
-    console.error('generate-plan error:', err);
+    logErr('generate-plan error:', err);
     return res.status(500).json({ error: 'Errore interno del server durante la generazione del piano.' });
   }
 });
 
-// ─── Catch-all ──────────────────────────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
+// ─── Catch-all ────────────────────────────────────────────────────────────────
+app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+    return res.status(404).json({ error: `Endpoint non trovato: ${req.method} ${req.path}` });
   }
   sendHtmlFile(res, 'index.html');
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// ─── Avvio server ─────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  log(`✅ Server in ascolto sulla porta ${PORT}`);
 });
