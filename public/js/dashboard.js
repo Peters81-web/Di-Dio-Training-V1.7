@@ -657,6 +657,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
             if (error) throw error;
 
+            const card = document.querySelector(`.workout-card[data-id="${formData.workoutId}"]`);
+if (card) {
+  card.style.opacity = '0.5';
+  card.querySelector('.complete-btn')?.remove(); // Nascondi pulsante completa
+}
+
+await loadWeeklyStats();
+
              const { error: updateError } = await supabaseClient
     .from('workout_plans')
     .update({
