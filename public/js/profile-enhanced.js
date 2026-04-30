@@ -341,17 +341,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       try {
-        const { data: workouts, error } = await supabaseClient
-          .from('completed_workouts')
-          .select(`
-            *,
-            workout_plans(
-              name,
-              activities(name)
-            )
-          `)
-          .eq('user_id', currentUser.id)
-          .order('completed_at', { ascending: false });
+       // Query 1: le ultime 5 per la lista "attività recenti" (leggera)
+const { data: recentWorkouts } = await supabaseClient
+  .from('completed_workouts')
+  .select(`id, completed_at, actual_duration, distance,
+           workout_plans(name, activities(name))`)
+  .eq('user_id', currentUser.id)
+  .order('completed_at', { ascending: false })
+  .limit(5);
+
+          updateStatsUI(statsData || []);
+          renderRecentActivities(recentWorkouts || []);
         
         if (error) {
           throw error;
@@ -584,20 +584,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
       
-      const goalsHTML = specificGoals.map(goal => `
-        <div class="goal-item" data-goal-id="${goal.id}">
-          <div class="goal-content">
-            <label class="custom-checkbox">
-              <input type="checkbox" ${goal.completed ? 'checked' : ''} onchange="toggleGoalCompletion('${goal.id}')">
-              <span class="checkmark"></span>
-              <span class="goal-text ${goal.completed ? 'completed' : ''}">${goal.description}</span>
-            </label>
-          </div>
-          <button type="button" class="btn btn-sm btn-danger delete-goal-btn" onclick="deleteGoal('${goal.id}')">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      `).join('');
+     const goalsHTML
       
       goalsContainer.innerHTML = goalsHTML;
     }
@@ -916,8 +903,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
         
         // Converti in blob
         canvas.toBlob(async (blob) => {
-          try {
-            const loading = showLoading();
+         let loading;
+            try {
+            loading = showLoading();
             
             // Upload al bucket Storage di Supabase
             const avatarFileName = `${currentUser.id}/avatar.jpg`;
@@ -976,7 +964,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
           } catch (error) {
             console.error('Errore nell\'upload della foto:', error);
             showToast('Errore nel salvataggio della foto: ' + error.message, 'error');
-            hideLoading();
+            hideLoading(loading);
           }
         }, 'image/jpeg', 0.95);
       } catch (error) {
@@ -1016,9 +1004,10 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
     if (personalInfoForm) {
       personalInfoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
+    let loading;
         try {
-          const loading = showLoading();
+          loading = showLoading();
           
           const formData = {
             id: currentUser.id,  // Usa l'ID utente come chiave primaria
@@ -1070,7 +1059,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
         } catch (error) {
           console.error('Errore nell\'aggiornamento delle informazioni:', error);
           showToast('Errore nell\'aggiornamento delle informazioni: ' + error.message, 'error');
-          hideLoading();
+          hideLoading(loading);
         }
       });
     }
@@ -1081,8 +1070,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       bodyMeasurementsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        try {
-          const loading = showLoading();
+       let loading; 
+          try {
+          loading = showLoading();
           
           // Ottieni i valori dal form
           let height = parseFloat(document.getElementById('height').value) || null;
@@ -1130,7 +1120,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
         } catch (error) {
           console.error('Errore nell\'aggiornamento delle misure:', error);
           showToast('Errore nell\'aggiornamento delle misure: ' + error.message, 'error');
-          hideLoading();
+          hideLoading(loading);
         }
       });
     }
@@ -1141,8 +1131,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       preferencesForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        try {
-          const loading = showLoading();
+       let loading
+          try {
+          loading = showLoading();
           
           // Prendi i valori precedenti per verificare se sono cambiati
           const prevWeightUnit = currentProfile.preferences?.weightUnit || 'kg';
@@ -1204,7 +1195,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
         } catch (error) {
           console.error('Errore nell\'aggiornamento delle preferenze:', error);
           showToast('Errore nell\'aggiornamento delle preferenze: ' + error.message, 'error');
-          hideLoading();
+          hideLoading(loading);
         }
       });
     }
@@ -1215,8 +1206,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       fitnessGoalsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        try {
-          const loading = showLoading();
+        let loading;
+          try {
+          loading = showLoading();
           
           // Ottieni i valori dal form
           let targetWeight = parseFloat(document.getElementById('targetWeight').value) || null;
@@ -1266,7 +1258,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
         } catch (error) {
           console.error('Errore nell\'aggiornamento degli obiettivi:', error);
           showToast('Errore nell\'aggiornamento degli obiettivi: ' + error.message, 'error');
-          hideLoading();
+          hideLoading(loading);
         }
       });
     }
@@ -1285,8 +1277,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       const goalDescription = newGoalInput.value.trim();
       if (!goalDescription) return;
       
-      try {
-        const loading = showLoading();
+      let loading;
+        try {
+        loading = showLoading();
         
         // Prepara i dati per l'obiettivo
         const goalData = {
@@ -1321,7 +1314,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       } catch (error) {
         console.error('Errore nell\'aggiunta dell\'obiettivo:', error);
         showToast('Errore nell\'aggiunta dell\'obiettivo: ' + error.message, 'error');
-        hideLoading();
+        hideLoading(loading);
       }
     });
     
@@ -1341,8 +1334,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
       return;
     }
     
-    try {
-      const loading = showLoading();
+    let loading;
+      try {
+      loading = showLoading();
       
       // Elimina dal database
       const { error } = await supabaseClient
@@ -1366,7 +1360,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
     } catch (error) {
       console.error('Errore nell\'eliminazione dell\'obiettivo:', error);
       showToast('Errore nell\'eliminazione dell\'obiettivo: ' + error.message, 'error');
-      hideLoading();
+      hideLoading(loading);
     }
   }
   
@@ -1381,8 +1375,9 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
     const goal = specificGoals.find(g => g.id === goalId);
     if (!goal) return;
     
-    try {
-      const loading = showLoading();
+    let loading;
+      try {
+      loading = showLoading();
       
       // Inverte lo stato di completamento
       const newCompletedState = !goal.completed;
@@ -1415,7 +1410,7 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
     } catch (error) {
       console.error('Errore nell\'aggiornamento dell\'obiettivo:', error);
       showToast('Errore nell\'aggiornamento dell\'obiettivo: ' + error.message, 'error');
-      hideLoading();
+      hideLoading(loading);
     }
   }
   
