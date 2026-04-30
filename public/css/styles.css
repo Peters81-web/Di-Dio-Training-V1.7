@@ -2214,3 +2214,51 @@ textarea:focus {
     z-index: 100;
   }
 }
+/* ✅ Modal crop — layout difensivo per immagini grandi */
+#photoCropModal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  display: none;           /* flex quando attivo */
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+#photoCropModal .modal-inner {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90dvh;       /* ✅ Limite altezza — pulsanti sempre visibili */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#cropArea {
+  flex: 1;
+  overflow: hidden;        /* ✅ Blocca l'overflow dell'immagine */
+  max-height: 60dvh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#cropArea img {
+  max-width: 100%;
+  max-height: 60dvh;       /* ✅ L'immagine non sfora mai */
+  display: block;
+}
+
+/* Pulsanti sempre visibili in fondo */
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;          /* ✅ Non si comprime mai */
+  justify-content: flex-end;
+}
