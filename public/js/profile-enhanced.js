@@ -342,20 +342,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       try {
        // Query 1: le ultime 5 per la lista "attività recenti" (leggera)
-const { data: recentWorkouts } = await supabaseClient
-  .from('completed_workouts')
-  .select(`id, completed_at, actual_duration, distance,
-           workout_plans(name, activities(name))`)
-  .eq('user_id', currentUser.id)
-  .order('completed_at', { ascending: false })
-  .limit(5);
+async function loadWorkoutStats() {
+  if (!currentUser || !currentUser.id) {
+    console.error('loadWorkoutStats: currentUser non definito o senza ID');
+    return;
+  }
 
-          updateStatsUI(statsData || []);
-          renderRecentActivities(recentWorkouts || []);
-        
-        if (error) {
-          throw error;
-        }
+  try {
+    // Query 1: ultime 5 attività per la lista "recenti"
+    const { data: recentWorkouts, error: recentError } = await supabaseClient
+      .from('completed_workouts')
+      .select(`id, completed_at, actual_duration, distance,
+               workout_plans(name, activities(name))`)
+      .eq('user_id', currentUser.id)
+      .order('completed_at', { ascending: false })
+      .limit(5);
+
+    if (recentError) throw recentError;
+
+    // Query 2: solo dati aggregati per le statistiche (no join pesante)
+    const { data: statsData, error: statsError } = await supabaseClient
+      .from('completed_workouts')
+      .select('id, completed_at, actual_duration')
+      .eq('user_id', currentUser.id)
+      .order('completed_at', { ascending: false })
+      .limit(500);
+
+    if (statsError) throw statsError;
+
+    updateStatsUI(statsData || []);
+    renderRecentActivities(recentWorkouts || []);
+
+  } catch (error) {
+    console.error('Errore nel caricamento delle statistiche di allenamento:', error);
+    showToast('Errore nel caricamento delle statistiche', 'error');
+  }
+}
         
         updateStatsUI(workouts || []);
         renderRecentActivities(workouts || []);
@@ -584,9 +606,34 @@ const { data: recentWorkouts } = await supabaseClient
         return;
       }
       
-     const goalsHTML
-      
-      goalsContainer.innerHTML = goalsHTML;
+     cfunction renderSpecificGoals() {
+  const goalsContainer = document.getElementById('specificGoalsList');
+  if (!goalsContainer) return;
+
+  if (!specificGoals || specificGoals.length === 0) {
+    goalsContainer.innerHTML = '';
+    return;
+  }
+
+  const goalsHTML = specificGoals.map(goal => `
+    <div class="goal-item" data-goal-id="${goal.id}">
+      <div class="goal-content">
+        <label class="custom-checkbox">
+          <input type="checkbox" ${goal.completed ? 'checked' : ''} 
+                 onchange="toggleGoalCompletion('${goal.id}')">
+          <span class="checkmark"></span>
+          <span class="goal-text ${goal.completed ? 'completed' : ''}">${goal.description}</span>
+        </label>
+      </div>
+      <button type="button" class="btn btn-sm btn-danger delete-goal-btn" 
+              onclick="deleteGoal('${goal.id}')">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  `).join('');
+
+  goalsContainer.innerHTML = goalsHTML;
+}
     }
     
     // Funzione per preparare i dati per il grafico delle misure
