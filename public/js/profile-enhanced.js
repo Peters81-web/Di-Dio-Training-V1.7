@@ -876,6 +876,10 @@ profilePhotoInput.addEventListener('change', (e) => {
     showToast('Errore nella preparazione dell\'immagine', 'error');
   }
 });
+  };
+  reader.readAsDataURL(file);
+});
+
 
 /**
  * Ridimensiona un'immagine via canvas prima del crop.
