@@ -805,48 +805,100 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       
       // Gestione dell'upload della foto
-      profilePhotoInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            // Mostra la modal per il ritaglio
-          photoCropModal.style.display = 'flex';
-          
-          // Crea o ripulisci il contenitore per il crop
-          cropArea.innerHTML = '';
-          const img = document.createElement('img');
-          img.id = 'cropImage';
-          img.src = e.target.result;
-          cropArea.appendChild(img);
-          
-          // Inizializza cropper.js
-          if (cropper) {
-            cropper.destroy();
-          }
-          
-          try {
-            cropper = new Cropper(img, {
-              aspectRatio: 1, // Rapporto 1:1 per una foto profilo rotonda
-              viewMode: 1,
-              dragMode: 'move',
-              autoCropArea: 0.8,
-              responsive: true,
-              restore: false,
-              guides: true,
-              center: true,
-              highlight: false,
-              cropBoxMovable: true,
-              cropBoxResizable: true,
-              toggleDragModeOnDblclick: false
-            });
-          } catch (error) {
-            console.error('Errore nell\'inizializzazione del cropper:', error);
-            showToast('Errore nella preparazione dell\'immagine', 'error');
-          }
-        };
-        reader.readAsDataURL(e.target.files[0]);
+ // ✅ NUOVO — Sostituisce il blocco profilePhotoInput.addEventListener('change', ...)
+
+profilePhotoInput.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // Validazione tipo e dimensione
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_SIZE_MB = 10;
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    showToast('Formato non supportato. Usa JPG, PNG o WebP.', 'error');
+    profilePhotoInput.value = '';
+    return;
+  }
+
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    showToast(`L'immagine è troppo grande (max ${MAX_SIZE_MB}MB).`, 'error');
+    profilePhotoInput.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    // ✅ Pre-resize: riduce l'immagine PRIMA di darla a Cropper
+    resizeImageBeforeCrop(evt.target.result, 1500, (resizedDataUrl) => {
+      photoCropModal.style.display = 'flex';
+      cropArea.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.id = 'cropImage';
+      img.src = resizedDataUrl;
+      cropArea.appendChild(img);
+
+      if (cropper) { cropper.destroy(); cropper = null; }
+
+      try {
+        cropper = new Cropper(img, {
+          aspectRatio: 1,
+          viewMode: 1,
+          dragMode: 'move',
+          autoCropArea: 0.8,
+          responsive: true,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false
+        });
+      } catch (err) {
+        console.error('Errore Cropper:', err);
+        showToast('Errore nella preparazione dell\'immagine', 'error');
       }
     });
+  };
+  reader.readAsDataURL(file);
+});
+
+/**
+ * Ridimensiona un'immagine via canvas prima del crop.
+ * Fondamentale per immagini ad alta risoluzione da smartphone.
+ * @param {string} dataUrl - DataURL dell'immagine originale
+ * @param {number} maxSize - Dimensione massima in px (larghezza o altezza)
+ * @param {Function} callback - Callback con il dataUrl ridimensionato
+ */
+function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
+  const img = new Image();
+  img.onload = () => {
+    let { width, height } = img;
+
+    // Calcola il nuovo size mantenendo le proporzioni
+    if (width > maxSize || height > maxSize) {
+      if (width > height) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      } else {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    callback(canvas.toDataURL('image/jpeg', 0.92));
+  };
+  img.src = dataUrl;
+}
     
     // Gestione del pulsante Salva
     saveCropBtn.addEventListener('click', async () => {
