@@ -370,14 +370,6 @@ async function loadWorkoutStats() {
     showToast('Errore nel caricamento delle statistiche', 'error');
   }
 }
-        
-        updateStatsUI(workouts || []);
-        renderRecentActivities(workouts || []);
-      } catch (error) {
-        console.error('Errore nel caricamento delle statistiche di allenamento:', error);
-        showToast('Errore nel caricamento delle statistiche', 'error');
-      }
-    }
   
     // ===== AGGIORNAMENTO UI =====
     function updateUIWithUserData() {
