@@ -1,0 +1,94 @@
+/* Fix leggibilità menu mobile dashboard */
+@media (max-width: 992px) {
+  .nav-links,
+  .navbar-links {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.75rem !important;
+    background: #1f2937 !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28) !important;
+    z-index: 9999 !important;
+  }
+
+  .nav-links.active,
+  .navbar-links.active {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .nav-links a,
+  .nav-links button,
+  .nav-links .btn,
+  .navbar-links a,
+  .navbar-links button,
+  .navbar-links .btn {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    color: #ffffff !important;
+    background: transparent !important;
+    text-decoration: none !important;
+    padding: 0.85rem 1rem !important;
+    border-radius: 10px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  .nav-links a:hover,
+  .nav-links a:focus,
+  .nav-links button:hover,
+  .nav-links .btn:hover,
+  .navbar-links a:hover,
+  .navbar-links a:focus,
+  .navbar-links button:hover,
+  .navbar-links .btn:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+  }
+
+  .nav-links a:visited,
+  .navbar-links a:visited {
+    color: #ffffff !important;
+  }
+
+  .nav-links::before,
+  .navbar-links::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #1f2937;
+    border-radius: 12px;
+    z-index: 0;
+  }
+
+  .nav-links > *,
+  .navbar-links > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .navbar,
+  nav {
+    position: relative;
+    z-index: 1000;
+  }
+
+  .dashboard-content,
+  .dashboard-grid,
+  .workout-section,
+  .stats-grid,
+  .chart-card,
+  .workout-card {
+    position: relative;
+    z-index: 1;
+  }
+}
