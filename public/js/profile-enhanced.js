@@ -334,14 +334,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   
     // ===== CARICAMENTO STATISTICHE ALLENAMENTO =====
-    async function loadWorkoutStats() {
-      if (!currentUser || !currentUser.id) {
-        console.error('loadWorkoutStats: currentUser non definito o senza ID');
-        return;
-      }
-      
-      try {
-       // Query 1: le ultime 5 per la lista "attività recenti" (leggera)
 async function loadWorkoutStats() {
   if (!currentUser || !currentUser.id) {
     console.error('loadWorkoutStats: currentUser non definito o senza ID');
@@ -597,16 +589,6 @@ async function loadWorkoutStats() {
     }
     
     function renderSpecificGoals() {
-      const goalsContainer = document.getElementById('specificGoalsList');
-      
-      if (!goalsContainer) return;
-      
-      if (!specificGoals || specificGoals.length === 0) {
-        goalsContainer.innerHTML = '';
-        return;
-      }
-      
-     cfunction renderSpecificGoals() {
   const goalsContainer = document.getElementById('specificGoalsList');
   if (!goalsContainer) return;
 
@@ -634,8 +616,6 @@ async function loadWorkoutStats() {
 
   goalsContainer.innerHTML = goalsHTML;
 }
-    }
-    
     // Funzione per preparare i dati per il grafico delle misure
     function prepareMeasurementsChartData(measurements) {
       if (!currentProfile || !currentProfile.preferences) {
