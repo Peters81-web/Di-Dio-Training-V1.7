@@ -1051,12 +1051,11 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
     if (personalInfoForm) {
       personalInfoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-    let loading;
+        let loading;
         try {
-          loading = showLoading();
+        loading = showLoading();
           
-          const formData = {
+        const formData = {
             id: currentUser.id,  // Usa l'ID utente come chiave primaria
             user_id: currentUser.id,  // Aggiungi anche questo campo per compatibilità
             username: document.getElementById('username').value.trim(),
@@ -1071,21 +1070,21 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
           console.log("Dati da salvare:", formData);
           
           // Aggiorna il profilo esistente
-          const { data: updatedData, error } = await supabaseClient
+        const { data: updatedData, error } = await supabaseClient
             .from('profiles')
             .upsert(formData)
             .select();
           
-          if (error) {
-            throw error;
+        if (error) {
+        throw error;
           }
           
-          console.log("Risultato aggiornamento:", updatedData);
+        console.log("Risultato aggiornamento:", updatedData);
           
           // Aggiorna i dati in memoria
-          if (updatedData && updatedData.length > 0) {
+        if (updatedData && updatedData.length > 0) {
             // Mantieni le preferenze e gli obiettivi esistenti
-            const updatedProfile = {
+        const updatedProfile = {
               ...currentProfile,
               ...updatedData[0]
             };
@@ -1096,8 +1095,8 @@ function resizeImageBeforeCrop(dataUrl, maxSize, callback) {
           }
           
           // Aggiorna la UI
-          const displayUsernameEl = document.getElementById('displayUsername');
-          if (displayUsernameEl) {
+        const displayUsernameEl = document.getElementById('displayUsername');
+        if (displayUsernameEl) {
             displayUsernameEl.textContent = formData.username;
           }
           
