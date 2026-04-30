@@ -836,39 +836,45 @@ profilePhotoInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (evt) => {
     // ✅ Pre-resize: riduce l'immagine PRIMA di darla a Cropper
-    resizeImageBeforeCrop(evt.target.result, 1500, (resizedDataUrl) => {
-      photoCropModal.style.display = 'flex';
-      cropArea.innerHTML = '';
+   resizeImageBeforeCrop(evt.target.result, 1500, (resizedDataUrl) => {
+  
+  // ✅ 1. Distruggi il cropper PRIMA di toccare il DOM
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
 
-      const img = document.createElement('img');
-      img.id = 'cropImage';
-      img.src = resizedDataUrl;
-      cropArea.appendChild(img);
+  // ✅ 2. Ora pulisci e ricostruisci il DOM
+  cropArea.innerHTML = '';
+  
+  const img = document.createElement('img');
+  img.id = 'cropImage';
+  img.src = resizedDataUrl;
+  cropArea.appendChild(img);
 
-      if (cropper) { cropper.destroy(); cropper = null; }
+  // ✅ 3. Mostra il modal solo dopo che il DOM è pronto
+  photoCropModal.style.display = 'flex';
 
-      try {
-        cropper = new Cropper(img, {
-          aspectRatio: 1,
-          viewMode: 1,
-          dragMode: 'move',
-          autoCropArea: 0.8,
-          responsive: true,
-          restore: false,
-          guides: true,
-          center: true,
-          highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          toggleDragModeOnDblclick: false
-        });
-      } catch (err) {
-        console.error('Errore Cropper:', err);
-        showToast('Errore nella preparazione dell\'immagine', 'error');
-      }
+  // ✅ 4. Inizializza il nuovo Cropper
+  try {
+    cropper = new Cropper(img, {
+      aspectRatio: 1,
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 0.8,
+      responsive: true,
+      restore: false,
+      guides: true,
+      center: true,
+      highlight: false,
+      cropBoxMovable: true,
+      cropBoxResizable: true,
+      toggleDragModeOnDblclick: false
     });
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.error('Errore Cropper:', err);
+    showToast('Errore nella preparazione dell\'immagine', 'error');
+  }
 });
 
 /**
