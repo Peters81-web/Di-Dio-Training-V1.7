@@ -1,347 +1,522 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profilo Utente | DiDio Training</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/profile-enhanced.css">
-    <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
-    <link rel="stylesheet" href="/css/menu-mobile-fix.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Di-Dio Training — Corpo</title>
+  <meta name="description" content="Il tuo profilo atleta: peso, misure, BMI e obiettivi." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=Barlow:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="profile.css" />
 </head>
+
 <body>
-<nav class="navbar">
-    <div class="container">
-        <h1 class="navbar-brand">
-            <i class="fas fa-user-circle mr-2"></i>
-            Profilo Utente
-        </h1>
-        <button class="mobile-menu-toggle" id="mobileMenuToggle">
-            <i class="fas fa-bars"></i>
+
+  <!-- SKIP LINK -->
+  <a href="#main-content" class="skip-link">Vai al contenuto principale</a>
+
+  <!-- ═══════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════ -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+
+      <a href="index.html" class="logo" aria-label="Di-Dio Training — home">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="2" y="13" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.4"/>
+          <rect x="24" y="13" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.4"/>
+          <rect x="7" y="9" width="4" height="14" rx="1.5" fill="currentColor" opacity="0.7"/>
+          <rect x="21" y="9" width="4" height="14" rx="1.5" fill="currentColor" opacity="0.7"/>
+          <rect x="10" y="14" width="12" height="4" rx="1" fill="currentColor"/>
+        </svg>
+        <span class="logo-text">Di-Dio <strong>Training</strong></span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="Navigazione principale">
+        <a href="index.html"    class="nav-link">Dashboard</a>
+        <a href="workouts.html" class="nav-link">Allenamenti</a>
+        <a href="profile.html"  class="nav-link nav-link--active" aria-current="page">Corpo</a>
+        <a href="progress.html" class="nav-link">Progressi</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="btn-icon" data-theme-toggle aria-label="Cambia tema">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
         </button>
-             <div class="nav-links" id="navLinks">
-                <button onclick="window.location.href='/dashboard'" class="btn">
-                    <i class="fas fa-home"></i>
-                    Dashboard
-                </button>
-                <button onclick="window.location.href='/stats'" class="btn">
-                    <i class="fas fa-chart-line"></i>
-                    Statistiche
-                </button>
-                <button id="logoutBtn" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
-                </button>
-            </div>
-        </div>
-    </nav>
+        <button class="btn-icon" aria-label="Notifiche">
+          <i data-lucide="bell" width="20" height="20"></i>
+        </button>
+        <button class="avatar-btn" aria-label="Menu account">
+          <span class="avatar">MD</span>
+        </button>
+      </div>
 
-    <main class="container profile-container">
-        <!-- Scheda profilo con foto -->
-        <div class="profile-card main-profile-card">
-            <div class="profile-header">
-                <div class="profile-photo-container">
-                    <div class="profile-photo" id="profilePhotoDisplay">
-                        <!-- Immagine di default o caricata dall'utente -->
-                        <img src="/images/default-avatar.jpg" alt="Foto profilo" id="profileImage">
-                        <div class="profile-photo-overlay" id="changePhotoOverlay">
-                            <i class="fas fa-camera"></i>
-                            <span>Cambia foto</span>
-                        </div>
-                    </div>
-                    <input type="file" id="profilePhotoInput" accept="image/*" style="display: none;">
-                </div>
-                <div class="profile-info">
-                    <h2 id="displayUsername">Nome Utente</h2>
-                    <p id="displayEmail" class="user-email">email@esempio.com</p>
-                    <p id="memberSince">Membro dal: <span>Aprile 2025</span></p>
-                </div>
-            </div>
-            
-            <div class="profile-actions">
-                <button class="btn btn-primary btn-edit-profile" id="editProfileBtn">
-                    <i class="fas fa-pencil-alt"></i> Modifica Profilo
-                </button>
-            </div>
-        </div>
-
-        <!-- Form informazioni personali -->
-        <div class="profile-card" id="personalInfoCard">
-            <h3 class="card-title"><i class="fas fa-user"></i> Informazioni Personali</h3>
-            <form id="personalInfoForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="username">Nome Utente</label>
-                        <input type="text" id="username" class="form-control" autocomplete="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="fullName">Nome Completo</label>
-                        <input type="text" id="fullName" class="form-control" autocomplete="name" placeholder="Il tuo nome e cognome">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="birthdate">Data di Nascita</label>
-                        <input type="date" id="birthdate" class="form-control" autocomplete="bday">
-                    </div>
-                    <div class="form-group">
-                        <label for="gender">Genere</label>
-                        <select id="gender" class="form-control" autocomplete="sex">
-                            <option value="">Preferisco non specificare</option>
-                            <option value="male">Uomo</option>
-                            <option value="female">Donna</option>
-                            <option value="other">Altro</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="location">Città</label>
-                    <input type="text" id="location" class="form-control" autocomplete="address-level2" placeholder="La tua città">
-                </div>
-
-                <div class="form-group">
-                    <label for="bio">Biografia</label>
-                    <textarea id="bio" class="form-control" rows="3" placeholder="Raccontaci qualcosa su di te e i tuoi obiettivi di fitness..."></textarea>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Salva Informazioni</button>
-            </form>
-        </div>
-
-        <!-- Form misure corporee -->
-        <div class="profile-card" id="bodyMeasurementsCard">
-            <h3 class="card-title"><i class="fas fa-weight"></i> Misure Corporee</h3>
-            <form id="bodyMeasurementsForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="height">Altezza (<span class="height-unit">cm</span>)</label>
-                        <input type="number" id="height" class="form-control" min="1" max="300" placeholder="Es. 175">
-                    </div>
-                    <div class="form-group">
-                        <label for="weight">Peso (<span class="weight-unit">kg</span>)</label>
-                        <input type="number" id="weight" class="form-control" min="1" max="300" step="0.1" placeholder="Es. 70.5">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="bodyFat">Percentuale Grasso Corporeo (%)</label>
-                        <input type="number" id="bodyFat" class="form-control" min="1" max="60" step="0.1" placeholder="Es. 15.0">
-                    </div>
-                    <div class="form-group">
-                        <label for="muscleMass">Massa Muscolare (<span class="weight-unit">kg</span>)</label>
-                        <input type="number" id="muscleMass" class="form-control" min="1" max="150" step="0.1" placeholder="Es. 50.2">
-                    </div>
-                </div>
-
-                <div class="measurements-progress">
-                    <h4>Evoluzione</h4>
-                    <canvas id="weightProgressChart" class="measurement-chart"></canvas>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Aggiorna Misure</button>
-            </form>
-        </div>
-
-        <!-- Preferenze -->
-        <div class="profile-card" id="preferencesCard">
-            <h3 class="card-title"><i class="fas fa-cog"></i> Preferenze</h3>
-            <form id="preferencesForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="distanceUnit">Unità di Distanza</label>
-                        <select id="distanceUnit" class="form-control">
-                            <option value="km">Chilometri (km)</option>
-                            <option value="mi">Miglia (mi)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="weightUnit">Unità di Peso</label>
-                        <select id="weightUnit" class="form-control">
-                            <option value="kg">Chilogrammi (kg)</option>
-                            <option value="lb">Libbre (lb)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="weekStartDay">Inizio Settimana</label>
-                        <select id="weekStartDay" class="form-control">
-                            <option value="1">Lunedì</option>
-                            <option value="0">Domenica</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="calorieCalculation">Calcolo Calorie</label>
-                        <select id="calorieCalculation" class="form-control">
-                            <option value="auto">Automatico</option>
-                            <option value="manual">Manuale</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Notifiche</label>
-                    <div class="checkbox-group">
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="emailNotifications" checked>
-                            <span class="checkmark"></span>
-                            Notifiche via email
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="workoutReminders" checked>
-                            <span class="checkmark"></span>
-                            Promemoria allenamenti
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="progressUpdates" checked>
-                            <span class="checkmark"></span>
-                            Aggiornamenti progressi
-                        </label>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Salva Preferenze</button>
-            </form>
-        </div>
-
-        <!-- Obiettivi di fitness -->
-        <div class="profile-card" id="fitnessGoalsCard">
-            <h3 class="card-title"><i class="fas fa-bullseye"></i> Obiettivi di Fitness</h3>
-            <form id="fitnessGoalsForm">
-                <div class="form-group">
-                    <label for="primaryGoal">Obiettivo Principale</label>
-                    <select id="primaryGoal" class="form-control">
-                        <option value="weight_loss">Perdita di peso</option>
-                        <option value="muscle_gain">Aumento massa muscolare</option>
-                        <option value="endurance">Miglioramento resistenza</option>
-                        <option value="strength">Aumento forza</option>
-                        <option value="flexibility">Miglioramento flessibilità</option>
-                        <option value="overall_health">Benessere generale</option>
-                    </select>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="targetWeight">Peso Obiettivo (<span class="weight-unit">kg</span>)</label>
-                        <input type="number" id="targetWeight" class="form-control" min="1" max="300" step="0.1" placeholder="Es. 65.0">
-                    </div>
-                    <div class="form-group">
-                        <label for="weeklyWorkouts">Allenamenti Settimanali</label>
-                        <input type="number" id="weeklyWorkouts" class="form-control" min="1" max="14" placeholder="Es. 4">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="goalDescription">Descrizione Obiettivo</label>
-                    <textarea id="goalDescription" class="form-control" rows="3" placeholder="Descrivi in dettaglio i tuoi obiettivi..."></textarea>
-                </div>
-
-                <div class="goals-section">
-                    <h4>Obiettivi Specifici</h4>
-                    <div class="goals-list" id="specificGoalsList">
-                        <!-- Gli obiettivi specifici verranno aggiunti qui dinamicamente -->
-                    </div>
-                    <div class="goal-item add-goal-container">
-                        <input type="text" class="form-control goal-input" placeholder="Aggiungi un obiettivo..." id="newGoalInput">
-                        <button type="button" class="btn btn-sm btn-primary" id="addGoalBtn">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Salva Obiettivi</button>
-            </form>
-        </div>
-
-        <!-- Scheda progressi -->
-        <div class="profile-card stats-card">
-            <h3 class="card-title"><i class="fas fa-medal"></i> I tuoi progressi</h3>
-            <div class="stats-summary">
-                <div class="stat-item">
-                    <span class="stat-label">Allenamenti Totali</span>
-                    <span class="stat-value" id="totalWorkouts">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Questo Mese</span>
-                    <span class="stat-value" id="monthlyWorkouts">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Attività Preferita</span>
-                    <span class="stat-value" id="favoriteActivity">-</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Tempo Totale</span>
-                    <span class="stat-value" id="totalTime">0h</span>
-                </div>
-            </div>
-            <div class="recent-activities">
-                <h4><i class="fas fa-history"></i> Attività Recenti</h4>
-                <div class="activities-list" id="recentActivitiesList">
-                    <!-- Attività recenti verranno caricate qui dinamicamente -->
-                    <div class="loading-activities">
-                        <i class="fas fa-spinner fa-spin"></i> Caricamento attività...
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal per il crop della foto -->
-    <div id="photoCropModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Ritaglia la tua foto</h2>
-                <button class="modal-close" id="closeCropModalBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="crop-container">
-                <div id="cropArea">
-                    <!-- L'immagine da ritagliare verrà inserita qui -->
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="cancelCropBtn">
-                    Annulla
-                </button>
-                <button type="button" class="btn btn-primary" id="saveCropBtn">
-                    Applica
-                </button>
-            </div>
-        </div>
     </div>
+  </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.12/dist/cropper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/js/app-core.js"></script>
-    <script src="/js/utils.js"></script>
-    <script src="/js/supabase-config.js"></script>
-    <script src="/js/profile-enhanced.js"></script>
-    <script>
-// Fallback per il menu mobile se app-core.js non è caricato
-document.addEventListener('DOMContentLoaded', function() {
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const navLinks = document.getElementById('navLinks');
-    
-    if (mobileMenuToggle && navLinks) {
-        mobileMenuToggle.addEventListener('click', function() {
-            navLinks.classList.toggle('active');
-            
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.classList.toggle('fa-bars');
-                icon.classList.toggle('fa-times');
-            }
-        });
-    }
-});
-</script>
+  <!-- ═══════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════ -->
+  <main id="main-content" class="main-content">
+    <div class="page-container">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Il tuo corpo</h1>
+          <p class="page-subtitle">Traccia peso, misure e obiettivi nel tempo</p>
+        </div>
+        <button class="btn btn-primary" id="btn-add-measurement" aria-haspopup="dialog">
+          <i data-lucide="plus" width="16" height="16"></i>
+          Aggiungi misurazione
+        </button>
+      </div>
+
+      <!-- SUB-TAB BAR -->
+      <div class="sub-tabs" role="tablist" aria-label="Sezioni corpo">
+        <button class="sub-tab sub-tab--active" role="tab" id="tab-peso"
+          aria-controls="panel-peso" aria-selected="true" data-tab="peso">
+          <i data-lucide="scale" width="16" height="16"></i>
+          Peso
+        </button>
+        <button class="sub-tab" role="tab" id="tab-misure"
+          aria-controls="panel-misure" aria-selected="false" data-tab="misure">
+          <i data-lucide="ruler" width="16" height="16"></i>
+          Misure
+        </button>
+        <button class="sub-tab" role="tab" id="tab-bmi"
+          aria-controls="panel-bmi" aria-selected="false" data-tab="bmi">
+          <i data-lucide="target" width="16" height="16"></i>
+          BMI &amp; Obiettivi
+        </button>
+      </div>
+
+      <!-- ════════════════════════════
+           PANEL PESO
+      ═════════════════════════════ -->
+      <section id="panel-peso" role="tabpanel" aria-labelledby="tab-peso"
+        class="tab-panel tab-panel--active">
+
+        <!-- KPI row -->
+        <div class="kpi-grid">
+
+          <article class="kpi-card" aria-label="Peso attuale">
+            <span class="kpi-label">Peso attuale</span>
+            <div class="kpi-number-row">
+              <span class="kpi-value" id="kpi-current-weight" data-target="82.4">—</span>
+              <span class="kpi-unit">kg</span>
+            </div>
+            <span class="kpi-delta kpi-delta--down">
+              <i data-lucide="trending-down" width="12" height="12"></i>
+              −0.6 questa settimana
+            </span>
+          </article>
+
+          <article class="kpi-card" aria-label="Obiettivo peso">
+            <span class="kpi-label">Obiettivo</span>
+            <div class="kpi-number-row">
+              <span class="kpi-value" id="kpi-goal-weight" data-target="78.0">—</span>
+              <span class="kpi-unit">kg</span>
+            </div>
+            <span class="kpi-delta kpi-delta--neutral">
+              <i data-lucide="flag" width="12" height="12"></i>
+              target: agosto 2026
+            </span>
+          </article>
+
+          <article class="kpi-card" aria-label="Kg mancanti all obiettivo">
+            <span class="kpi-label">Mancanti</span>
+            <div class="kpi-number-row">
+              <span class="kpi-value" id="kpi-missing" data-target="4.4">—</span>
+              <span class="kpi-unit">kg</span>
+            </div>
+            <span class="kpi-delta kpi-delta--neutral">
+              <i data-lucide="clock" width="12" height="12"></i>
+              ~14 settimane
+            </span>
+          </article>
+
+          <article class="kpi-card kpi-card--accent" aria-label="Peso perso da inizio">
+            <span class="kpi-label">Perso dal giorno 1</span>
+            <div class="kpi-number-row">
+              <span class="kpi-value" id="kpi-total-lost" data-target="7.6">—</span>
+              <span class="kpi-unit">kg</span>
+            </div>
+            <span class="kpi-delta kpi-delta--up">
+              <i data-lucide="trophy" width="12" height="12"></i>
+              ottimo progresso!
+            </span>
+          </article>
+
+        </div>
+
+        <!-- Grafico peso -->
+        <div class="chart-card">
+          <div class="chart-card__header">
+            <h2 class="chart-title">Andamento peso</h2>
+            <div class="chart-filters" role="group" aria-label="Filtra periodo">
+              <button class="filter-btn filter-btn--active" data-period="30" aria-pressed="true">30g</button>
+              <button class="filter-btn" data-period="90"  aria-pressed="false">3m</button>
+              <button class="filter-btn" data-period="180" aria-pressed="false">6m</button>
+            </div>
+          </div>
+          <div class="chart-wrapper" role="img" aria-label="Grafico andamento peso">
+            <canvas id="chart-weight" height="280"></canvas>
+          </div>
+        </div>
+
+        <!-- Tabella storico -->
+        <div class="table-card">
+          <div class="table-card__header">
+            <h2 class="chart-title">Storico misurazioni</h2>
+            <span class="badge">Ultime 10</span>
+          </div>
+          <div class="table-scroll-wrapper" role="region" aria-label="Storico peso" tabindex="0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Data</th>
+                  <th scope="col" class="num">Peso (kg)</th>
+                  <th scope="col" class="num">Δ</th>
+                  <th scope="col">Note</th>
+                </tr>
+              </thead>
+              <tbody id="weight-table-body">
+                <!-- popolato da JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════
+           PANEL MISURE
+      ═════════════════════════════ -->
+      <section id="panel-misure" role="tabpanel" aria-labelledby="tab-misure"
+        class="tab-panel" hidden>
+
+        <!-- Tabella misure -->
+        <div class="table-card">
+          <div class="table-card__header">
+            <h2 class="chart-title">Misure corporee</h2>
+            <span class="badge">Ultimo rilevamento: 28 apr</span>
+          </div>
+          <div class="table-scroll-wrapper" role="region" aria-label="Tabella misure corporee" tabindex="0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Zona</th>
+                  <th scope="col" class="num">Corrente (cm)</th>
+                  <th scope="col" class="num">Precedente (cm)</th>
+                  <th scope="col" class="num">Δ</th>
+                </tr>
+              </thead>
+              <tbody id="measures-table-body">
+                <!-- popolato da JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Grafico misure -->
+        <div class="chart-card">
+          <div class="chart-card__header">
+            <h2 class="chart-title">Trend circonferenze</h2>
+            <p class="chart-subtitle">Ultimi 6 mesi — petto, vita, bicipite</p>
+          </div>
+          <div class="chart-wrapper" role="img" aria-label="Grafico trend circonferenze">
+            <canvas id="chart-measures" height="280"></canvas>
+          </div>
+        </div>
+
+        <!-- Foto progresso -->
+        <div class="table-card">
+          <div class="table-card__header">
+            <h2 class="chart-title">Foto progresso</h2>
+            <button class="btn btn-secondary btn-sm">
+              <i data-lucide="camera" width="14" height="14"></i>
+              Aggiungi foto
+            </button>
+          </div>
+          <div class="photo-empty-state">
+            <i data-lucide="image-plus" width="40" height="40"></i>
+            <p>Nessuna foto aggiunta ancora.</p>
+            <p class="text-muted">Aggiungi foto mensili per vedere il tuo progresso visivo.</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════
+           PANEL BMI & OBIETTIVI
+      ═════════════════════════════ -->
+      <section id="panel-bmi" role="tabpanel" aria-labelledby="tab-bmi"
+        class="tab-panel" hidden>
+
+        <div class="bmi-layout">
+
+          <!-- BMI card -->
+          <div class="bmi-card">
+            <h2 class="chart-title">Il tuo BMI</h2>
+
+            <div class="bmi-display">
+              <span class="bmi-value" id="bmi-value">24.1</span>
+              <span class="bmi-category" id="bmi-category">Normopeso</span>
+            </div>
+
+            <p class="bmi-detail">Calcolato su: <strong>82.4 kg</strong> · <strong>185 cm</strong></p>
+
+            <!-- Scala visiva -->
+            <div class="bmi-scale" aria-label="Scala BMI">
+              <div class="bmi-scale__bar">
+                <div class="bmi-scale__segment bmi-seg--sotto" style="width:20%">
+                  <span class="bmi-seg-label">Sottopeso</span>
+                </div>
+                <div class="bmi-scale__segment bmi-seg--normo" style="width:30%">
+                  <span class="bmi-seg-label">Normale</span>
+                </div>
+                <div class="bmi-scale__segment bmi-seg--sovra" style="width:25%">
+                  <span class="bmi-seg-label">Sovrappeso</span>
+                </div>
+                <div class="bmi-scale__segment bmi-seg--obeso" style="width:25%">
+                  <span class="bmi-seg-label">Obeso</span>
+                </div>
+              </div>
+              <div class="bmi-scale__marker" id="bmi-marker" style="left:47%" aria-hidden="true">
+                <div class="bmi-marker-needle"></div>
+                <span class="bmi-marker-label">Tu</span>
+              </div>
+            </div>
+
+            <!-- Legenda -->
+            <ul class="bmi-ranges">
+              <li><span class="dot dot--sotto"></span>Sottopeso: &lt; 18.5</li>
+              <li><span class="dot dot--normo"></span>Normopeso: 18.5 – 24.9</li>
+              <li><span class="dot dot--sovra"></span>Sovrappeso: 25 – 29.9</li>
+              <li><span class="dot dot--obeso"></span>Obeso: ≥ 30</li>
+            </ul>
+          </div>
+
+          <!-- Obiettivo card -->
+          <div class="goal-card">
+            <h2 class="chart-title">Obiettivo attivo</h2>
+
+            <div class="goal-meta">
+              <span class="goal-type-badge">
+                <i data-lucide="trending-down" width="14" height="14"></i>
+                Dimagrimento
+              </span>
+              <span class="goal-deadline">Scadenza: 31 ago 2026</span>
+            </div>
+
+            <div class="goal-progress-block">
+              <div class="goal-progress-header">
+                <span>Progresso</span>
+                <span class="goal-pct" id="goal-pct">63%</span>
+              </div>
+              <div class="goal-bar"
+                role="progressbar" aria-valuenow="63"
+                aria-valuemin="0" aria-valuemax="100"
+                aria-label="Progresso obiettivo 63%">
+                <div class="goal-bar__fill" id="goal-bar-fill" style="width:0%"></div>
+              </div>
+              <div class="goal-progress-labels">
+                <span>Da 90 kg</span>
+                <span>A 78 kg</span>
+              </div>
+            </div>
+
+            <div class="goal-stats-grid">
+              <div class="goal-stat">
+                <span class="goal-stat__label">Perso</span>
+                <span class="goal-stat__value goal-stat__value--good">−7.6 kg</span>
+              </div>
+              <div class="goal-stat">
+                <span class="goal-stat__label">Mancanti</span>
+                <span class="goal-stat__value">4.4 kg</span>
+              </div>
+              <div class="goal-stat">
+                <span class="goal-stat__label">Settimane</span>
+                <span class="goal-stat__value">~14</span>
+              </div>
+              <div class="goal-stat">
+                <span class="goal-stat__label">Ritmo</span>
+                <span class="goal-stat__value">−0.3 kg/w</span>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary btn-full" id="btn-edit-goal">
+              <i data-lucide="edit-3" width="14" height="14"></i>
+              Modifica obiettivo
+            </button>
+          </div>
+
+        </div><!-- /bmi-layout -->
+
+        <!-- Macros -->
+        <div class="macros-card">
+          <div class="table-card__header">
+            <h2 class="chart-title">Piano nutrizionale</h2>
+            <span class="badge">Fase: deficit calorico</span>
+          </div>
+          <div class="macros-grid">
+
+            <div class="macro-item">
+              <div class="macro-top">
+                <span class="macro-name">Proteine</span>
+                <span class="macro-value">165 g</span>
+              </div>
+              <div class="macro-bar-track" role="progressbar" aria-valuenow="82" aria-valuemax="100" aria-label="Proteine 82%">
+                <div class="macro-bar-fill macro-bar--protein" style="width:82%"></div>
+              </div>
+              <span class="macro-kcal">660 kcal</span>
+            </div>
+
+            <div class="macro-item">
+              <div class="macro-top">
+                <span class="macro-name">Carboidrati</span>
+                <span class="macro-value">220 g</span>
+              </div>
+              <div class="macro-bar-track" role="progressbar" aria-valuenow="73" aria-valuemax="100" aria-label="Carboidrati 73%">
+                <div class="macro-bar-fill macro-bar--carbs" style="width:73%"></div>
+              </div>
+              <span class="macro-kcal">880 kcal</span>
+            </div>
+
+            <div class="macro-item">
+              <div class="macro-top">
+                <span class="macro-name">Grassi</span>
+                <span class="macro-value">60 g</span>
+              </div>
+              <div class="macro-bar-track" role="progressbar" aria-valuenow="75" aria-valuemax="100" aria-label="Grassi 75%">
+                <div class="macro-bar-fill macro-bar--fat" style="width:75%"></div>
+              </div>
+              <span class="macro-kcal">540 kcal</span>
+            </div>
+
+          </div>
+
+          <div class="macro-total">
+            <span class="macro-total__label">Totale giornaliero</span>
+            <span class="macro-total__value">2.080 kcal</span>
+            <span class="macro-total__deficit">deficit: −420 kcal vs TDEE</span>
+          </div>
+        </div>
+
+      </section>
+
+    </div><!-- /page-container -->
+  </main>
+
+  <!-- BOTTOM NAV mobile -->
+  <nav class="bottom-nav" aria-label="Navigazione mobile">
+    <a href="index.html"    class="bottom-nav__item" aria-label="Dashboard">
+      <i data-lucide="layout-dashboard" width="22" height="22"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="workouts.html" class="bottom-nav__item" aria-label="Allenamenti">
+      <i data-lucide="dumbbell" width="22" height="22"></i>
+      <span>Allenamenti</span>
+    </a>
+    <a href="profile.html"  class="bottom-nav__item bottom-nav__item--active" aria-label="Corpo" aria-current="page">
+      <i data-lucide="user" width="22" height="22"></i>
+      <span>Corpo</span>
+    </a>
+    <a href="progress.html" class="bottom-nav__item" aria-label="Progressi">
+      <i data-lucide="bar-chart-2" width="22" height="22"></i>
+      <span>Progressi</span>
+    </a>
+  </nav>
+
+  <!-- MODAL — Aggiungi misurazione -->
+  <div class="modal-overlay" id="modal-measurement"
+    role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title" id="modal-title">Nuova misurazione</h2>
+        <button class="btn-icon" id="modal-close" aria-label="Chiudi">
+          <i data-lucide="x" width="20" height="20"></i>
+        </button>
+      </div>
+
+      <form id="form-measurement" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="input-date" class="form-label">Data</label>
+            <input type="date" id="input-date" name="date"
+              class="form-input" required aria-required="true" />
+          </div>
+
+          <div class="form-group">
+            <label for="input-weight" class="form-label">Peso (kg)</label>
+            <input type="number" id="input-weight" name="weight"
+              class="form-input" placeholder="es. 82.5"
+              step="0.1" min="30" max="250" required aria-required="true" />
+          </div>
+
+          <div class="form-group">
+            <label for="input-petto" class="form-label">Petto (cm)</label>
+            <input type="number" id="input-petto" name="petto"
+              class="form-input" placeholder="es. 102" step="0.5" />
+          </div>
+
+          <div class="form-group">
+            <label for="input-vita" class="form-label">Vita (cm)</label>
+            <input type="number" id="input-vita" name="vita"
+              class="form-input" placeholder="es. 86" step="0.5" />
+          </div>
+
+          <div class="form-group">
+            <label for="input-fianchi" class="form-label">Fianchi (cm)</label>
+            <input type="number" id="input-fianchi" name="fianchi"
+              class="form-input" placeholder="es. 98" step="0.5" />
+          </div>
+
+          <div class="form-group">
+            <label for="input-bicipite" class="form-label">Bicipite (cm)</label>
+            <input type="number" id="input-bicipite" name="bicipite"
+              class="form-input" placeholder="es. 38" step="0.5" />
+          </div>
+
+          <div class="form-group form-group--full">
+            <label for="input-note" class="form-label">Note (opzionale)</label>
+            <textarea id="input-note" name="note"
+              class="form-input form-textarea"
+              placeholder="es. post-vacanze, ritenzione idrica..." rows="2"></textarea>
+          </div>
+
+        </div>
+
+        <div id="form-error" class="form-error" role="alert" aria-live="polite" hidden></div>
+
+        <div class="modal__actions">
+          <button type="button" class="btn btn-ghost" id="modal-cancel">Annulla</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="save" width="16" height="16"></i>
+            Salva misurazione
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="profile.js"></script>
+
 </body>
 </html>
