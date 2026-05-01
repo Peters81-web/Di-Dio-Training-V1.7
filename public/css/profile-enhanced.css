@@ -1,19 +1,19 @@
 /* ===== PROFILE ENHANCED CSS - REFACTORED v2.0 ===== */
 /* Stack: Node.js + Express | DB: Supabase | Deploy: Vercel */
-/* Art direction: app sportiva maschile → Navy/Steel, accento Verde Forza */
+/* Art direction: app sportiva maschile -> Navy/Steel, accento Verde Forza */
 
 /* ===== VARIABILI SPECIFICHE PROFILO ===== */
 /* NOTA: usiamo colori solidi, NON gradient come valore di variabile.
    I gradient come variabili non funzionano in tutti i contesti CSS (es: background-clip: text su Firefox).
    I gradient vengono applicati direttamente dove necessario. */
 :root {
-  --profile-color-primary:   #3949ab;  /* Indigo medium — colore solido per btn e accent */
-  --profile-color-deep:      #1a237e;  /* Indigo scuro — per hero gradient start */
-  --profile-color-steel:     #455a64;  /* Blue grey — variante secondaria */
-  --profile-color-green:     #2e7d32;  /* Verde forza — per statistiche e attività */
-  --profile-color-orange:    #ef6c00;  /* Arancio — per warning/alert */
+  --profile-color-primary:   #3949ab;  /* Indigo medium - colore solido per btn e accent */
+  --profile-color-deep:      #1a237e;  /* Indigo scuro - per hero gradient start */
+  --profile-color-steel:     #455a64;  /* Blue grey - variante secondaria */
+  --profile-color-green:     #2e7d32;  /* Verde forza - per statistiche e attivita */
+  --profile-color-orange:    #ef6c00;  /* Arancio - per warning/alert */
 
-  /* Shadow sistema — tone-matched all'indigo */
+  /* Shadow sistema - tone-matched all'indigo */
   --profile-shadow-soft:   0 2px 8px oklch(0.2 0.12 264 / 0.08);
   --profile-shadow-medium: 0 6px 20px oklch(0.2 0.12 264 / 0.12);
   --profile-shadow-strong: 0 12px 40px oklch(0.2 0.12 264 / 0.18);
@@ -31,7 +31,7 @@
   padding: 0 1.5rem;
 }
 
-/* ===== MAIN PROFILE CARD — HERO ===== */
+/* ===== MAIN PROFILE CARD - HERO ===== */
 /* Gradient applicato direttamente, non come variabile */
 .main-profile-card {
   background: linear-gradient(135deg, #1a237e 0%, #3949ab 50%, #5c6bc0 100%);
@@ -40,24 +40,19 @@
   box-shadow: var(--profile-shadow-strong);
   color: white;
   position: relative;
-  /* RIMOSSO: border: 1px solid rgba(255,255,255,0.1) — poco visibile, aggiunge rumore */
 }
 
-/* Overlay texture — usa solo opacity, no filter */
+/* Overlay texture - usa solo opacity, no filter */
 .main-profile-card::before {
   content: '';
   position: absolute;
-  inset: 0; /* shorthand moderno per top/right/bottom/left: 0 */
+  inset: 0;
   background:
     radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
   pointer-events: none;
   z-index: 1;
 }
-
-/* RIMOSSO: ::after con pattern SVG data:url — 
-   il pattern era decorativo ma aggiungeva peso al rendering.
-   Sostituito con radial-gradient nell'::before */
 
 .profile-header {
   display: flex;
@@ -86,13 +81,11 @@
   background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
   transition: border-color var(--profile-transition),
               box-shadow var(--profile-transition);
-  /* RIMOSSO: transform: scale(1.05) su hover — causa layout shift e CLS */
 }
 
 .profile-photo:hover {
   border-color: rgba(255, 255, 255, 0.45);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  /* Solo border e shadow cambiano — nessun transform sulla foto */
 }
 
 .profile-photo img {
@@ -102,7 +95,6 @@
   transition: filter var(--profile-transition);
 }
 
-/* Overlay "modifica foto" */
 .profile-photo-overlay {
   position: absolute;
   inset: 0;
@@ -118,7 +110,7 @@
   opacity: 0;
   border-radius: 50%;
   transition: opacity var(--profile-transition);
-  pointer-events: none; /* non blocca i click sul contenitore */
+  pointer-events: none;
 }
 
 .profile-photo:hover .profile-photo-overlay {
@@ -134,22 +126,22 @@
   flex-grow: 1;
   position: relative;
   z-index: 2;
-  background: oklch(0 0 0 / 0.2); /* più moderno di rgba */
+  background: oklch(0 0 0 / 0.2);
   padding: 1.5rem 2rem;
   border-radius: 14px;
-  -webkit-backdrop-filter: blur(12px); /* Safari */
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .profile-info h2 {
-  font-size: clamp(1.5rem, 2vw + 0.5rem, 2.2rem); /* fluid, non fisso */
+  font-size: clamp(1.5rem, 2vw + 0.5rem, 2.2rem);
   margin-bottom: 0.5rem;
   color: white;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.15;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); /* ridotto da 10px — meno pesante */
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
 .profile-info p {
@@ -167,7 +159,7 @@
   background: oklch(0 0 0 / 0.35);
   color: white;
   padding: 0.5rem 1rem;
-  border-radius: 999px; /* pill — usa valore esplicito, non variabile qui */
+  border-radius: 999px;
   display: inline-block;
   margin-top: 0.75rem;
   -webkit-backdrop-filter: blur(16px);
@@ -187,10 +179,8 @@
   position: relative;
   z-index: 2;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  /* RIMOSSO: ::before con gradient decorativo — rumore visivo inutile */
 }
 
-/* Pulsanti nella sezione hero — ghost su dark background */
 .profile-actions .btn {
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
@@ -204,14 +194,12 @@
               box-shadow var(--profile-transition);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  /* RIMOSSO: shimmer ::before — costoso e poco utile su button ghost */
 }
 
 .profile-actions .btn:hover {
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.4);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  /* RIMOSSO: transform: translateY(-3px) — unnecesary per ghost button */
 }
 
 /* ===== CARD SEZIONI PROFILO ===== */
@@ -220,28 +208,25 @@
   border-radius: 16px;
   box-shadow: var(--profile-shadow-soft);
   padding: 2rem;
-  border: 1px solid oklch(0.2 0.01 264 / 0.07); /* alpha-blended, non solid gray */
+  border: 1px solid oklch(0.2 0.01 264 / 0.07);
   position: relative;
   overflow: hidden;
-  /* Animation con fill-mode corretto per evitare flicker iniziale */
   animation: profileCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: box-shadow var(--profile-transition),
               border-color var(--profile-transition);
-              /* RIMOSSO: transform dal transition — troppo aggressivo */
 }
 
 .profile-card:nth-child(2) { animation-delay: 0.08s; }
 .profile-card:nth-child(3) { animation-delay: 0.16s; }
 .profile-card:nth-child(4) { animation-delay: 0.24s; }
 
-/* Top accent bar — usa colore solido, non gradient variabile */
 .profile-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px; /* ridotto da 4px — meno invadente */
+  height: 3px;
   background: var(--profile-color-primary);
   border-radius: 16px 16px 0 0;
 }
@@ -249,17 +234,14 @@
 .profile-card:nth-child(2n)::before { background: var(--profile-color-steel); }
 .profile-card:nth-child(3n)::before { background: var(--profile-color-green); }
 
-/* Hover: solo shadow e border, nessun transform */
 .profile-card:hover {
   box-shadow: var(--profile-shadow-medium);
   border-color: oklch(0.2 0.12 264 / 0.12);
-  /* RIMOSSO: transform: translateY(-8px) scale(1.02) — layout shift e paint aggressivo */
-  /* RIMOSSO: ::after con filter: blur() — estremamente costoso in paint */
 }
 
 /* ===== CARD TITLE ===== */
 .card-title {
-  font-size: 1.1rem; /* ridotto da 1.4rem — più appropriato per heading sezione in web app */
+  font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
@@ -326,7 +308,6 @@
   outline: none;
   border-color: var(--profile-color-primary);
   box-shadow: 0 0 0 3px oklch(0.55 0.18 264 / 0.12);
-  /* RIMOSSO: transform: translateY(-1px) — inutile e causa micro-jank */
 }
 
 /* ===== CHECKBOX CUSTOM ===== */
@@ -440,7 +421,6 @@
 .stat-item:hover {
   box-shadow: var(--profile-shadow-soft);
   border-color: oklch(0.2 0.12 264 / 0.1);
-  /* RIMOSSO: transform: translateY(-5px) — comportamento più stabile */
 }
 
 .stat-label {
@@ -453,20 +433,20 @@
   letter-spacing: 0.06em;
 }
 
-/* FIX: background-clip: text con fallback esplicito */
+/* FIX: background-clip: text con fallback esplicito per browser vecchi */
 .stat-value {
   display: block;
   font-size: 1.875rem;
   font-weight: 800;
   line-height: 1;
-  color: var(--profile-color-primary); /* fallback solido — browser vecchi */
+  color: var(--profile-color-primary);
   background: linear-gradient(135deg, var(--profile-color-deep), var(--profile-color-primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* ===== ATTIVITÀ RECENTI ===== */
+/* ===== ATTIVITA RECENTI ===== */
 .recent-activities {
   margin-top: 2rem;
   border-top: 1px solid oklch(0.2 0.01 264 / 0.08);
@@ -503,8 +483,8 @@
   gap: 0.75rem;
 }
 
-/* FIX: rimosso il colored side-border (::before con width: 4px)
-   Sostituito con surface elevation e border sottile */
+/* FIX: rimosso colored side-border (::before con width: 4px).
+   Sostituito con surface elevation e border sottile - piu pulito. */
 .activity-item {
   background: #fafafa;
   border-radius: 10px;
@@ -517,7 +497,6 @@
 .activity-item:hover {
   background: white;
   box-shadow: var(--profile-shadow-soft);
-  /* RIMOSSO: transform: translateX(5px) — movimento laterale inaspettato */
 }
 
 .activity-header {
@@ -561,7 +540,7 @@
   font-size: 0.875rem;
 }
 
-/* ===== SKELETON LOADER (sostituisce loading-activities semplice) ===== */
+/* ===== SKELETON LOADER ===== */
 @keyframes profileShimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
@@ -610,7 +589,7 @@
   width: 4rem;
 }
 
-/* Loading fallback (se JS non crea gli skeleton) */
+/* Loading fallback testuale */
 .loading-activities {
   text-align: center;
   padding: 2.5rem 2rem;
@@ -628,7 +607,7 @@
 }
 
 /* ===== PULSANTI ===== */
-/* FIX: colori solidi, NON gradient — segue il design system */
+/* FIX: colori solidi - no gradient (design system standard) */
 .btn {
   padding: 0.75rem 1.25rem;
   border-radius: 10px;
@@ -642,17 +621,16 @@
   text-decoration: none;
   transition: background var(--profile-transition),
               box-shadow var(--profile-transition);
-  /* RIMOSSO: shimmer ::before — costoso e il pattern ripple lo rimpiazza */
 }
 
 .btn-primary {
-  background: var(--profile-color-primary); /* SOLIDO — non gradient */
+  background: var(--profile-color-primary);
   color: white;
   box-shadow: 0 2px 8px oklch(0.55 0.18 264 / 0.25);
 }
 
 .btn-primary:hover {
-  background: var(--profile-color-deep); /* darker on hover */
+  background: var(--profile-color-deep);
   box-shadow: 0 4px 16px oklch(0.55 0.18 264 / 0.35);
 }
 
@@ -663,7 +641,7 @@
 }
 
 .btn-secondary:hover {
-  background: #37474f; /* steel darkened */
+  background: #37474f;
   box-shadow: 0 4px 14px oklch(0.3 0.04 220 / 0.3);
 }
 
@@ -679,11 +657,10 @@
   }
 }
 
+/* Rinominato da 'spin' a 'profileSpin' per evitare conflitti con styles.css */
 @keyframes profileSpin {
   to { transform: rotate(360deg); }
 }
-
-/* NOTA: se styles.css ha già @keyframes spin, usa profileSpin per evitare conflitti */
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 968px) {
@@ -696,7 +673,7 @@
 
   .profile-info {
     width: 100%;
-    text-align: left; /* left-align su mobile anche se il container è centrato */
+    text-align: left;
   }
 
   .profile-photo {
@@ -763,8 +740,7 @@
   }
 }
 
-/* ===== DARK MODE (prefers-color-scheme) ===== */
-/* Aggiunta base — da espandere se l'app supporta il tema scuro */
+/* ===== DARK MODE ===== */
 @media (prefers-color-scheme: dark) {
   .profile-card {
     background: #1e1e2e;
@@ -810,7 +786,7 @@
   }
 }
 
-/* ===== RIDUZIONE MOVIMENTO (accessibilità) ===== */
+/* ===== ACCESSIBILITA - RIDUZIONE MOVIMENTO ===== */
 @media (prefers-reduced-motion: reduce) {
   .profile-card,
   .profile-photo,
