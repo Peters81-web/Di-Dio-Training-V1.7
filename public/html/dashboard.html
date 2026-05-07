@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/css/mobile-workout-fix.css">
     <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
     <link rel="stylesheet" href="/css/menu-mobile-fix.css">
+    <link rel="stylesheet" href="/css/fase1-features.css">
 
 </head>
 <body>
@@ -55,6 +56,20 @@
 </nav>
 
     <main class="container">
+
+        <!-- ── STREAK & MOTIVAZIONE ──────────────────────────── -->
+        <div id="streakBanner" class="streak-banner" style="display:none;">
+            <div class="streak-flame">
+                <i class="fas fa-fire"></i>
+                <span id="streakCount">0</span>
+            </div>
+            <div class="streak-info">
+                <div class="streak-title" id="streakTitle">Inizia oggi!</div>
+                <div class="streak-sub"  id="streakSub">Completa un allenamento per avviare la tua streak</div>
+            </div>
+            <div class="streak-badge" id="streakBadge"></div>
+        </div>
+
         <section class="dashboard-section">
             <div class="section-header">
                 <h2>I Tuoi Allenamenti</h2>
@@ -91,9 +106,52 @@
                         <span>Caricamento statistiche...</span>
                     </div>
                 </div>
+                <div id="weekly-calendar" class="weekly-calendar" style="margin-top:1.25rem;"></div>
             </div>
         </section>
     </main>
+
+    <!-- Timer FAB -->
+    <button id="timerFab" class="timer-fab" title="Timer Allenamento">
+        <i class="fas fa-stopwatch"></i>
+    </button>
+
+    <!-- Timer Panel -->
+    <div id="timerPanel" class="timer-panel" style="display:none;">
+        <div class="timer-panel-header">
+            <span class="timer-panel-title"><i class="fas fa-stopwatch"></i> Timer Allenamento</span>
+            <button id="timerClose" class="timer-panel-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="timer-phases" id="timerPhases">
+            <button class="timer-phase active" data-phase="warmup">
+                <i class="fas fa-fire-alt"></i> Riscaldamento
+            </button>
+            <button class="timer-phase" data-phase="main">
+                <i class="fas fa-dumbbell"></i> Principale
+            </button>
+            <button class="timer-phase" data-phase="cooldown">
+                <i class="fas fa-snowflake"></i> Defaticamento
+            </button>
+        </div>
+        <div class="timer-display">
+            <div class="timer-time" id="timerDisplay">00:00</div>
+            <div class="timer-phase-label" id="timerPhaseLabel">Riscaldamento</div>
+        </div>
+        <div class="timer-progress-bar">
+            <div class="timer-progress-fill" id="timerProgressFill" style="width:0%"></div>
+        </div>
+        <div class="timer-controls">
+            <button id="timerStartStop" class="btn btn-primary">
+                <i class="fas fa-play"></i> Start
+            </button>
+            <button id="timerReset" class="btn btn-secondary">
+                <i class="fas fa-redo"></i> Reset
+            </button>
+        </div>
+        <div class="timer-elapsed">
+            Tempo totale: <span id="timerElapsed">0m</span>
+        </div>
+    </div>
 
     <!-- Pulsante Configurazione Dashboard -->
 <div class="dashboard-settings-bar">
@@ -392,6 +450,7 @@
 </script>
 
 <script src="/js/app-core.js"></script>
+<script src="/js/fase1-features.js"></script>
 
 </body>
 </html>
