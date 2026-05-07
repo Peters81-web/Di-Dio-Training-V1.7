@@ -32,9 +32,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function init() {
         try {
             // Inizializzazione Supabase
-            supabaseClient = window.supabaseClient;
-            showToast('Errore di configurazione: ricarica la pagina.', 'error');
-            throw new Error('window.supabaseClient non disponibile');
+             supabaseClient = window.supabaseClient;
+            if (!supabaseClient) {
+                showToast('Errore di configurazione: ricarica la pagina.', 'error');
+                throw new Error('window.supabaseClient non disponibile');
             }
             
             // Verifica autenticazione
@@ -497,6 +498,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
         }
         
+          const sanitize = (html) => typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : escapeHtml(html);
+
         return `
             <div class="workout-phases">
                 ${phases.map(phase => `
@@ -506,7 +509,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             ${phase.title}
                         </h4>
                         <div class="phase-content">
-                            ${phase.content}
+                            ${sanitize(phase.content)}
                         </div>
                     </div>
                 `).join('')}
@@ -684,12 +687,8 @@ if (updateError) {
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
 
-            workouts = workouts.filter(w => w.id !== formData.workoutId);
+           workouts = workouts.filter(w => w.id !== formData.workoutId);
             displayWorkouts(workouts);
-
-            await loadWeeklyStats();
-            // Ricarica statistiche settimanali
-            await loadWeeklyStats();
             
             // Chiedi se vuole vedere le statistiche
             if (confirm('Vuoi vedere le statistiche dei tuoi allenamenti?')) {
