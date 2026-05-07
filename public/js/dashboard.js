@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function init() {
         try {
             // Inizializzazione Supabase
-            supabaseClient = window.supabaseClient || createSupabaseClient();
-            if (!supabaseClient) {
-                throw new Error('Impossibile inizializzare Supabase');
+            supabaseClient = window.supabaseClient;
+            showToast('Errore di configurazione: ricarica la pagina.', 'error');
+            throw new Error('window.supabaseClient non disponibile');
             }
             
             // Verifica autenticazione
@@ -1030,20 +1030,7 @@ if (updateError) {
     /**
      * Crea il client Supabase (fallback)
      */
-    function createSupabaseClient() {
-        try {
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                const SUPABASE_URL = 'https://mzcrogljyijgyzcxczcr.supabase.co';
-                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Y3JvZ2xqeWlqZ3l6Y3hjemNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2NTg4NzQsImV4cCI6MjA1NTIzNDg3NH0.NRvCsTtpEZ6HSMkEwsGc9IrnOVqwtfoVNS7CTKPCB5A';
-                
-                return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            throw new Error('Supabase non disponibile');
-        } catch (error) {
-            console.error('Errore nella creazione del client Supabase:', error);
-            return null;
-        }
-    }
+
     
     // ===== GESTIONE PREFERENZE DASHBOARD =====
     
