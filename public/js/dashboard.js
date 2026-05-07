@@ -645,42 +645,35 @@ document.addEventListener('DOMContentLoaded', async function() {
                rating: formData.rating
              };
             
+            // 1. Inserimento record principale
             const { error } = await supabaseClient
                 .from('completed_workouts')
                 .insert([completedWorkoutData]);
-                
+
             if (error) throw error;
 
-            const card = document.querySelector(`.workout-card[data-id="${formData.workoutId}"]`);
-if (card) {
-  card.style.opacity = '0.5';
-  card.querySelector('.complete-btn')?.remove(); // Nascondi pulsante completa
-}
+            // 2. Aggiornamento denormalizzato (non critico — completed_workouts è la fonte di verità)
+            const { error: updateError } = await supabaseClient
+                .from('workout_plans')
+                .update({
+                    completed: true,
+                    completed_at: completedWorkoutData.completed_at,
+                    average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
+                })
+                .eq('id', formData.workoutId)
+                .eq('user_id', currentUser.id);
 
-await loadWeeklyStats();
+            if (updateError) {
+                console.warn('Errore aggiornamento piano (non bloccante):', updateError.message);
+            }
 
-             const { error: updateError } = await supabaseClient
-    .from('workout_plans')
-    .update({
-        completed: true,
-        completed_at: completedWorkoutData.completed_at,
-        average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
-    })
-    .eq('id', formData.workoutId)
-    .eq('user_id', currentUser.id);
-
-if (updateError) {
-    console.warn('Attenzione: workout completato ma errore aggiornamento piano:', updateError.message);
-    // Non bloccare il flusso — l'insert è già andato
-}
-            
+            // 3. UI aggiornata solo dopo che entrambe le operazioni DB sono complete
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
-
-           workouts = workouts.filter(w => w.id !== formData.workoutId);
+            workouts = workouts.filter(w => w.id !== formData.workoutId);
             displayWorkouts(workouts);
-            
-            // Chiedi se vuole vedere le statistiche
+            await loadWeeklyStats();
+
             if (confirm('Vuoi vedere le statistiche dei tuoi allenamenti?')) {
                 window.location.href = '/stats';
             }
