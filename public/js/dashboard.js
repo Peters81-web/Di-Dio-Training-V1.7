@@ -114,10 +114,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const { data, error } = await supabaseClient
                 .from('workout_plans')
-                .select(`
-                    *,
-                    activities (id, name, icon)
-                `)
+                .select('id, name, activity_id, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
                 
@@ -157,17 +154,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Carica allenamenti completati questa settimana
             const { data: completedWorkouts, error } = await supabaseClient
                 .from('completed_workouts')
-                .select(`
-                    *,
-                    workout_plans (
-                        name,
-                        activities (name)
-                    )
-                `)
+                .select('actual_duration, calories_burned, distance')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', firstDayOfWeek.toISOString())
-                .lte('completed_at', lastDayOfWeek.toISOString())
-                .order('completed_at', { ascending: false });
+                .lte('completed_at', lastDayOfWeek.toISOString());
                 
             if (error) throw error;
             
