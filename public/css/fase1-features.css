@@ -1,0 +1,311 @@
+/* ===========================================
+   FASE 1 FEATURES — Streak, Timer, Calendario
+   =========================================== */
+
+/* ── STREAK BANNER ─────────────────────────── */
+.streak-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    border-radius: var(--border-radius-lg);
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(255,107,53,0.3);
+    animation: streakSlideIn .4s ease-out;
+}
+
+@keyframes streakSlideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.streak-flame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.2);
+    border-radius: var(--border-radius);
+    padding: .6rem .9rem;
+    min-width: 64px;
+}
+
+.streak-flame i {
+    font-size: 1.5rem;
+    animation: flamePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes flamePulse {
+    0%,100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+}
+
+.streak-flame span {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-top: .1rem;
+}
+
+.streak-info { flex: 1; }
+
+.streak-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: .15rem;
+}
+
+.streak-sub {
+    font-size: .82rem;
+    opacity: .88;
+}
+
+.streak-badge {
+    font-size: 1.8rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* ── WEEKLY CALENDAR ────────────────────────── */
+.weekly-calendar-wrap {
+    margin-bottom: 1rem;
+}
+
+.weekly-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .5rem;
+    margin-bottom: 1rem;
+}
+
+.wc-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+    padding: .6rem .3rem;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    transition: transform .15s, box-shadow .15s;
+    cursor: default;
+}
+
+.wc-day.today {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.wc-day.completed {
+    border-color: #16a34a;
+    background: #dcfce7;
+}
+
+.wc-day.planned {
+    border-color: #d97706;
+    background: #fef3c7;
+}
+
+.wc-day.rest {
+    opacity: .5;
+}
+
+.wc-day-name {
+    font-size: .68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.wc-day-num {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.wc-day-icon {
+    font-size: .85rem;
+    height: 1rem;
+}
+
+.wc-day.completed .wc-day-icon { color: #16a34a; }
+.wc-day.planned   .wc-day-icon { color: #d97706; }
+.wc-day.today     .wc-day-name,
+.wc-day.today     .wc-day-num  { color: var(--primary-color); }
+
+.wc-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: .75rem;
+    color: var(--text-secondary);
+}
+
+.wc-legend-item {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.wc-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.wc-dot.completed { background: #16a34a; }
+.wc-dot.planned   { background: #d97706; }
+.wc-dot.today     { background: var(--primary-color); }
+
+/* ── WORKOUT TIMER ──────────────────────────── */
+.timer-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 900;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 20px rgba(67,97,238,0.4);
+    transition: transform .2s, box-shadow .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timer-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(67,97,238,0.5);
+}
+
+.timer-panel {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 2rem;
+    width: 300px;
+    background: var(--card-bg);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    z-index: 901;
+    overflow: hidden;
+}
+
+@keyframes timerSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.timer-panel-header {
+    background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+    color: #fff;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.timer-panel-title {
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.timer-panel-close {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: .8;
+    transition: opacity .15s;
+    padding: 0;
+}
+.timer-panel-close:hover { opacity: 1; }
+
+.timer-phases {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.timer-phase {
+    flex: 1;
+    padding: .6rem .4rem;
+    font-size: .75rem;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+    text-align: center;
+}
+
+.timer-phase.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.timer-display {
+    text-align: center;
+    padding: 1.5rem 1rem 1rem;
+}
+
+.timer-time {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: .05em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.timer-phase-label {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    margin-top: .4rem;
+    font-weight: 500;
+}
+
+.timer-progress-bar {
+    height: 6px;
+    background: var(--border-color, #e5e7eb);
+    margin: 0 1.25rem .5rem;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.timer-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), #7c3aed);
+    border-radius: 3px;
+    transition: width .5s linear;
+    width: 0%;
+}
+
+.timer-controls {
+    display: flex;
+    gap: .5rem;
+    padding: 1rem 1.25rem;
+    justify-content: center;
+}
+
+.timer-elapsed {
+    text-align: center;
+    font-size: .78rem;
+    color: var(--text-secondary);
+    padding: 0 1.25rem 1rem;
+}
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 600px) {
+    .streak-banner { flex-wrap: wrap; }
+    .weekly-calendar { gap: .3rem; }
+    .wc-day-name { font-size: .6rem; }
+    .wc-day-num  { font-size: .9rem; }
+    .timer-panel { right: 1rem; left: 1rem; width: auto; }
+    .timer-fab   { bottom: 1.5rem; right: 1.5rem; }
+}
