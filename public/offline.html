@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline — Di Dio Training</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 420px;
+    }
+    .icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: .75rem;
+    }
+    p {
+      font-size: 1rem;
+      opacity: .85;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: .8rem 2rem;
+      background: rgba(255,255,255,0.2);
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 50px;
+      color: #fff;
+      font-weight: 700;
+      font-size: .95rem;
+      cursor: pointer;
+      transition: background .2s;
+      text-decoration: none;
+    }
+    .btn:hover { background: rgba(255,255,255,0.3); }
+    .tips {
+      margin-top: 2.5rem;
+      padding: 1.25rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      font-size: .85rem;
+      text-align: left;
+    }
+    .tips h3 { margin-bottom: .75rem; font-size: .95rem; }
+    .tips ul { padding-left: 1.25rem; }
+    .tips li { margin-bottom: .4rem; opacity: .85; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Sei offline</h1>
+    <p>Non c'è connessione a internet. Alcune funzionalità potrebbero non essere disponibili, ma puoi ancora navigare nelle pagine già visitate.</p>
+    <button class="btn" onclick="window.location.reload()">
+      Riprova
+    </button>
+    <div class="tips">
+      <h3>💡 Cosa puoi fare offline:</h3>
+      <ul>
+        <li>Consultare i tuoi allenamenti salvati</li>
+        <li>Usare il timer allenamento</li>
+        <li>Controllare la dashboard</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

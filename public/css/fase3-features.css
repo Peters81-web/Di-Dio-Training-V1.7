@@ -1,0 +1,202 @@
+/* ===========================================
+   FASE 3 — Recupero Muscolare + Offline Mode
+   =========================================== */
+
+/* ── RECOVERY SECTION ───────────────────────── */
+.recovery-section {
+    margin-bottom: 1.5rem;
+}
+
+.recovery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+}
+
+.muscle-card {
+    background: var(--card-bg, #fff);
+    border-radius: var(--border-radius, 8px);
+    padding: .9rem .75rem;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: border-color .2s, transform .15s;
+    position: relative;
+    overflow: hidden;
+}
+
+.muscle-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 0 0 var(--border-radius, 8px) var(--border-radius, 8px);
+}
+
+.muscle-card.recovered   { border-color: #16a34a; }
+.muscle-card.recovered::before { background: #16a34a; }
+
+.muscle-card.partial     { border-color: #d97706; }
+.muscle-card.partial::before  { background: #d97706; }
+
+.muscle-card.fatigued    { border-color: #dc2626; }
+.muscle-card.fatigued::before { background: #dc2626; }
+
+.muscle-card.rested      { border-color: var(--border-color, #e5e7eb); opacity: .6; }
+
+.muscle-icon {
+    font-size: 1.6rem;
+    margin-bottom: .4rem;
+    line-height: 1;
+}
+
+.muscle-name {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a2e);
+    margin-bottom: .4rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.muscle-bar-wrap {
+    background: var(--border-color, #e5e7eb);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: .35rem;
+}
+
+.muscle-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .6s ease-out;
+}
+
+.muscle-card.recovered  .muscle-bar { background: #16a34a; }
+.muscle-card.partial    .muscle-bar { background: #d97706; }
+.muscle-card.fatigued   .muscle-bar { background: #dc2626; }
+.muscle-card.rested     .muscle-bar { background: #9ca3af; }
+
+.muscle-pct {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+}
+
+.muscle-card.recovered .muscle-pct  { color: #16a34a; }
+.muscle-card.partial   .muscle-pct  { color: #d97706; }
+.muscle-card.fatigued  .muscle-pct  { color: #dc2626; }
+
+.recovery-legend {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    font-size: .75rem;
+    color: var(--text-secondary, #6b7280);
+    margin-top: .75rem;
+}
+
+.recovery-legend-item {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.recovery-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.recovery-dot.recovered { background: #16a34a; }
+.recovery-dot.partial   { background: #d97706; }
+.recovery-dot.fatigued  { background: #dc2626; }
+.recovery-dot.rested    { background: #9ca3af; }
+
+/* ── OFFLINE BANNER ─────────────────────────── */
+.offline-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 9999;
+    background: #1e293b;
+    color: #fff;
+    text-align: center;
+    padding: .55rem 1rem;
+    font-size: .85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    transform: translateY(-100%);
+    transition: transform .3s ease;
+}
+
+.offline-banner.visible {
+    transform: translateY(0);
+}
+
+.offline-banner.online {
+    background: #16a34a;
+}
+
+.offline-banner i { font-size: 1rem; }
+
+/* ── PWA INSTALL PROMPT ─────────────────────── */
+.pwa-install-bar {
+    position: fixed;
+    bottom: 5.5rem;
+    left: 1rem;
+    right: 5rem;
+    background: var(--card-bg, #fff);
+    border-radius: var(--border-radius-lg, 12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 800;
+    animation: pwaSlideUp .3s ease-out;
+}
+
+@keyframes pwaSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.pwa-install-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.pwa-install-text {
+    flex: 1;
+}
+
+.pwa-install-text strong {
+    display: block;
+    font-size: .9rem;
+    margin-bottom: .15rem;
+    color: var(--text-primary, #1a1a2e);
+}
+
+.pwa-install-text small {
+    font-size: .75rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.pwa-install-actions {
+    display: flex;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 600px) {
+    .recovery-grid { grid-template-columns: repeat(2, 1fr); }
+    .pwa-install-bar { bottom: 4.5rem; }
+}
+
+@media (max-width: 360px) {
+    .recovery-grid { grid-template-columns: repeat(3, 1fr); }
+    .muscle-icon { font-size: 1.3rem; }
+}

@@ -241,3 +241,109 @@
         flex-direction: column;
     }
 }
+/* ── Contesto Storico ────────────────────────────────────── */
+.context-card {
+    border-left: 4px solid #4361ee;
+    background: linear-gradient(135deg, #f8f9ff 0%, #eef0ff 100%);
+}
+
+.context-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.context-header i {
+    font-size: 1.2rem;
+    color: #4361ee;
+}
+
+.context-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #1a1a2e;
+}
+
+.context-badge {
+    margin-left: auto;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .25rem .65rem;
+    border-radius: 20px;
+}
+
+.context-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.ctx-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff;
+    border-radius: 10px;
+    padding: .75rem .5rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(67,97,238,0.08);
+}
+
+.ctx-stat i {
+    font-size: 1.1rem;
+    color: #4361ee;
+    margin-bottom: .3rem;
+}
+
+.ctx-stat span {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1;
+}
+
+.ctx-stat small {
+    font-size: .7rem;
+    color: #666;
+    margin-top: .2rem;
+}
+
+.context-hint {
+    font-size: .82rem;
+    color: #555;
+    margin-bottom: .6rem;
+    font-weight: 500;
+}
+
+.quick-prompts {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.quick-prompt-btn {
+    padding: .45rem .9rem;
+    border-radius: 20px;
+    border: 1.5px solid #4361ee;
+    background: transparent;
+    color: #4361ee;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+
+.quick-prompt-btn:hover {
+    background: #4361ee;
+    color: #fff;
+}
+
+@media (max-width: 600px) {
+    .context-stats { grid-template-columns: repeat(2, 1fr); }
+    .quick-prompt-btn { font-size: .75rem; }
+}

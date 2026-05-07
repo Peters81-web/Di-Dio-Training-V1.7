@@ -26,16 +26,153 @@ document.addEventListener('DOMContentLoaded', async function () {
     activityType: document.getElementById('activityType')
   };
 
+  let workoutContext = null;
+
   async function init() {
     try {
       const session = await checkAuth();
       if (session) {
         currentUser = session.user;
         setupEventListeners();
+        await loadWorkoutContext();
       }
     } catch (error) {
       console.error('Initialization error:', error);
     }
+  }
+
+  async function loadWorkoutContext() {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: completed, error } = await supabaseClient
+        .from('completed_workouts')
+        .select('completed_at, actual_duration, activity_type, workout_plans(name, activity_type)')
+        .eq('user_id', currentUser.id)
+        .gte('completed_at', thirtyDaysAgo.toISOString())
+        .order('completed_at', { ascending: false })
+        .limit(30);
+
+      if (error || !completed?.length) return;
+
+      const totalCompleted = completed.length;
+      const avgDuration = Math.round(
+        completed.reduce((s, w) => s + (w.actual_duration || 45), 0) / totalCompleted
+      );
+
+      // Frequenza settimanale (ultimi 30 giorni = ~4.3 settimane)
+      const avgPerWeek = (totalCompleted / 4.3).toFixed(1);
+
+      // Attività più frequente
+      const actCounts = {};
+      completed.forEach(w => {
+        const act = w.activity_type || w.workout_plans?.activity_type || 'gym';
+        actCounts[act] = (actCounts[act] || 0) + 1;
+      });
+      const topActivity = Object.entries(actCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+      // Streak (giorni consecutivi)
+      const days = new Set(completed.map(w => w.completed_at.slice(0, 10)));
+      let streak = 0;
+      const today = new Date();
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        if (days.has(key)) { streak++; } else if (i > 0) { break; }
+      }
+
+      // Ultimi nomi allenamenti
+      const lastWorkouts = completed.slice(0, 5)
+        .map(w => w.workout_plans?.name)
+        .filter(Boolean);
+
+      workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak, lastWorkouts };
+      renderContextCard(workoutContext);
+    } catch (err) {
+      console.warn('Context load error:', err);
+    }
+  }
+
+  const ACT_LABELS = {
+    running: 'Corsa', gym: 'Palestra', yoga: 'Yoga',
+    cycling: 'Ciclismo', mobility: 'Mobilità', walking: 'Camminata'
+  };
+
+  function renderContextCard(ctx) {
+    const card = document.getElementById('contextCard');
+    const stats = document.getElementById('contextStats');
+    const badge = document.getElementById('contextBadge');
+    const quickPrompts = document.getElementById('quickPrompts');
+    if (!card) return;
+
+    badge.textContent = ctx.streak > 0 ? `🔥 ${ctx.streak} giorni streak` : '';
+
+    stats.innerHTML = `
+      <div class="ctx-stat"><i class="fas fa-check-circle"></i><span>${ctx.totalCompleted}</span><small>completati (30gg)</small></div>
+      <div class="ctx-stat"><i class="fas fa-calendar-alt"></i><span>${ctx.avgPerWeek}</span><small>sessioni/sett.</small></div>
+      <div class="ctx-stat"><i class="fas fa-clock"></i><span>${ctx.avgDuration}m</span><small>durata media</small></div>
+      <div class="ctx-stat"><i class="fas fa-running"></i><span>${ACT_LABELS[ctx.topActivity] || ctx.topActivity || '--'}</span><small>attività top</small></div>
+    `;
+
+    // Suggerimenti contestuali
+    const suggestions = buildSuggestions(ctx);
+    quickPrompts.innerHTML = suggestions.map(s =>
+      `<button class="quick-prompt-btn" data-prompt="${s.prompt}" data-activity="${s.activity}">${s.label}</button>`
+    ).join('');
+
+    quickPrompts.querySelectorAll('.quick-prompt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const promptEl = document.getElementById('aiPrompt');
+        if (promptEl) promptEl.value = btn.dataset.prompt;
+        const actEl = document.getElementById('activityType');
+        if (actEl && btn.dataset.activity) actEl.value = btn.dataset.activity;
+      });
+    });
+
+    card.style.display = 'block';
+  }
+
+  function buildSuggestions(ctx) {
+    const suggestions = [];
+    const avg = parseFloat(ctx.avgPerWeek);
+
+    if (ctx.streak === 0) {
+      suggestions.push({
+        label: '🚀 Riparti dopo una pausa',
+        prompt: `Ho fatto una pausa e voglio riprendere gradualmente. Negli ultimi 30 giorni ho fatto ${ctx.totalCompleted} allenamenti. Crea un piano soft per rientrare senza infortuni.`,
+        activity: ctx.topActivity || 'gym'
+      });
+    } else if (ctx.streak >= 7) {
+      suggestions.push({
+        label: '🔥 Sono in forma, alza il livello',
+        prompt: `Sono in streak da ${ctx.streak} giorni e mi sento in forma. Voglio un piano più sfidante. Durata media attuale: ${ctx.avgDuration} min. Aumenta intensità e volume.`,
+        activity: ctx.topActivity || 'gym'
+      });
+    }
+
+    if (avg < 2) {
+      suggestions.push({
+        label: '📈 Aumenta la frequenza',
+        prompt: `Mi alleno circa ${ctx.avgPerWeek} volte a settimana e voglio aumentare la frequenza gradualmente. Crea un piano da 3-4 sessioni settimanali compatibile con i miei impegni.`,
+        activity: ctx.topActivity || 'gym'
+      });
+    } else if (avg >= 4) {
+      suggestions.push({
+        label: '💪 Ottimizza il recupero',
+        prompt: `Mi alleno ${ctx.avgPerWeek} volte a settimana. Voglio un piano che bilanci carico e recupero, includendo sessioni di mobilità e stretching attivo.`,
+        activity: 'mobility'
+      });
+    }
+
+    suggestions.push({
+      label: '🎯 Migliora in ' + (ACT_LABELS[ctx.topActivity] || 'palestra'),
+      prompt: `Voglio migliorare le mie performance in ${ACT_LABELS[ctx.topActivity] || 'palestra'}. Durata media sessioni: ${ctx.avgDuration} min. Crea un piano progressivo di 4 settimane.`,
+      activity: ctx.topActivity || 'gym'
+    });
+
+    return suggestions.slice(0, 3);
   }
 
   async function checkAuth() {
@@ -138,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType })
+        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType, workoutContext })
       });
 
       if (!response.ok) {

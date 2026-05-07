@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function () {
   var bpmChart = null;
   var actChart = null;
   var weekChart = null;
+  var durationChart = null;
+  var calChart = null;
+  var allCompleted = [];
 
   var ACT = {
     running:  { label: 'Corsa',     color: '#4e54c8' },
@@ -49,15 +52,23 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function fetchData() {
-    sc.from('workout_plans')
-      .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty')
-      .eq('user_id', currentUser.id)
-      .order('scheduled_date', { ascending: true })
-      .then(function (res) {
-        if (res.error) { console.error('Fetch error', res.error); return; }
-        allWorkouts = res.data || [];
-        renderAll();
-      });
+    Promise.all([
+      sc.from('workout_plans')
+        .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty')
+        .eq('user_id', currentUser.id)
+        .order('scheduled_date', { ascending: true }),
+      sc.from('completed_workouts')
+        .select('completed_at,actual_duration,calories_burned,distance,activity_type,workout_plans(name,activity_type)')
+        .eq('user_id', currentUser.id)
+        .order('completed_at', { ascending: true })
+        .limit(200)
+    ]).then(function (results) {
+      if (!results[0].error) allWorkouts  = results[0].data || [];
+      if (!results[1].error) allCompleted = results[1].data || [];
+      renderAll();
+      renderProgressCharts();
+      renderPersonalRecords();
+    });
   }
 
   function getFiltered() {
@@ -207,6 +218,126 @@ document.addEventListener('DOMContentLoaded', function () {
     wrapper.innerHTML = '<table class="recent-table">'
       + '<thead><tr><th>Data</th><th>Nome</th><th>Attivita</th><th>Difficolta</th><th>Durata</th><th>BPM</th><th>Stato</th></tr></thead>'
       + '<tbody>' + rows + '</tbody></table>';
+  }
+
+  // ── Trend durata per attività ───────────────────────────
+  function renderProgressCharts() {
+    var data = allCompleted.filter(function (w) { return w.actual_duration > 0; });
+
+    // Trend durata: ultimi 12 completamenti, raggruppati per settimana
+    if (!data.length) {
+      toggleBlock('durationTrendEmpty', 'durationTrendWrapper', true);
+      toggleBlock('calWeekEmpty', 'calWeekWrapper', true);
+      return;
+    }
+
+    // Duration trend — raggruppato per settimana ISO
+    var weekDur = {};
+    data.forEach(function (w) {
+      var d = new Date(w.completed_at);
+      var mon = new Date(d);
+      mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      var key = mon.toISOString().slice(0, 10);
+      if (!weekDur[key]) weekDur[key] = { total: 0, count: 0 };
+      weekDur[key].total += w.actual_duration;
+      weekDur[key].count++;
+    });
+    var durKeys = Object.keys(weekDur).sort().slice(-10);
+    var durData = durKeys.map(function (k) { return Math.round(weekDur[k].total / weekDur[k].count); });
+
+    toggleBlock('durationTrendWrapper', 'durationTrendEmpty', true);
+    if (durationChart) { durationChart.destroy(); durationChart = null; }
+    var ctx1 = document.getElementById('durationTrendChart');
+    if (ctx1) {
+      durationChart = new Chart(ctx1.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: durKeys.map(function (k) { return fmtDate(k); }),
+          datasets: [{
+            label: 'Durata media (min)', data: durData,
+            borderColor: '#4e54c8', backgroundColor: 'rgba(78,84,200,0.08)',
+            borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+    }
+
+    // Calorie per settimana
+    var weekCal = {};
+    allCompleted.filter(function (w) { return w.calories_burned > 0; }).forEach(function (w) {
+      var d = new Date(w.completed_at);
+      var mon = new Date(d);
+      mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      var key = mon.toISOString().slice(0, 10);
+      weekCal[key] = (weekCal[key] || 0) + w.calories_burned;
+    });
+    var calKeys = Object.keys(weekCal).sort().slice(-10);
+
+    if (!calKeys.length) {
+      toggleBlock('calWeekEmpty', 'calWeekWrapper', true);
+    } else {
+      toggleBlock('calWeekWrapper', 'calWeekEmpty', true);
+      if (calChart) { calChart.destroy(); calChart = null; }
+      var ctx2 = document.getElementById('calWeekChart');
+      if (ctx2) {
+        calChart = new Chart(ctx2.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: calKeys.map(function (k) { return fmtDate(k); }),
+            datasets: [{
+              label: 'Calorie', data: calKeys.map(function (k) { return weekCal[k]; }),
+              backgroundColor: 'rgba(255,107,53,0.75)', borderRadius: 6
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+    }
+  }
+
+  // ── Personal Records ────────────────────────────────────
+  function renderPersonalRecords() {
+    var container = document.getElementById('personalRecords');
+    if (!container) return;
+
+    var data = allCompleted;
+    if (!data.length) {
+      container.innerHTML = '<div class="state-box"><i class="fas fa-medal"></i><p>Nessun allenamento completato</p></div>';
+      return;
+    }
+
+    var maxDur  = data.reduce(function (m, w) { return w.actual_duration > (m.actual_duration || 0) ? w : m; }, {});
+    var maxCal  = data.filter(function (w) { return w.calories_burned > 0; })
+                      .reduce(function (m, w) { return w.calories_burned > (m.calories_burned || 0) ? w : m; }, {});
+    var maxDist = data.filter(function (w) { return w.distance > 0; })
+                      .reduce(function (m, w) { return w.distance > (m.distance || 0) ? w : m; }, {});
+    var total   = data.reduce(function (s, w) { return s + (w.actual_duration || 0); }, 0);
+    var totalCal = data.reduce(function (s, w) { return s + (w.calories_burned || 0); }, 0);
+
+    var records = [
+      { icon: '⏱️', value: maxDur.actual_duration ? maxDur.actual_duration + ' min' : '--', label: 'Sessione più lunga', date: maxDur.completed_at },
+      { icon: '🔥', value: maxCal.calories_burned ? maxCal.calories_burned + ' kcal' : '--', label: 'Più calorie in una sessione', date: maxCal.completed_at },
+      { icon: '📏', value: maxDist.distance ? maxDist.distance.toFixed(1) + ' km' : '--', label: 'Distanza record', date: maxDist.completed_at },
+      { icon: '💪', value: data.length + ' sessioni', label: 'Totale completati', date: null },
+      { icon: '⏰', value: total > 0 ? Math.round(total / 60) + ' ore' : '--', label: 'Ore totali allenamento', date: null },
+      { icon: '🏋️', value: totalCal > 0 ? totalCal.toLocaleString('it-IT') + ' kcal' : '--', label: 'Calorie totali bruciate', date: null },
+    ];
+
+    container.innerHTML = records.map(function (r) {
+      return '<div class="pr-card">'
+        + '<div class="pr-icon">' + r.icon + '</div>'
+        + '<div class="pr-value">' + esc(r.value) + '</div>'
+        + '<div class="pr-label">' + esc(r.label) + '</div>'
+        + (r.date ? '<div class="pr-date">' + fmtDate(r.date) + '</div>' : '')
+        + '</div>';
+    }).join('');
   }
 
   function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
