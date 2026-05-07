@@ -893,22 +893,6 @@ if (updateError) {
     }
     
     /**
-     * Formatta la durata in formato leggibile
-     */
-    function formatDuration(minutes) {
-        if (!minutes || minutes === 0) return '0 min';
-        
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        
-        if (hours > 0) {
-            return `${hours}h ${remainingMinutes > 0 ? remainingMinutes + 'm' : ''}`;
-        } else {
-            return `${minutes}m`;
-        }
-    }
-    
-    /**
      * Escape HTML per prevenire XSS
      */
     function escapeHtml(text) {
@@ -1087,7 +1071,6 @@ if (updateError) {
     // Esponi le funzioni che devono essere accessibili dall'HTML
     window.openModal = openModal;
     window.closeModal = closeModal;
-    window.formatDuration = formatDuration;
     
     // ===== AVVIA INIZIALIZZAZIONE =====
     

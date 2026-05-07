@@ -101,15 +101,27 @@ function formatDate(dateString) {
     return date.toLocaleDateString('it-IT', options).replace(',', ' alle');
 }
 
-// Converti secondi in formato leggibile (es. 1h 30m)
-function formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (hours > 0) {
-        return `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
+// Converti minuti in formato leggibile (es. 1h 30m). Accetta anche stringhe HH:MM:SS.
+function formatDuration(minutes) {
+    if (!minutes) return '0 min';
+
+    if (typeof minutes === 'string' && minutes.includes(':')) {
+        const parts = minutes.split(':');
+        if (parts.length === 3) {
+            minutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        } else {
+            minutes = parseInt(parts[0]);
+        }
+    } else {
+        minutes = parseInt(minutes) || 0;
     }
-    
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${remainingMinutes > 0 ? remainingMinutes + 'm' : ''}`;
+    }
     return `${minutes}m`;
 }
 
