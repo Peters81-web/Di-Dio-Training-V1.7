@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     continue;
                 }
                 
-                console.log('Autenticazione riuscita:', session.user.email);
                 return session;
                 
             } catch (error) {
@@ -64,9 +63,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const session = await checkAuth();
             if (!session) return;
-            
-            console.log('Caricamento programmi per utente:', session.user.id);
-            
+
             const { data: programs, error } = await supabaseClient
                 .from('training_programs')
                 .select(`

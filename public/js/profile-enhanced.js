@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Imposta correttamente currentUser
         currentUser = data.user;
-        console.log('Utente autenticato:', currentUser);
         return true;
       } catch (error) {
         console.error('Errore durante il controllo dell\'autenticazione:', error);

@@ -43,8 +43,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!session) return;
             
             currentUser = session.user;
-            console.log('Utente autenticato:', currentUser.email);
-            
+
             // Setup della dashboard
             setupEventListeners();
             await loadDashboardData();
