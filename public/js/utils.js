@@ -101,15 +101,27 @@ function formatDate(dateString) {
     return date.toLocaleDateString('it-IT', options).replace(',', ' alle');
 }
 
-// Converti secondi in formato leggibile (es. 1h 30m)
-function formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (hours > 0) {
-        return `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
+// Converti minuti in formato leggibile (es. 1h 30m). Accetta anche stringhe HH:MM:SS.
+function formatDuration(minutes) {
+    if (!minutes) return '0 min';
+
+    if (typeof minutes === 'string' && minutes.includes(':')) {
+        const parts = minutes.split(':');
+        if (parts.length === 3) {
+            minutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        } else {
+            minutes = parseInt(parts[0]);
+        }
+    } else {
+        minutes = parseInt(minutes) || 0;
     }
-    
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${remainingMinutes > 0 ? remainingMinutes + 'm' : ''}`;
+    }
     return `${minutes}m`;
 }
 
@@ -121,33 +133,6 @@ function generateUniqueId() {
 // Ottieni l'URL base dell'applicazione
 function getBaseUrl() {
     return window.location.origin;
-}
-
-// Ottieni il nome di un'attività dal suo ID
-function getActivityNameById(activityId) {
-    const activityMap = {
-        1: 'Corsa',
-        2: 'Ciclismo',
-        3: 'Nuoto',
-        4: 'Forza',
-        5: 'Yoga'
-    };
-    
-    return activityMap[activityId] || 'Attività sconosciuta';
-}
-
-// Ottieni l'icona di un'attività dal suo ID
-function getActivityIconById(activityId) {
-    const iconMap = {
-        1: 'fa-running',
-        2: 'fa-bicycle',
-        3: 'fa-person-swimming',
-        4: 'fa-dumbbell',
-        5: 'fa-om',
-        'default': 'fa-dumbbell'
-    };
-    
-    return iconMap[activityId] || iconMap.default;
 }
 
 // Verifica se un utente è autenticato
@@ -185,6 +170,4 @@ window.formatDate = formatDate;
 window.formatDuration = formatDuration;
 window.generateUniqueId = generateUniqueId;
 window.getBaseUrl = getBaseUrl;
-window.getActivityNameById = getActivityNameById;
-window.getActivityIconById = getActivityIconById;
 window.checkUserAuthentication = checkUserAuthentication;

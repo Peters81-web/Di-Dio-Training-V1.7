@@ -32,9 +32,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function init() {
         try {
             // Inizializzazione Supabase
-            supabaseClient = window.supabaseClient || createSupabaseClient();
+             supabaseClient = window.supabaseClient;
             if (!supabaseClient) {
-                throw new Error('Impossibile inizializzare Supabase');
+                showToast('Errore di configurazione: ricarica la pagina.', 'error');
+                throw new Error('window.supabaseClient non disponibile');
             }
             
             // Verifica autenticazione
@@ -42,8 +43,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!session) return;
             
             currentUser = session.user;
-            console.log('Utente autenticato:', currentUser.email);
-            
+
             // Setup della dashboard
             setupEventListeners();
             await loadDashboardData();
@@ -113,10 +113,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const { data, error } = await supabaseClient
                 .from('workout_plans')
-                .select(`
-                    *,
-                    activities (id, name, icon)
-                `)
+                .select('id, name, activity_id, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
                 
@@ -156,17 +153,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Carica allenamenti completati questa settimana
             const { data: completedWorkouts, error } = await supabaseClient
                 .from('completed_workouts')
-                .select(`
-                    *,
-                    workout_plans (
-                        name,
-                        activities (name)
-                    )
-                `)
+                .select('actual_duration, calories_burned, distance')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', firstDayOfWeek.toISOString())
-                .lte('completed_at', lastDayOfWeek.toISOString())
-                .order('completed_at', { ascending: false });
+                .lte('completed_at', lastDayOfWeek.toISOString());
                 
             if (error) throw error;
             
@@ -211,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Crea le card degli allenamenti
         workoutsData.forEach((workout, index) => {
-            const iconClass = getActivityIcon(workout.activity_id);
+            const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
             
             const card = document.createElement('div');
             card.className = 'card workout-card';
@@ -356,7 +346,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         removeExistingModal('workoutDetailsModal');
         
         // Determina l'icona dell'attività
-        const iconClass = getActivityIcon(workout.activity_id);
+        const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
         
         // Crea il modal
         const modal = createWorkoutDetailsModal(workout, iconClass);
@@ -497,6 +487,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
         }
         
+          const sanitize = (html) => typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : escapeHtml(html);
+
         return `
             <div class="workout-phases">
                 ${phases.map(phase => `
@@ -506,7 +498,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             ${phase.title}
                         </h4>
                         <div class="phase-content">
-                            ${phase.content}
+                            ${sanitize(phase.content)}
                         </div>
                     </div>
                 `).join('')}
@@ -652,46 +644,35 @@ document.addEventListener('DOMContentLoaded', async function() {
                rating: formData.rating
              };
             
+            // 1. Inserimento record principale
             const { error } = await supabaseClient
                 .from('completed_workouts')
                 .insert([completedWorkoutData]);
-                
+
             if (error) throw error;
 
-            const card = document.querySelector(`.workout-card[data-id="${formData.workoutId}"]`);
-if (card) {
-  card.style.opacity = '0.5';
-  card.querySelector('.complete-btn')?.remove(); // Nascondi pulsante completa
-}
+            // 2. Aggiornamento denormalizzato (non critico — completed_workouts è la fonte di verità)
+            const { error: updateError } = await supabaseClient
+                .from('workout_plans')
+                .update({
+                    completed: true,
+                    completed_at: completedWorkoutData.completed_at,
+                    average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
+                })
+                .eq('id', formData.workoutId)
+                .eq('user_id', currentUser.id);
 
-await loadWeeklyStats();
+            if (updateError) {
+                console.warn('Errore aggiornamento piano (non bloccante):', updateError.message);
+            }
 
-             const { error: updateError } = await supabaseClient
-    .from('workout_plans')
-    .update({
-        completed: true,
-        completed_at: completedWorkoutData.completed_at,
-        average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
-    })
-    .eq('id', formData.workoutId)
-    .eq('user_id', currentUser.id);
-
-if (updateError) {
-    console.warn('Attenzione: workout completato ma errore aggiornamento piano:', updateError.message);
-    // Non bloccare il flusso — l'insert è già andato
-}
-            
+            // 3. UI aggiornata solo dopo che entrambe le operazioni DB sono complete
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
-
             workouts = workouts.filter(w => w.id !== formData.workoutId);
             displayWorkouts(workouts);
+            await loadWeeklyStats();
 
-            await loadWeeklyStats();
-            // Ricarica statistiche settimanali
-            await loadWeeklyStats();
-            
-            // Chiedi se vuole vedere le statistiche
             if (confirm('Vuoi vedere le statistiche dei tuoi allenamenti?')) {
                 window.location.href = '/stats';
             }
@@ -737,6 +718,9 @@ if (updateError) {
      * Reset completo dei dati utente
      */
     async function resetUserData() {
+        const input = document.getElementById('confirmDeleteInput');
+        if (!input || input.value !== 'ELIMINA') return;
+
         try {
             showLoading();
             
@@ -777,19 +761,31 @@ if (updateError) {
         // Menu mobile
         setupMobileMenu();
         
-        // Pulsante reset dati
+        // Pulsante reset dati — resetta input e disabilita bottone ad ogni apertura
         if (elements.resetDataBtn) {
             elements.resetDataBtn.addEventListener('click', () => {
+                const input = document.getElementById('confirmDeleteInput');
+                const btn = document.getElementById('confirmDeleteBtn');
+                if (input) input.value = '';
+                if (btn) btn.disabled = true;
                 openModal('confirmModal');
             });
         }
         
         // Conferma reset
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const confirmDeleteInput = document.getElementById('confirmDeleteInput');
+
+        if (confirmDeleteInput && confirmDeleteBtn) {
+            confirmDeleteInput.addEventListener('input', () => {
+                confirmDeleteBtn.disabled = confirmDeleteInput.value !== 'ELIMINA';
+            });
+        }
+
         if (confirmDeleteBtn) {
             confirmDeleteBtn.addEventListener('click', resetUserData);
         }
-        
+
         // Annulla reset
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         if (cancelDeleteBtn) {
@@ -861,51 +857,6 @@ if (updateError) {
         } catch (error) {
             console.error('Errore logout:', error);
             showToast('Errore durante il logout', 'error');
-        }
-    }
-    
-    /**
-     * Ottiene l'icona per un'attività
-     */
-    function getActivityIcon(activityId) {
-        const iconMap = {
-            '1': 'fa-running',      // Corsa
-            '2': 'fa-bicycle',      // Ciclismo
-            '3': 'fa-swimmer',      // Nuoto
-            '4': 'fa-dumbbell',     // Forza
-            '5': 'fa-om',           // Yoga
-        };
-        
-        // Se è UUID, convertilo
-        if (typeof activityId === 'string' && activityId.includes('-')) {
-            const uuidMap = {
-                'af12a17d-cca9-4cd3-a4f8-029d1208525f': '1', // Corsa
-                '2ba50271-cd8c-4b87-8fd2-8c6d15af9078': '2', // Ciclismo
-                '57c626f0-43fe-42bf-b306-67554c4eabaa': '3', // Nuoto
-                '8e7e2208-4590-44a7-a317-499323f371c4': '4', // Forza
-                '8deb591f-d67c-4e63-ad48-beb755814068': '5'  // Yoga
-            };
-            
-            const numericId = uuidMap[activityId];
-            return iconMap[numericId] || 'fa-dumbbell';
-        }
-        
-        return iconMap[activityId] || 'fa-dumbbell';
-    }
-    
-    /**
-     * Formatta la durata in formato leggibile
-     */
-    function formatDuration(minutes) {
-        if (!minutes || minutes === 0) return '0 min';
-        
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        
-        if (hours > 0) {
-            return `${hours}h ${remainingMinutes > 0 ? remainingMinutes + 'm' : ''}`;
-        } else {
-            return `${minutes}m`;
         }
     }
     
@@ -1030,20 +981,7 @@ if (updateError) {
     /**
      * Crea il client Supabase (fallback)
      */
-    function createSupabaseClient() {
-        try {
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                const SUPABASE_URL = 'https://mzcrogljyijgyzcxczcr.supabase.co';
-                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Y3JvZ2xqeWlqZ3l6Y3hjemNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2NTg4NzQsImV4cCI6MjA1NTIzNDg3NH0.NRvCsTtpEZ6HSMkEwsGc9IrnOVqwtfoVNS7CTKPCB5A';
-                
-                return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            throw new Error('Supabase non disponibile');
-        } catch (error) {
-            console.error('Errore nella creazione del client Supabase:', error);
-            return null;
-        }
-    }
+
     
     // ===== GESTIONE PREFERENZE DASHBOARD =====
     
@@ -1101,7 +1039,6 @@ if (updateError) {
     // Esponi le funzioni che devono essere accessibili dall'HTML
     window.openModal = openModal;
     window.closeModal = closeModal;
-    window.formatDuration = formatDuration;
     
     // ===== AVVIA INIZIALIZZAZIONE =====
     

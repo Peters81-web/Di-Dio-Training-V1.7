@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/enhanced-design.css">
-    <link rel="stylesheet" href="/css/dashboard-enhanced.css">
     <link rel="stylesheet" href="/css/notifications.css">
     <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
     <link rel="stylesheet" href="/css/menu-mobile-fix.css">
@@ -16,51 +15,33 @@
 </head>
 <body>
 
-<!-- NAVBAR — identica alle altre pagine -->
 <nav class="navbar">
     <div class="container">
         <h1 class="navbar-brand">
             <i class="fas fa-user mr-2"></i>
             Profilo
         </h1>
-
         <button class="mobile-menu-toggle" id="mobileMenuToggle">
             <i class="fas fa-bars"></i>
         </button>
-
         <div class="nav-links" id="navLinks">
-            <a href="/dashboard" class="btn btn-outline">
-                <i class="fas fa-home"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="/stats" class="btn btn-outline">
-                <i class="fas fa-chart-line"></i>
-                <span>Statistiche</span>
-            </a>
-            <a href="/ai-trainer" class="btn btn-outline">
-                <i class="fas fa-robot"></i>
-                <span>AI Trainer</span>
-            </a>
-            <a href="/workout" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                <span>Nuovo Allenamento</span>
-            </a>
-            <button id="logoutBtn" class="btn btn-danger">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </button>
+            <a href="/dashboard" class="btn btn-outline"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a href="/stats" class="btn btn-outline"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+            <a href="/ai-trainer" class="btn btn-outline"><i class="fas fa-robot"></i><span>AI Trainer</span></a>
+            <a href="/workout" class="btn btn-primary"><i class="fas fa-plus"></i><span>Nuovo Allenamento</span></a>
+            <button id="logoutBtn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
         </div>
     </div>
 </nav>
 
-<main class="container">
+<main class="container profile-container">
 
-    <!-- ===== HEADER PROFILO ===== -->
-    <section class="dashboard-section profile-header-section">
-        <div class="profile-header-card">
+    <!-- ── HERO HEADER ─────────────────────────────────────────────── -->
+    <div class="profile-hero">
+        <div class="profile-hero-bg"></div>
+        <div class="profile-hero-content">
 
-            <!-- Foto profilo -->
-            <div class="profile-avatar-wrapper">
+            <div class="profile-avatar-wrap">
                 <div class="profile-avatar" id="profileAvatarDisplay">
                     <i class="fas fa-user"></i>
                 </div>
@@ -70,190 +51,179 @@
                 <input type="file" id="avatarInput" accept="image/*" style="display:none;">
             </div>
 
-            <!-- Nome e info rapide -->
-            <div class="profile-header-info">
-                <h2 id="profileDisplayName">Caricamento...</h2>
-                <p class="profile-email" id="profileDisplayEmail"></p>
-                <div class="profile-quick-stats">
-                    <span class="quick-stat">
-                        <i class="fas fa-ruler-vertical"></i>
-                        <span id="profileDisplayHeight">-- cm</span>
-                    </span>
-                    <span class="quick-stat">
-                        <i class="fas fa-weight"></i>
-                        <span id="profileDisplayWeight">-- kg</span>
-                    </span>
-                    <span class="quick-stat">
-                        <i class="fas fa-birthday-cake"></i>
-                        <span id="profileDisplayAge">-- anni</span>
-                    </span>
+            <div class="profile-hero-info">
+                <h2 id="profileDisplayName" class="profile-name">Caricamento...</h2>
+                <p  id="profileDisplayEmail" class="profile-email"></p>
+                <div class="profile-chips">
+                    <span class="chip"><i class="fas fa-ruler-vertical"></i><span id="profileDisplayHeight">-- cm</span></span>
+                    <span class="chip"><i class="fas fa-weight"></i><span id="profileDisplayWeight">-- kg</span></span>
+                    <span class="chip"><i class="fas fa-birthday-cake"></i><span id="profileDisplayAge">-- anni</span></span>
                 </div>
             </div>
 
-            <!-- Pulsante modifica -->
-            <div class="profile-header-actions">
-                <button class="btn btn-primary" id="editProfileBtn">
-                    <i class="fas fa-edit"></i>
-                    <span>Modifica Profilo</span>
-                </button>
-            </div>
+            <button class="btn btn-primary profile-edit-btn" id="editProfileBtn">
+                <i class="fas fa-edit"></i> Modifica Profilo
+            </button>
 
         </div>
-    </section>
+    </div>
 
-    <!-- ===== DATI FISICI ===== -->
-    <section class="dashboard-section">
-        <div class="section-header">
-            <h2>Dati Fisici</h2>
-        </div>
-        <div class="card profile-data-grid">
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-user-circle"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Nome completo</span>
-                    <span class="data-value" id="dataFullName">--</span>
-                </div>
+    <!-- ── QUICK STATS ─────────────────────────────────────────────── -->
+    <div class="profile-stats-row">
+        <div class="profile-stat-card">
+            <div class="psc-icon" style="background:var(--primary-light);color:var(--primary-color);">
+                <i class="fas fa-ruler-vertical"></i>
             </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-birthday-cake"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Data di nascita</span>
-                    <span class="data-value" id="dataBirthDate">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-venus-mars"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Sesso</span>
-                    <span class="data-value" id="dataGender">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-ruler-vertical"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Altezza</span>
-                    <span class="data-value" id="dataHeight">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-weight"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Peso attuale</span>
-                    <span class="data-value" id="dataWeight">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-calculator"></i></div>
-                <div class="data-content">
-                    <span class="data-label">BMI</span>
-                    <span class="data-value" id="dataBMI">--</span>
-                </div>
+            <div class="psc-body">
+                <div class="psc-value" id="statHeight">--</div>
+                <div class="psc-label">Altezza</div>
             </div>
         </div>
-    </section>
+        <div class="profile-stat-card">
+            <div class="psc-icon" style="background:#fef3c7;color:#d97706;">
+                <i class="fas fa-weight"></i>
+            </div>
+            <div class="psc-body">
+                <div class="psc-value" id="statWeight">--</div>
+                <div class="psc-label">Peso</div>
+            </div>
+        </div>
+        <div class="profile-stat-card">
+            <div class="psc-icon" style="background:#dcfce7;color:#16a34a;">
+                <i class="fas fa-calculator"></i>
+            </div>
+            <div class="psc-body">
+                <div class="psc-value" id="statBMI">--</div>
+                <div class="psc-label">BMI</div>
+            </div>
+        </div>
+        <div class="profile-stat-card">
+            <div class="psc-icon" style="background:#fce7f3;color:#db2777;">
+                <i class="fas fa-birthday-cake"></i>
+            </div>
+            <div class="psc-body">
+                <div class="psc-value" id="statAge">--</div>
+                <div class="psc-label">Età</div>
+            </div>
+        </div>
+    </div>
 
-    <!-- ===== OBIETTIVI ===== -->
-    <section class="dashboard-section">
-        <div class="section-header">
-            <h2>Obiettivi di Allenamento</h2>
-        </div>
-        <div class="card profile-data-grid">
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-bullseye"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Obiettivo principale</span>
-                    <span class="data-value" id="dataGoal">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-layer-group"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Livello di esperienza</span>
-                    <span class="data-value" id="dataLevel">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-calendar-week"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Sessioni a settimana</span>
-                    <span class="data-value" id="dataFrequency">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-clock"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Durata sessione preferita</span>
-                    <span class="data-value" id="dataDuration">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-weight-hanging"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Peso obiettivo</span>
-                    <span class="data-value" id="dataTargetWeight">--</span>
-                </div>
-            </div>
-            <div class="profile-data-item">
-                <div class="data-icon"><i class="fas fa-dumbbell"></i></div>
-                <div class="data-content">
-                    <span class="data-label">Attrezzatura disponibile</span>
-                    <span class="data-value" id="dataEquipment">--</span>
-                </div>
-            </div>
-        </div>
-    </section>
+    <div class="profile-grid">
 
-    <!-- ===== IMPOSTAZIONI ACCOUNT ===== -->
-    <section class="dashboard-section">
-        <div class="section-header">
-            <h2>Impostazioni Account</h2>
+        <!-- ── DATI PERSONALI ───────────────────────────────────────── -->
+        <div class="card profile-card">
+            <div class="profile-card-header">
+                <i class="fas fa-user-circle"></i>
+                <h3>Dati Personali</h3>
+            </div>
+            <div class="profile-card-body">
+                <div class="profile-field">
+                    <span class="pf-label">Nome completo</span>
+                    <span class="pf-value" id="dataFullName">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Data di nascita</span>
+                    <span class="pf-value" id="dataBirthDate">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Sesso</span>
+                    <span class="pf-value" id="dataGender">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Altezza</span>
+                    <span class="pf-value" id="dataHeight">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Peso attuale</span>
+                    <span class="pf-value" id="dataWeight">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">BMI</span>
+                    <span class="pf-value" id="dataBMI">--</span>
+                </div>
+            </div>
         </div>
-        <div class="card">
-            <div class="account-settings-list">
-                <div class="account-setting-item">
-                    <div class="setting-info">
-                        <span class="setting-label">Email</span>
-                        <span class="setting-value" id="settingEmail">--</span>
+
+        <!-- ── OBIETTIVI ─────────────────────────────────────────────── -->
+        <div class="card profile-card">
+            <div class="profile-card-header">
+                <i class="fas fa-bullseye"></i>
+                <h3>Obiettivi di Allenamento</h3>
+            </div>
+            <div class="profile-card-body">
+                <div class="profile-field">
+                    <span class="pf-label">Obiettivo principale</span>
+                    <span class="pf-value" id="dataGoal">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Livello</span>
+                    <span class="pf-value" id="dataLevel">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Sessioni/settimana</span>
+                    <span class="pf-value" id="dataFrequency">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Durata preferita</span>
+                    <span class="pf-value" id="dataDuration">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Peso obiettivo</span>
+                    <span class="pf-value" id="dataTargetWeight">--</span>
+                </div>
+                <div class="profile-field">
+                    <span class="pf-label">Attrezzatura</span>
+                    <span class="pf-value" id="dataEquipment">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ACCOUNT ───────────────────────────────────────────────── -->
+        <div class="card profile-card profile-card-full">
+            <div class="profile-card-header">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Impostazioni Account</h3>
+            </div>
+            <div class="profile-card-body">
+                <div class="profile-field profile-field-action">
+                    <div>
+                        <span class="pf-label">Email</span>
+                        <span class="pf-value" id="settingEmail">--</span>
                     </div>
                     <button class="btn btn-outline btn-sm" id="changeEmailBtn">
                         <i class="fas fa-edit"></i> Modifica
                     </button>
                 </div>
-                <div class="account-setting-item">
-                    <div class="setting-info">
-                        <span class="setting-label">Password</span>
-                        <span class="setting-value">••••••••</span>
+                <div class="profile-field profile-field-action">
+                    <div>
+                        <span class="pf-label">Password</span>
+                        <span class="pf-value">••••••••</span>
                     </div>
                     <button class="btn btn-outline btn-sm" id="changePasswordBtn">
                         <i class="fas fa-key"></i> Cambia
                     </button>
                 </div>
-                <div class="account-setting-item">
-                    <div class="setting-info">
-                        <span class="setting-label">Account registrato il</span>
-                        <span class="setting-value" id="settingCreatedAt">--</span>
-                    </div>
+                <div class="profile-field">
+                    <span class="pf-label">Membro dal</span>
+                    <span class="pf-value" id="settingCreatedAt">--</span>
                 </div>
             </div>
         </div>
-    </section>
 
+    </div>
 </main>
 
-<!-- ===== MODAL MODIFICA PROFILO ===== -->
+<!-- ── MODAL MODIFICA PROFILO ──────────────────────────────────────── -->
 <div id="editProfileModal" class="modal">
     <div class="modal-content modal-large">
         <div class="modal-header">
-            <h2>Modifica Profilo</h2>
-            <button class="modal-close" id="closeEditModal">
-                <i class="fas fa-times"></i>
-            </button>
+            <h2><i class="fas fa-edit" style="color:var(--primary-color);margin-right:.5rem;"></i>Modifica Profilo</h2>
+            <button class="modal-close" id="closeEditModal"><i class="fas fa-times"></i></button>
         </div>
-
         <form id="editProfileForm">
             <div class="modal-body">
 
-                <h3 class="modal-section-title">Dati Personali</h3>
+                <div class="modal-section-title">Dati Personali</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editFirstName">Nome</label>
@@ -280,7 +250,7 @@
                     </div>
                 </div>
 
-                <h3 class="modal-section-title">Dati Fisici</h3>
+                <div class="modal-section-title">Dati Fisici</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editHeight">Altezza (cm)</label>
@@ -292,7 +262,7 @@
                     </div>
                 </div>
 
-                <h3 class="modal-section-title">Obiettivi</h3>
+                <div class="modal-section-title">Obiettivi</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editGoal">Obiettivo principale</label>
@@ -355,28 +325,20 @@
                 </div>
 
             </div>
-
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" id="cancelEditBtn">
-                    Annulla
-                </button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Salva Modifiche
-                </button>
+                <button type="button" class="btn btn-secondary" id="cancelEditBtn">Annulla</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salva Modifiche</button>
             </div>
         </form>
-
     </div>
 </div>
 
-<!-- ===== MODAL CAMBIO PASSWORD ===== -->
+<!-- ── MODAL CAMBIO PASSWORD ───────────────────────────────────────── -->
 <div id="changePasswordModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Cambia Password</h2>
-            <button class="modal-close" id="closePasswordModal">
-                <i class="fas fa-times"></i>
-            </button>
+            <h2><i class="fas fa-key" style="color:var(--primary-color);margin-right:.5rem;"></i>Cambia Password</h2>
+            <button class="modal-close" id="closePasswordModal"><i class="fas fa-times"></i></button>
         </div>
         <form id="changePasswordForm">
             <div class="modal-body">
@@ -388,25 +350,16 @@
                     <label for="confirmPassword">Conferma password</label>
                     <input type="password" id="confirmPassword" class="form-control" placeholder="Ripeti la password" required>
                 </div>
-                <p id="passwordError" class="form-error" style="display:none;"></p>
+                <p id="passwordError" class="form-error" style="display:none;color:#dc2626;margin-top:.5rem;"></p>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" id="cancelPasswordBtn">Annulla</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Aggiorna Password
-                </button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Aggiorna Password</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ===== NOTIFICA TOAST ===== -->
-<div id="profileToast" class="toast" style="display:none;">
-    <i class="fas fa-check-circle"></i>
-    <span id="profileToastMessage"></span>
-</div>
-
-<!-- Scripts — stessa sequenza delle altre pagine -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/supabase-config.js"></script>

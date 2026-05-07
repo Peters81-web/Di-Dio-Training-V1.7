@@ -188,34 +188,9 @@ window.AppCore.hideLoading = function(loadingElement) {
 };
 
 // ===== FORMATTAZIONE =====
+// formatDuration è definita in utils.js — unica fonte di verità
 window.AppCore.formatDuration = function(minutes) {
-    if (!minutes) return '0 min';
-    
-    // Se è una stringa in formato HH:MM:SS
-    if (typeof minutes === 'string' && minutes.includes(':')) {
-        const parts = minutes.split(':');
-        if (parts.length === 3) {
-            // Caso speciale per il formato 00:00:XX (minuti)
-            if (parts[0] === '00' && parts[1] === '00') {
-                minutes = parseInt(parts[2]);
-            } else {
-                minutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            }
-        } else if (parts.length === 2) {
-            minutes = parseInt(parts[0]);
-        }
-    } else {
-        minutes = parseInt(minutes) || 0;
-    }
-    
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    
-    if (hours > 0) {
-        return `${hours}h ${remainingMinutes > 0 ? remainingMinutes + 'm' : ''}`;
-    } else {
-        return `${minutes}m`;
-    }
+    return window.formatDuration(minutes);
 };
 
 // ===== UTILITY ATTIVITÀ =====
@@ -434,4 +409,3 @@ document.addEventListener('DOMContentLoaded', function() {
 // Esponi le funzioni principali globalmente per retrocompatibilità
 window.openModal = window.AppCore.openModal;
 window.closeModal = window.AppCore.closeModal;
-window.formatDuration = window.AppCore.formatDuration;
