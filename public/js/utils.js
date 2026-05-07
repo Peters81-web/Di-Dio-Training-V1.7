@@ -135,33 +135,6 @@ function getBaseUrl() {
     return window.location.origin;
 }
 
-// Ottieni il nome di un'attività dal suo ID
-function getActivityNameById(activityId) {
-    const activityMap = {
-        1: 'Corsa',
-        2: 'Ciclismo',
-        3: 'Nuoto',
-        4: 'Forza',
-        5: 'Yoga'
-    };
-    
-    return activityMap[activityId] || 'Attività sconosciuta';
-}
-
-// Ottieni l'icona di un'attività dal suo ID
-function getActivityIconById(activityId) {
-    const iconMap = {
-        1: 'fa-running',
-        2: 'fa-bicycle',
-        3: 'fa-person-swimming',
-        4: 'fa-dumbbell',
-        5: 'fa-om',
-        'default': 'fa-dumbbell'
-    };
-    
-    return iconMap[activityId] || iconMap.default;
-}
-
 // Verifica se un utente è autenticato
 async function checkUserAuthentication() {
     if (!window.supabaseClient) {
@@ -197,6 +170,4 @@ window.formatDate = formatDate;
 window.formatDuration = formatDuration;
 window.generateUniqueId = generateUniqueId;
 window.getBaseUrl = getBaseUrl;
-window.getActivityNameById = getActivityNameById;
-window.getActivityIconById = getActivityIconById;
 window.checkUserAuthentication = checkUserAuthentication;

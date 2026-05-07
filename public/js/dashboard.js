@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Crea le card degli allenamenti
         workoutsData.forEach((workout, index) => {
-            const iconClass = getActivityIcon(workout.activity_id);
+            const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
             
             const card = document.createElement('div');
             card.className = 'card workout-card';
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         removeExistingModal('workoutDetailsModal');
         
         // Determina l'icona dell'attività
-        const iconClass = getActivityIcon(workout.activity_id);
+        const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
         
         // Crea il modal
         const modal = createWorkoutDetailsModal(workout, iconClass);
@@ -861,35 +861,6 @@ if (updateError) {
             console.error('Errore logout:', error);
             showToast('Errore durante il logout', 'error');
         }
-    }
-    
-    /**
-     * Ottiene l'icona per un'attività
-     */
-    function getActivityIcon(activityId) {
-        const iconMap = {
-            '1': 'fa-running',      // Corsa
-            '2': 'fa-bicycle',      // Ciclismo
-            '3': 'fa-swimmer',      // Nuoto
-            '4': 'fa-dumbbell',     // Forza
-            '5': 'fa-om',           // Yoga
-        };
-        
-        // Se è UUID, convertilo
-        if (typeof activityId === 'string' && activityId.includes('-')) {
-            const uuidMap = {
-                'af12a17d-cca9-4cd3-a4f8-029d1208525f': '1', // Corsa
-                '2ba50271-cd8c-4b87-8fd2-8c6d15af9078': '2', // Ciclismo
-                '57c626f0-43fe-42bf-b306-67554c4eabaa': '3', // Nuoto
-                '8e7e2208-4590-44a7-a317-499323f371c4': '4', // Forza
-                '8deb591f-d67c-4e63-ad48-beb755814068': '5'  // Yoga
-            };
-            
-            const numericId = uuidMap[activityId];
-            return iconMap[numericId] || 'fa-dumbbell';
-        }
-        
-        return iconMap[activityId] || 'fa-dumbbell';
     }
     
     /**
