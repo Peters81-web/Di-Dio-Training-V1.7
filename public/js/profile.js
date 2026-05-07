@@ -15,30 +15,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!session) { window.location.href = '/'; return; }
         currentUser = session.user;
 
-        await loadProfile();
+        // Event listeners prima del caricamento dati — così i pulsanti
+        // funzionano anche se il profilo non è ancora stato creato nel DB
         setupEventListeners();
+        await loadProfile();
     }
 
     // ─── Load ─────────────────────────────────────────────────────────────
     async function loadProfile() {
-        const [profileRes, measureRes] = await Promise.all([
-            supabaseClient
-                .from('profiles')
-                .select('full_name, birthdate, gender, avatar_url, fitness_goals')
-                .eq('id', currentUser.id)
-                .single(),
-            supabaseClient
-                .from('body_measurements')
-                .select('height, weight')
-                .eq('user_id', currentUser.id)
-                .order('date', { ascending: false })
-                .limit(1)
-        ]);
+        try {
+            const [profileRes, measureRes] = await Promise.all([
+                supabaseClient
+                    .from('profiles')
+                    .select('full_name, birthdate, gender, avatar_url, fitness_goals')
+                    .eq('id', currentUser.id)
+                    .single(),
+                supabaseClient
+                    .from('body_measurements')
+                    .select('height, weight')
+                    .eq('user_id', currentUser.id)
+                    .order('date', { ascending: false })
+                    .limit(1)
+            ]);
 
-        currentProfile = profileRes.data || {};
-        latestMeasurement = measureRes.data?.[0] || {};
-
-        populateDisplay();
+            currentProfile      = profileRes.data   || {};
+            latestMeasurement   = measureRes.data?.[0] || {};
+            populateDisplay();
+        } catch (err) {
+            console.error('Errore caricamento profilo:', err);
+        }
     }
 
     // ─── Display ──────────────────────────────────────────────────────────
@@ -46,45 +51,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         const goals = currentProfile.fitness_goals || {};
         const h = latestMeasurement.height;
         const w = latestMeasurement.weight;
+        const age = calcAge(currentProfile.birthdate);
+        const bmi = (h && w) ? (w / Math.pow(h / 100, 2)).toFixed(1) : null;
 
-        // Header
-        setText('profileDisplayName', currentProfile.full_name || currentUser.email);
-        setText('profileDisplayEmail', currentUser.email);
+        // Hero
+        setText('profileDisplayName',   currentProfile.full_name || currentUser.email);
+        setText('profileDisplayEmail',  currentUser.email);
         setText('profileDisplayHeight', h ? `${h} cm` : '-- cm');
         setText('profileDisplayWeight', w ? `${w} kg` : '-- kg');
-        setText('profileDisplayAge', calcAge(currentProfile.birthdate));
+        setText('profileDisplayAge',    age);
 
-        // Dati fisici
-        setText('dataFullName', currentProfile.full_name);
+        // Stat cards
+        setText('statHeight', h ? `${h} cm` : '--');
+        setText('statWeight',  w ? `${w} kg` : '--');
+        setText('statBMI',    bmi ? bmi : '--');
+        setText('statAge',    age);
+
+        // Dati personali
+        setText('dataFullName',  currentProfile.full_name);
         setText('dataBirthDate', fmtDate(currentProfile.birthdate));
-        setText('dataGender', capitalize(currentProfile.gender));
-        setText('dataHeight', h ? `${h} cm` : null);
-        setText('dataWeight', w ? `${w} kg` : null);
-
-        if (h && w) {
-            const bmi = (w / Math.pow(h / 100, 2)).toFixed(1);
-            setText('dataBMI', `${bmi} — ${bmiLabel(bmi)}`);
-        }
+        setText('dataGender',    capitalize(currentProfile.gender));
+        setText('dataHeight',    h ? `${h} cm` : null);
+        setText('dataWeight',    w ? `${w} kg` : null);
+        setText('dataBMI',       bmi ? `${bmi} — ${bmiLabel(bmi)}` : null);
 
         // Obiettivi
-        setText('dataGoal', GOAL_LABELS[goals.primary_goal]);
-        setText('dataLevel', capitalize(goals.level));
-        setText('dataFrequency', goals.frequency ? `${goals.frequency} volte/sett.` : null);
-        setText('dataDuration', goals.duration ? `${goals.duration} min` : null);
+        setText('dataGoal',         GOAL_LABELS[goals.primary_goal]);
+        setText('dataLevel',        capitalize(goals.level));
+        setText('dataFrequency',    goals.frequency ? `${goals.frequency} volte/sett.` : null);
+        setText('dataDuration',     goals.duration   ? `${goals.duration} min` : null);
         setText('dataTargetWeight', goals.target_weight ? `${goals.target_weight} kg` : null);
-        setText('dataEquipment', EQUIPMENT_LABELS[goals.equipment]);
+        setText('dataEquipment',    EQUIPMENT_LABELS[goals.equipment]);
 
         // Account
-        setText('settingEmail', currentUser.email);
+        setText('settingEmail',     currentUser.email);
         setText('settingCreatedAt', fmtDate(currentUser.created_at));
 
         // Avatar
         if (currentProfile.avatar_url) {
-            const avatar = document.getElementById('profileAvatarDisplay');
-            if (avatar) {
-                avatar.innerHTML = `<img src="${currentProfile.avatar_url}" alt="Avatar"
-                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-            }
+            const av = document.getElementById('profileAvatarDisplay');
+            if (av) av.innerHTML = `<img src="${currentProfile.avatar_url}" alt="Avatar"
+                style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         }
     }
 
@@ -93,18 +100,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const goals = currentProfile.fitness_goals || {};
         const nameParts = (currentProfile.full_name || '').split(' ');
 
-        setValue('editFirstName', nameParts[0]);
-        setValue('editLastName', nameParts.slice(1).join(' '));
-        setValue('editBirthDate', currentProfile.birthdate);
-        setValue('editGender', currentProfile.gender);
-        setValue('editHeight', latestMeasurement.height);
-        setValue('editWeight', latestMeasurement.weight);
-        setValue('editGoal', goals.primary_goal);
-        setValue('editLevel', goals.level);
-        setValue('editFrequency', goals.frequency);
-        setValue('editDuration', goals.duration);
+        setValue('editFirstName',    nameParts[0]);
+        setValue('editLastName',     nameParts.slice(1).join(' '));
+        setValue('editBirthDate',    currentProfile.birthdate);
+        setValue('editGender',       currentProfile.gender);
+        setValue('editHeight',       latestMeasurement.height);
+        setValue('editWeight',       latestMeasurement.weight);
+        setValue('editGoal',         goals.primary_goal);
+        setValue('editLevel',        goals.level);
+        setValue('editFrequency',    goals.frequency);
+        setValue('editDuration',     goals.duration);
         setValue('editTargetWeight', goals.target_weight);
-        setValue('editEquipment', goals.equipment);
+        setValue('editEquipment',    goals.equipment);
 
         openModal('editProfileModal');
     }
@@ -115,16 +122,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const firstName = document.getElementById('editFirstName').value.trim();
         const lastName  = document.getElementById('editLastName').value.trim();
         const fullName  = [firstName, lastName].filter(Boolean).join(' ');
-        const height    = parseFloat(document.getElementById('editHeight').value) || null;
-        const weight    = parseFloat(document.getElementById('editWeight').value) || null;
+        const height    = parseFloat(document.getElementById('editHeight').value)       || null;
+        const weight    = parseFloat(document.getElementById('editWeight').value)       || null;
 
         const fitness_goals = {
-            primary_goal: document.getElementById('editGoal').value,
-            level:        document.getElementById('editLevel').value,
-            frequency:    document.getElementById('editFrequency').value,
-            duration:     document.getElementById('editDuration').value,
+            primary_goal:  document.getElementById('editGoal').value,
+            level:         document.getElementById('editLevel').value,
+            frequency:     document.getElementById('editFrequency').value,
+            duration:      document.getElementById('editDuration').value,
             target_weight: parseFloat(document.getElementById('editTargetWeight').value) || null,
-            equipment:    document.getElementById('editEquipment').value,
+            equipment:     document.getElementById('editEquipment').value,
         };
 
         const { error: profileErr } = await supabaseClient
@@ -140,19 +147,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
         if (profileErr) {
-            showToast('Errore nel salvataggio del profilo: ' + profileErr.message, 'error');
+            showToast('Errore nel salvataggio: ' + profileErr.message, 'error');
             return;
         }
 
         if (height || weight) {
-            await supabaseClient
-                .from('body_measurements')
-                .insert({
-                    user_id: currentUser.id,
-                    date:    new Date().toISOString().split('T')[0],
-                    height,
-                    weight
-                });
+            await supabaseClient.from('body_measurements').insert({
+                user_id: currentUser.id,
+                date:    new Date().toISOString().split('T')[0],
+                height,
+                weight
+            });
         }
 
         closeModal('editProfileModal');
@@ -175,9 +180,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             errorEl.style.display = 'block';
             return;
         }
-
         if (newPass.length < 6) {
-            errorEl.textContent = 'La password deve essere di almeno 6 caratteri.';
+            errorEl.textContent = 'La password deve avere almeno 6 caratteri.';
             errorEl.style.display = 'block';
             return;
         }
@@ -193,18 +197,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('Password aggiornata con successo!', 'success');
     }
 
-    // ─── Avatar ───────────────────────────────────────────────────────────
+    // ─── Avatar preview ───────────────────────────────────────────────────
     function handleAvatarChange(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const avatar = document.getElementById('profileAvatarDisplay');
-            if (avatar) {
-                avatar.innerHTML = `<img src="${ev.target.result}" alt="Avatar"
-                    style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-            }
+            const av = document.getElementById('profileAvatarDisplay');
+            if (av) av.innerHTML = `<img src="${ev.target.result}" alt="Avatar"
+                style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
         };
         reader.readAsDataURL(file);
     }
@@ -237,26 +238,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('avatarInput')?.addEventListener('change', handleAvatarChange);
 
+        // Chiudi modal cliccando fuori o con ESC
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal.id); });
         });
-
-        document.querySelectorAll('.modal-close').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modal = btn.closest('.modal');
-                if (modal) closeModal(modal.id);
-            });
-        });
-
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal('editProfileModal');
                 closeModal('changePasswordModal');
             }
         });
+
+        if (window.AppCore?.initMobileMenu) window.AppCore.initMobileMenu();
     }
 
-    // ─── Utility ──────────────────────────────────────────────────────────
+    // ─── Utilities ────────────────────────────────────────────────────────
     function setText(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value || '--';
@@ -264,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function setValue(id, value) {
         const el = document.getElementById(id);
-        if (el) el.value = value ?? '';
+        if (el) el.value = (value !== null && value !== undefined) ? value : '';
     }
 
     function openModal(id) {
@@ -301,18 +297,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const GOAL_LABELS = {
-        perdita_peso:   'Perdita di peso',
-        aumento_massa:  'Aumento massa muscolare',
-        forza:          'Aumento della forza',
-        resistenza:     'Migliorare la resistenza',
-        flessibilita:   'Flessibilità e mobilità',
-        salute:         'Salute generale',
+        perdita_peso:  'Perdita di peso',
+        aumento_massa: 'Aumento massa muscolare',
+        forza:         'Aumento della forza',
+        resistenza:    'Migliorare la resistenza',
+        flessibilita:  'Flessibilità e mobilità',
+        salute:        'Salute generale',
     };
 
     const EQUIPMENT_LABELS = {
-        nessuna:    'Nessuna (solo corpo libero)',
-        casa_base:  'Casa (attrezzi base)',
-        palestra:   'Palestra completa',
+        nessuna:   'Nessuna (corpo libero)',
+        casa_base: 'Casa (attrezzi base)',
+        palestra:  'Palestra completa',
     };
 
     // ─── Start ────────────────────────────────────────────────────────────
