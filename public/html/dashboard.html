@@ -204,10 +204,15 @@
                     <li>Tutte le statistiche e i progressi</li>
                     <li>Tutti i programmi personalizzati</li>
                 </ul>
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label for="confirmDeleteInput">Scrivi <strong>ELIMINA</strong> per confermare:</label>
+                    <input type="text" id="confirmDeleteInput" class="form-control"
+                           placeholder="ELIMINA" autocomplete="off" style="margin-top:0.5rem;">
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancelDeleteBtn" class="btn btn-secondary">Annulla</button>
-                <button id="confirmDeleteBtn" class="btn btn-danger">Elimina Tutto</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger" disabled>Elimina Tutto</button>
             </div>
         </div>
     </div>

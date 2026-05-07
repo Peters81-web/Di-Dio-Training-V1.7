@@ -719,6 +719,9 @@ document.addEventListener('DOMContentLoaded', async function() {
      * Reset completo dei dati utente
      */
     async function resetUserData() {
+        const input = document.getElementById('confirmDeleteInput');
+        if (!input || input.value !== 'ELIMINA') return;
+
         try {
             showLoading();
             
@@ -759,19 +762,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Menu mobile
         setupMobileMenu();
         
-        // Pulsante reset dati
+        // Pulsante reset dati — resetta input e disabilita bottone ad ogni apertura
         if (elements.resetDataBtn) {
             elements.resetDataBtn.addEventListener('click', () => {
+                const input = document.getElementById('confirmDeleteInput');
+                const btn = document.getElementById('confirmDeleteBtn');
+                if (input) input.value = '';
+                if (btn) btn.disabled = true;
                 openModal('confirmModal');
             });
         }
         
         // Conferma reset
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const confirmDeleteInput = document.getElementById('confirmDeleteInput');
+
+        if (confirmDeleteInput && confirmDeleteBtn) {
+            confirmDeleteInput.addEventListener('input', () => {
+                confirmDeleteBtn.disabled = confirmDeleteInput.value !== 'ELIMINA';
+            });
+        }
+
         if (confirmDeleteBtn) {
             confirmDeleteBtn.addEventListener('click', resetUserData);
         }
-        
+
         // Annulla reset
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         if (cancelDeleteBtn) {
