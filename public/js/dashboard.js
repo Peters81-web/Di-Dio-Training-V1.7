@@ -121,8 +121,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             workouts = data || [];
             displayWorkouts(workouts);
-            
-            console.log(`Caricati ${workouts.length} allenamenti`);
+            loadProgressionHints(workouts);
             
         } catch (error) {
             console.error('Errore caricamento allenamenti:', error);
@@ -255,6 +254,72 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
+    /**
+     * Carica e mostra suggerimenti di progressione per ogni workout card
+     */
+    async function loadProgressionHints(workoutsData) {
+        if (!workoutsData.length) return;
+        try {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const { data: completed } = await supabaseClient
+                .from('completed_workouts')
+                .select('workout_plan_id, actual_duration, completed_at')
+                .eq('user_id', currentUser.id)
+                .gte('completed_at', thirtyDaysAgo.toISOString())
+                .order('completed_at', { ascending: false });
+
+            if (!completed?.length) return;
+
+            // Raggruppa per workout_plan_id
+            const byPlan = {};
+            completed.forEach(c => {
+                if (!byPlan[c.workout_plan_id]) byPlan[c.workout_plan_id] = [];
+                byPlan[c.workout_plan_id].push(c.actual_duration || 0);
+            });
+
+            workoutsData.forEach(workout => {
+                const sessions = byPlan[workout.id];
+                if (!sessions || sessions.length < 2) return;
+
+                const card = elements.workoutList.querySelector(`[data-id="${workout.id}"]`);
+                if (!card) return;
+
+                const hint = buildProgressionHint(sessions, workout.total_duration);
+                if (!hint) return;
+
+                const badge = document.createElement('div');
+                badge.className = 'progression-hint';
+                badge.innerHTML = `<i class="fas fa-arrow-trend-up"></i> ${hint}`;
+                card.querySelector('.workout-details').appendChild(badge);
+            });
+        } catch (err) {
+            console.warn('Progression hints error:', err);
+        }
+    }
+
+    function buildProgressionHint(durations, plannedDuration) {
+        const count = durations.length;
+        const avgRecent = durations.slice(0, 3).reduce((s, d) => s + d, 0) / Math.min(3, count);
+        const planned = plannedDuration || 45;
+
+        if (count >= 3) {
+            // Trend crescente nelle ultime 3 sessioni
+            const last3 = durations.slice(0, 3);
+            const improving = last3[2] < last3[1] && last3[1] < last3[0]; // desc order
+            if (improving) return `Ottima progressione! Pronto per +5 minuti`;
+        }
+
+        if (count >= 2 && avgRecent >= planned * 1.1) {
+            return `Superi il target ogni volta — alza la durata!`;
+        }
+        if (count >= 3) {
+            return `Completato ${count}x — considera di aumentare l'intensità`;
+        }
+        return null;
+    }
+
     /**
      * Visualizza le statistiche settimanali
      */

@@ -51,7 +51,23 @@
             </div>
             <div class="card-content">
                 <h2>Il tuo Personal Trainer AI</h2>
-                <p>Descrivi i tuoi obiettivi di fitness, livello di esperienza e preferenze, e l'AI creerà un piano di allenamento personalizzato per te. Il piano verrà automaticamente integrato nel tuo calendario.</p>
+                <p>L'AI analizza il tuo storico reale di allenamenti e crea un piano personalizzato, calibrato sul tuo livello attuale.</p>
+            </div>
+        </div>
+
+        <!-- Contesto storico (caricato dinamicamente) -->
+        <div id="contextCard" class="ai-card context-card" style="display:none;">
+            <div class="context-header">
+                <i class="fas fa-chart-bar"></i>
+                <h3>Il tuo profilo attuale</h3>
+                <span class="context-badge" id="contextBadge"></span>
+            </div>
+            <div class="context-stats" id="contextStats">
+                <!-- populated by JS -->
+            </div>
+            <div class="context-suggestions" id="contextSuggestions">
+                <p class="context-hint">Suggerimento rapido:</p>
+                <div class="quick-prompts" id="quickPrompts"></div>
             </div>
         </div>
 

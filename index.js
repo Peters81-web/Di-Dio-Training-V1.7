@@ -86,7 +86,7 @@ app.get('/reports',        (req, res) => sendHtmlFile(res, 'reports.html'));
 
 // ─── API AI Trainer (Groq) ────────────────────────────────────────────────────
 app.post('/api/generate-plan', aiLimiter, async (req, res) => {
-  const { prompt, planType, fitnessLevel, activityType } = req.body || {};
+  const { prompt, planType, fitnessLevel, activityType, workoutContext } = req.body || {};
 
   // Validazione input
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -125,10 +125,21 @@ app.post('/api/generate-plan', aiLimiter, async (req, res) => {
 
   const systemPrompt = `Sei un personal trainer professionista italiano. Crea piani di allenamento dettagliati, pratici e motivanti in italiano. Struttura sempre la risposta in Markdown con sezioni chiare.`;
 
+  const contextSection = workoutContext ? `
+Storico recente dell'utente (ultime settimane):
+- Allenamenti completati: ${workoutContext.totalCompleted}
+- Frequenza media: ${workoutContext.avgPerWeek} sessioni/settimana
+- Durata media: ${workoutContext.avgDuration} minuti
+- Attività più frequente: ${workoutContext.topActivity || 'non specificata'}
+- Giorni di streak: ${workoutContext.streak}
+${workoutContext.lastWorkouts?.length ? `- Ultimi allenamenti: ${workoutContext.lastWorkouts.join(', ')}` : ''}
+Tieni conto di questo storico per calibrare il piano: non essere troppo conservativo se l'utente si allena già regolarmente.
+` : '';
+
   const userMessage = `Crea un piano di allenamento ${planTypeText} per un atleta di livello ${levelText}.
 Obiettivo e preferenze dell'utente: ${prompt.trim()}
 ${activityType ? `\nL'utente ha scelto un tipo di attività specifico: orienta prevalentemente il piano verso esercizi e sessioni di quel tipo.` : ''}
-
+${contextSection}
 Struttura obbligatoria:
 1. Una breve introduzione che spiega l'approccio del piano (2-3 righe).
 2. Per ogni giorno di allenamento usa questo formato esatto:

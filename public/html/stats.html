@@ -218,6 +218,25 @@
     }
     .state-box i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
     .state-box p { font-size: 0.95rem; }
+
+    /* ── Personal Records ─────────────────────────────────── */
+    .pr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+      padding-top: .5rem;
+    }
+    .pr-card {
+      background: linear-gradient(135deg, #f8f9ff, #eef0ff);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      border: 1.5px solid #d8dcff;
+    }
+    .pr-card .pr-icon { font-size: 1.6rem; margin-bottom: .4rem; }
+    .pr-card .pr-value { font-size: 1.4rem; font-weight: 800; color: #4e54c8; }
+    .pr-card .pr-label { font-size: .75rem; color: #666; margin-top: .2rem; }
+    .pr-card .pr-date  { font-size: .7rem; color: #aaa; margin-top: .3rem; }
   </style>
 </head>
 <body>
@@ -344,6 +363,42 @@
           <i class="fas fa-spinner fa-spin"></i>
           <p>Caricamento...</p>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Progressi per Attività ─────────────────────────── -->
+    <div class="section-title" style="margin-top:2rem;">
+      <i class="fas fa-trophy"></i> Progressi &amp; Personal Records
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title"><i class="fas fa-clock"></i> Trend Durata per Attività</div>
+        <div id="durationTrendWrapper" class="chart-container" style="display:none;">
+          <canvas id="durationTrendChart"></canvas>
+        </div>
+        <div id="durationTrendEmpty" class="state-box">
+          <i class="fas fa-chart-line"></i><p>Completa allenamenti per vedere il trend</p>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><i class="fas fa-fire"></i> Calorie per Settimana</div>
+        <div id="calWeekWrapper" class="chart-container" style="display:none;">
+          <canvas id="calWeekChart"></canvas>
+        </div>
+        <div id="calWeekEmpty" class="state-box">
+          <i class="fas fa-fire"></i><p>Inserisci le calorie per vedere il grafico</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Personal Records -->
+    <div class="recent-table-card" style="margin-top:1.5rem;">
+      <div class="section-title">
+        <i class="fas fa-medal"></i> Personal Records
+      </div>
+      <div id="personalRecords" class="pr-grid">
+        <div class="state-box"><i class="fas fa-spinner fa-spin"></i><p>Caricamento...</p></div>
       </div>
     </div>
 
