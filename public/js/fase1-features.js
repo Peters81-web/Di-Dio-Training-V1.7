@@ -82,10 +82,10 @@ function renderStreak(streak) {
 
     if (streak === 0) {
         title.textContent = 'Inizia oggi!';
-        sub.textContent   = 'Completa un allenamento per avviare la tua streak';
+        sub.textContent   = 'Completa un allenamento per avviare la tua striscia';
     } else if (streak === 1) {
         title.textContent = 'Primo giorno — ottimo inizio!';
-        sub.textContent   = 'Continua domani per costruire la tua streak';
+        sub.textContent   = 'Continua domani per costruire la tua striscia';
     } else {
         title.textContent = `${streak} giorni consecutivi!`;
         sub.textContent   = streak >= 7
