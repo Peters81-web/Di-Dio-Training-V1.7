@@ -3,165 +3,389 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Trainer - DiDio Training</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>AI Trainer - Di Dio Training</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/enhanced-design.css">
     <link rel="stylesheet" href="/css/ai-trainer.css">
-    <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="/css/menu-mobile-fix.css">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#4361ee">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
-<body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <h1 class="navbar-brand">
-                <i class="fas fa-robot mr-2"></i>
-                AI Trainer
-            </h1>
-            <div class="nav-links">
-                <button onclick="window.location.href='/dashboard'" class="btn">
-                    <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
+<body class="ai-page">
+
+<!-- ── NAVBAR ──────────────────────────────────────────────────────── -->
+<nav class="ai-nav">
+    <div class="ai-nav-inner">
+        <a href="/dashboard" class="ai-nav-brand">
+            <i class="fas fa-dumbbell"></i>
+            <span>Di Dio Training</span>
+        </a>
+        <div class="ai-nav-links">
+            <a href="/dashboard" class="ai-nav-link">
+                <i class="fas fa-home"></i><span>Dashboard</span>
+            </a>
+            <a href="/stats" class="ai-nav-link">
+                <i class="fas fa-chart-line"></i><span>Stats</span>
+            </a>
+            <button id="logoutBtn" class="ai-nav-btn-logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────────────── -->
+<header class="ai-hero">
+    <div class="ai-hero-bg">
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        <div class="hero-orb hero-orb-3"></div>
+    </div>
+    <div class="ai-hero-content">
+        <div class="ai-hero-icon">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div>
+            <h1 class="ai-hero-title">Personal Trainer AI</h1>
+            <p class="ai-hero-sub">Piani su misura basati sul tuo storico reale di allenamenti</p>
+        </div>
+    </div>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────────────────── -->
+<main class="ai-main">
+
+    <!-- ── COLONNA SINISTRA: FORM ─────────────────────────────────── -->
+    <div class="ai-col-form">
+
+        <!-- Step indicator -->
+        <div class="ai-steps">
+            <div class="ai-step active" id="step1Indicator">
+                <div class="step-dot">1</div>
+                <span>Configura</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="ai-step" id="step2Indicator">
+                <div class="step-dot">2</div>
+                <span>Piano AI</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="ai-step" id="step3Indicator">
+                <div class="step-dot">3</div>
+                <span>Salva</span>
+            </div>
+        </div>
+
+        <!-- STEP 1 — Form ─────────────────────────────────────────── -->
+        <div id="formStep" class="ai-form-card">
+
+            <!-- Tipo attività: visual selector -->
+            <div class="form-block">
+                <label class="form-label">Tipo di attività</label>
+                <div class="activity-grid">
+                    <button type="button" class="act-btn active" data-value="gym">
+                        <span class="act-icon">🏋️</span>
+                        <span class="act-label">Palestra</span>
+                    </button>
+                    <button type="button" class="act-btn" data-value="running">
+                        <span class="act-icon">🏃</span>
+                        <span class="act-label">Corsa</span>
+                    </button>
+                    <button type="button" class="act-btn" data-value="cycling">
+                        <span class="act-icon">🚴</span>
+                        <span class="act-label">Ciclismo</span>
+                    </button>
+                    <button type="button" class="act-btn" data-value="yoga">
+                        <span class="act-icon">🧘</span>
+                        <span class="act-label">Yoga</span>
+                    </button>
+                    <button type="button" class="act-btn" data-value="mobility">
+                        <span class="act-icon">🤸</span>
+                        <span class="act-label">Mobilità</span>
+                    </button>
+                    <button type="button" class="act-btn" data-value="walking">
+                        <span class="act-icon">🚶</span>
+                        <span class="act-label">Camminata</span>
+                    </button>
+                </div>
+                <!-- Hidden select for JS compatibility -->
+                <select id="activityType" name="activityType" style="display:none;" required>
+                    <option value="gym" selected>Palestra</option>
+                    <option value="running">Corsa</option>
+                    <option value="cycling">Ciclismo</option>
+                    <option value="yoga">Yoga</option>
+                    <option value="mobility">Mobilità</option>
+                    <option value="walking">Camminata</option>
+                </select>
+            </div>
+
+            <!-- Tipo piano + Livello su una riga -->
+            <div class="form-row-2">
+                <div class="form-block">
+                    <label class="form-label" for="planType">Tipo di piano</label>
+                    <div class="pill-selector" id="planPills">
+                        <button type="button" class="pill active" data-target="planType" data-value="weekly">Settimanale</button>
+                        <button type="button" class="pill" data-target="planType" data-value="monthly">Mensile</button>
+                        <button type="button" class="pill" data-target="planType" data-value="custom">Custom</button>
+                    </div>
+                    <select id="planType" style="display:none;">
+                        <option value="weekly" selected>Piano Settimanale</option>
+                        <option value="monthly">Piano Mensile</option>
+                        <option value="custom">Piano Personalizzato</option>
+                    </select>
+                </div>
+                <div class="form-block">
+                    <label class="form-label" for="fitnessLevel">Livello</label>
+                    <div class="pill-selector" id="levelPills">
+                        <button type="button" class="pill" data-target="fitnessLevel" data-value="beginner">Base</button>
+                        <button type="button" class="pill active" data-target="fitnessLevel" data-value="intermediate">Medio</button>
+                        <button type="button" class="pill" data-target="fitnessLevel" data-value="advanced">Avanzato</button>
+                    </div>
+                    <select id="fitnessLevel" style="display:none;">
+                        <option value="beginner">Principiante</option>
+                        <option value="intermediate" selected>Intermedio</option>
+                        <option value="advanced">Avanzato</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Textarea obiettivo -->
+            <div class="form-block">
+                <label class="form-label" for="aiPrompt">Descrivi il tuo obiettivo</label>
+                <textarea id="aiPrompt" class="ai-textarea" rows="4"
+                    placeholder="Es: Voglio perdere peso e aumentare la resistenza. Mi alleno 3 volte a settimana e ho 45 minuti per sessione..."></textarea>
+                <div class="char-count"><span id="charCount">0</span> / 500</div>
+            </div>
+
+            <button id="generatePlanBtn" class="btn-generate">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                Genera il mio piano
+                <span class="btn-arrow">→</span>
+            </button>
+        </div>
+
+        <!-- STEP 2 — Risposta AI ───────────────────────────────────── -->
+        <div id="aiResponseContainer" class="ai-response-card" style="display:none;">
+            <div class="response-header">
+                <div class="response-header-icon"><i class="fas fa-robot"></i></div>
+                <div>
+                    <h3>Il tuo piano personalizzato</h3>
+                    <p class="response-subtitle">Generato in base al tuo profilo e ai tuoi obiettivi</p>
+                </div>
+            </div>
+            <div id="aiResponse" class="ai-response-body"></div>
+            <div class="response-actions">
+                <button id="saveWorkoutsBtn" class="btn-action btn-action-primary">
+                    <i class="fas fa-save"></i> Salva allenamenti
                 </button>
-                <button onclick="window.location.href='/weekly_summary'" class="btn">
-                    <i class="fas fa-calendar-week"></i>
-                    <span>Riepilogo Settimanale</span>
+                <button id="regenerateBtn" class="btn-action btn-action-secondary">
+                    <i class="fas fa-redo"></i> Rigenera
                 </button>
-                <button onclick="window.location.href='/stats'" class="btn">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Statistiche</span>
-                </button>
-                <button id="logoutBtn" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Esci</span>
+                <button id="newPlanBtn" class="btn-action btn-action-ghost">
+                    <i class="fas fa-plus"></i> Nuovo piano
                 </button>
             </div>
         </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="container ai-trainer-container">
-        <div class="ai-card intro-card">
-            <div class="card-icon">
-                <i class="fas fa-robot"></i>
+        <!-- STEP 3 — Anteprima ─────────────────────────────────────── -->
+        <div id="workoutPreviewContainer" class="ai-preview-card" style="display:none;">
+            <div class="preview-header">
+                <i class="fas fa-clipboard-check"></i>
+                <h3>Anteprima allenamenti</h3>
+                <p>Verifica prima di salvare</p>
             </div>
-            <div class="card-content">
-                <h2>Il tuo Personal Trainer AI</h2>
-                <p>L'AI analizza il tuo storico reale di allenamenti e crea un piano personalizzato, calibrato sul tuo livello attuale.</p>
+            <div id="workoutPreviewList" class="preview-list"></div>
+            <div class="preview-actions">
+                <button id="confirmSaveBtn" class="btn-action btn-action-primary">
+                    <i class="fas fa-check"></i> Conferma e salva
+                </button>
+                <button id="cancelSaveBtn" class="btn-action btn-action-ghost">
+                    <i class="fas fa-times"></i> Annulla
+                </button>
             </div>
         </div>
 
-        <!-- Contesto storico (caricato dinamicamente) -->
-        <div id="contextCard" class="ai-card context-card" style="display:none;">
+    </div><!-- /ai-col-form -->
+
+    <!-- ── COLONNA DESTRA: CONTESTO + TIPS ───────────────────────── -->
+    <div class="ai-col-side">
+
+        <!-- Card contesto (da JS) -->
+        <div id="contextCard" class="side-card context-card" style="display:none;">
             <div class="context-header">
-                <i class="fas fa-chart-bar"></i>
-                <h3>Il tuo profilo attuale</h3>
+                <div class="context-header-left">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Il tuo profilo</h3>
+                </div>
                 <span class="context-badge" id="contextBadge"></span>
             </div>
-            <div class="context-stats" id="contextStats">
-                <!-- populated by JS -->
-            </div>
-            <div class="context-suggestions" id="contextSuggestions">
-                <p class="context-hint">Suggerimento rapido:</p>
+            <div class="context-stats" id="contextStats"></div>
+            <div id="contextSuggestions">
+                <p class="context-hint"><i class="fas fa-bolt"></i> Suggerimenti rapidi</p>
                 <div class="quick-prompts" id="quickPrompts"></div>
             </div>
         </div>
 
-        <div class="ai-card prompt-card">
-            <h3>Crea il tuo piano di allenamento</h3>
+        <!-- Card tips statici -->
+        <div class="side-card tips-card">
+            <h4 class="tips-title"><i class="fas fa-lightbulb"></i> Come ottenere il miglior piano</h4>
+            <ul class="tips-list">
+                <li><span class="tip-num">1</span> Sii specifico sugli obiettivi: "perdere 5kg" è meglio di "dimagrire"</li>
+                <li><span class="tip-num">2</span> Indica il tempo disponibile per sessione</li>
+                <li><span class="tip-num">3</span> Segnala eventuali infortuni o limitazioni</li>
+                <li><span class="tip-num">4</span> Usa i suggerimenti rapidi basati sul tuo storico</li>
+            </ul>
+        </div>
 
-            <div class="form-group">
-                <label for="planType">Tipo di Piano</label>
-                <select id="planType" class="form-control">
-                    <option value="weekly">Piano Settimanale</option>
-                    <option value="monthly">Piano Mensile</option>
-                    <option value="custom">Piano Personalizzato</option>
-                </select>
+        <!-- Card cosa aspettarsi -->
+        <div class="side-card expect-card">
+            <h4 class="tips-title"><i class="fas fa-magic"></i> Cosa include il piano</h4>
+            <div class="expect-grid">
+                <div class="expect-item">
+                    <i class="fas fa-fire-alt"></i>
+                    <span>Riscaldamento</span>
+                </div>
+                <div class="expect-item">
+                    <i class="fas fa-dumbbell"></i>
+                    <span>Fase principale</span>
+                </div>
+                <div class="expect-item">
+                    <i class="fas fa-snowflake"></i>
+                    <span>Defaticamento</span>
+                </div>
+                <div class="expect-item">
+                    <i class="fas fa-notes-medical"></i>
+                    <span>Note e consigli</span>
+                </div>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label for="fitnessLevel">Livello di Fitness</label>
-                <select id="fitnessLevel" class="form-control">
-                    <option value="beginner">Principiante</option>
-                    <option value="intermediate">Intermedio</option>
-                    <option value="advanced">Avanzato</option>
-                </select>
-            </div>
+    </div><!-- /ai-col-side -->
 
-            <div class="form-group">
-                <label for="aiPrompt">Descrivi il tuo obiettivo</label>
-                <textarea id="aiPrompt" class="form-control" rows="4"
-                    placeholder="Es: Voglio migliorare la resistenza cardiovascolare, mi alleno 3 volte a settimana e ho 45 minuti per sessione..."></textarea>
-            </div>
+</main>
 
-            <div class="form-group">
-  <label for="activityType">Tipo attività</label>
-  <select id="activityType" name="activityType" required>
-    <option value="running">Corsa</option>
-    <option value="gym">Palestra</option>
-    <option value="yoga">Yoga</option>
-    <option value="cycling">Ciclismo</option>
-    <option value="mobility">Mobilità</option>
-    <option value="walking">Camminata</option>
-  </select>
+<!-- ── LOADING OVERLAY ─────────────────────────────────────────────── -->
+<div id="aiLoadingOverlay" style="display:none;" class="ai-loading-overlay">
+    <div class="loading-content">
+        <div class="loading-robot">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div class="loading-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <p class="loading-msg" id="loadingMsg">Analizzo il tuo profilo...</p>
+        <div class="loading-bar-wrap">
+            <div class="loading-bar" id="loadingBar"></div>
+        </div>
+    </div>
 </div>
 
-            <button id="generatePlanBtn" class="btn btn-primary btn-large">
-                <i class="fas fa-magic"></i>
-                Genera Piano di Allenamento
-            </button>
-        </div>
+<script src="/js/supabase-config.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/app-core.js"></script>
 
-        <div class="ai-card response-card" id="aiResponseContainer" style="display:none;">
-            <h3>Il tuo piano personalizzato</h3>
-            <div id="aiResponse"></div>
-            <div class="action-buttons">
-                <button id="saveWorkoutsBtn" class="btn btn-success">
-                    <i class="fas fa-save"></i>
-                    Salva Allenamenti
-                </button>
-                <button id="regenerateBtn" class="btn btn-secondary">
-                    <i class="fas fa-redo"></i>
-                    Rigenera Piano
-                </button>
-                <button id="newPlanBtn" class="btn btn-outline">
-                    <i class="fas fa-plus"></i>
-                    Nuovo Piano
-                </button>
-            </div>
-        </div>
+<!-- Visual selector sync -->
+<script>
+(function() {
+    // Activity card buttons → hidden select
+    document.querySelectorAll('.act-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.act-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('activityType').value = btn.dataset.value;
+        });
+    });
 
-        <div class="ai-card preview-card" id="workoutPreviewContainer" style="display:none;">
-            <h3>Anteprima degli allenamenti</h3>
-            <p class="preview-subtitle">Verifica e personalizza i tuoi allenamenti prima di salvarli.</p>
-            <div id="workoutPreviewList"></div>
-            <div class="action-buttons">
-                <button id="confirmSaveBtn" class="btn btn-success">
-                    <i class="fas fa-check"></i>
-                    Conferma e Salva
-                </button>
-                <button id="cancelSaveBtn" class="btn btn-outline">
-                    <i class="fas fa-times"></i>
-                    Annulla
-                </button>
-            </div>
-        </div>
-    </main>
+    // Pill buttons → hidden select
+    document.querySelectorAll('.pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const target = pill.dataset.target;
+            document.querySelectorAll(`.pill[data-target="${target}"]`).forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            document.getElementById(target).value = pill.dataset.value;
+        });
+    });
 
-    <!-- Loading Overlay -->
-    <div id="aiLoadingOverlay" style="display:none;" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p>L'AI sta creando il tuo piano personalizzato...</p>
-    </div>
+    // Character counter
+    const ta = document.getElementById('aiPrompt');
+    const cc = document.getElementById('charCount');
+    if (ta && cc) {
+        ta.addEventListener('input', () => {
+            cc.textContent = ta.value.length;
+            cc.style.color = ta.value.length > 450 ? '#dc2626' : '';
+        });
+    }
 
-    <script src="/js/supabase-config.js"></script>
-    <script src="/js/app-core.js"></script>
-    <script src="/js/ai-trainer.js"></script>
+    // Animated loading messages
+    const msgs = [
+        'Analizzo il tuo profilo...',
+        'Studio il tuo storico...',
+        'Calibro intensità e volume...',
+        'Struttura il piano in corso...',
+        'Aggiungo note personalizzate...',
+        'Quasi pronto...'
+    ];
+    let msgTimer = null;
+
+    // Observe overlay visibility to trigger animation
+    const overlayEl = document.getElementById('aiLoadingOverlay');
+    if (overlayEl) {
+        const loadingObs = new MutationObserver(() => {
+            if (overlayEl.style.display !== 'none') startLoadingAnim();
+            else stopLoadingAnim();
+        });
+        loadingObs.observe(overlayEl, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    function startLoadingAnim() {
+        let idx = 0;
+        const msgEl = document.getElementById('loadingMsg');
+        const bar   = document.getElementById('loadingBar');
+        if (msgEl) msgEl.textContent = msgs[0];
+        if (bar)   bar.style.width = '5%';
+
+        let pct = 5;
+        msgTimer = setInterval(() => {
+            idx = (idx + 1) % msgs.length;
+            if (msgEl) msgEl.textContent = msgs[idx];
+            pct = Math.min(88, pct + 14);
+            if (bar) bar.style.width = pct + '%';
+        }, 1800);
+    }
+
+    function stopLoadingAnim() {
+        clearInterval(msgTimer);
+        const bar = document.getElementById('loadingBar');
+        if (bar) { bar.style.transition = 'width .3s'; bar.style.width = '100%'; }
+    }
+
+    // Step indicator helper exposed globally
+    window.setAiStep = function(n) {
+        [1,2,3].forEach(i => {
+            const el = document.getElementById('step' + i + 'Indicator');
+            if (!el) return;
+            el.classList.toggle('active',   i === n);
+            el.classList.toggle('done',     i < n);
+        });
+    };
+
+    // Watch response/preview containers to auto-advance steps
+    const obs = new MutationObserver(() => {
+        const r = document.getElementById('aiResponseContainer');
+        const p = document.getElementById('workoutPreviewContainer');
+        if (p && p.style.display !== 'none') { window.setAiStep(3); return; }
+        if (r && r.style.display !== 'none') { window.setAiStep(2); return; }
+        window.setAiStep(1);
+    });
+    ['aiResponseContainer','workoutPreviewContainer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) obs.observe(el, { attributes: true, attributeFilter: ['style'] });
+    });
+})();
+</script>
+
+<script src="/js/ai-trainer.js"></script>
 </body>
 </html>
