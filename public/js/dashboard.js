@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const { data, error } = await supabaseClient
                 .from('workout_plans')
-                .select('id, name, activity_id, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
+                .select('id, name, activity_id, activity_type, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
                 
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Crea le card degli allenamenti
         workoutsData.forEach((workout, index) => {
-            const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
+            const iconClass = window.AppCore.getActivityIcon(workout.activity_id, workout.activity_type);
             
             const card = document.createElement('div');
             card.className = 'card workout-card';
