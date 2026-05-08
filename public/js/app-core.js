@@ -24,7 +24,7 @@ window.AppCore = {
         '8deb591f-d67c-4e63-ad48-beb755814068': 5  // Yoga
     },
     
-    // Icone delle attività
+    // Icone delle attività — UUID-based
     activityIcons: {
         'corsa': 'fa-running',
         'ciclismo': 'fa-bicycle',
@@ -32,6 +32,20 @@ window.AppCore = {
         'forza': 'fa-dumbbell',
         'yoga': 'fa-om',
         'default': 'fa-dumbbell'
+    },
+
+    // Icone per activity_type stringa (workout generati da AI o inseriti manualmente)
+    activityTypeIcons: {
+        'running':  'fa-running',
+        'gym':      'fa-dumbbell',
+        'cycling':  'fa-bicycle',
+        'yoga':     'fa-om',
+        'mobility': 'fa-child-reaching',
+        'walking':  'fa-person-walking',
+        'nuoto':    'fa-person-swimming',
+        'corsa':    'fa-running',
+        'ciclismo': 'fa-bicycle',
+        'forza':    'fa-dumbbell'
     }
 };
 
@@ -194,19 +208,30 @@ window.AppCore.formatDuration = function(minutes) {
 };
 
 // ===== UTILITY ATTIVITÀ =====
-window.AppCore.getActivityIcon = function(activityId) {
-    // Se è un UUID, convertilo prima in tipo
+// activityId: UUID o numerico (da workout_plans.activity_id)
+// activityType: stringa come 'running','gym','cycling' (da workout_plans.activity_type)
+window.AppCore.getActivityIcon = function(activityId, activityType) {
+    // 1. Prova prima da activity_type stringa (AI-generated, più affidabile)
+    if (activityType && window.AppCore.activityTypeIcons[activityType]) {
+        return window.AppCore.activityTypeIcons[activityType];
+    }
+
+    // 2. Se è un UUID, converti in tipo tramite mappa
     if (typeof activityId === 'string' && activityId.includes('-')) {
         const numericId = window.AppCore.uuidToActivityMap[activityId];
         const activityTypes = ['', 'corsa', 'ciclismo', 'nuoto', 'forza', 'yoga'];
-        const activityType = activityTypes[numericId] || 'default';
-        return window.AppCore.activityIcons[activityType];
+        const type = activityTypes[numericId] || 'default';
+        return window.AppCore.activityIcons[type];
     }
-    
-    // Se è numerico
-    const activityTypes = ['', 'corsa', 'ciclismo', 'nuoto', 'forza', 'yoga'];
-    const activityType = activityTypes[activityId] || 'default';
-    return window.AppCore.activityIcons[activityType];
+
+    // 3. Se è numerico
+    if (activityId) {
+        const activityTypes = ['', 'corsa', 'ciclismo', 'nuoto', 'forza', 'yoga'];
+        const type = activityTypes[activityId] || 'default';
+        return window.AppCore.activityIcons[type];
+    }
+
+    return window.AppCore.activityIcons['default'];
 };
 
 window.AppCore.getActivityUuid = function(activityId) {
