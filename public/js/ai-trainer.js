@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const quickPrompts = document.getElementById('quickPrompts');
     if (!card) return;
 
-    badge.textContent = ctx.streak > 0 ? `🔥 ${ctx.streak} giorni streak` : '';
+    badge.textContent = ctx.streak > 0 ? `🔥 ${ctx.streak} giorni di fila` : '';
 
     stats.innerHTML = `
       <div class="ctx-stat"><i class="fas fa-check-circle"></i><span>${ctx.totalCompleted}</span><small>completati (30gg)</small></div>
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     } else if (ctx.streak >= 7) {
       suggestions.push({
         label: '🔥 Sono in forma, alza il livello',
-        prompt: `Sono in streak da ${ctx.streak} giorni e mi sento in forma. Voglio un piano più sfidante. Durata media attuale: ${ctx.avgDuration} min. Aumenta intensità e volume.`,
+        prompt: `Sono in striscia da ${ctx.streak} giorni e mi sento in forma. Voglio un piano più sfidante. Durata media attuale: ${ctx.avgDuration} min. Aumenta intensità e volume.`,
         activity: ctx.topActivity || 'gym'
       });
     }

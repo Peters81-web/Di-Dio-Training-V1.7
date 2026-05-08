@@ -9,12 +9,12 @@
 // ─── COSTANTI RECUPERO ────────────────────────────────────────────────────────
 
 const MUSCLES = [
-  { id: 'petto',    label: 'Petto',    icon: '🫁', recoveryHours: 48 },
-  { id: 'schiena',  label: 'Schiena',  icon: '🦴', recoveryHours: 48 },
-  { id: 'gambe',    label: 'Gambe',    icon: '🦵', recoveryHours: 72 },
-  { id: 'spalle',   label: 'Spalle',   icon: '💪', recoveryHours: 48 },
-  { id: 'braccia',  label: 'Braccia',  icon: '🤛', recoveryHours: 36 },
-  { id: 'core',     label: 'Core',     icon: '⚡', recoveryHours: 24 },
+  { id: 'petto',    label: 'Petto',    recoveryHours: 48 },
+  { id: 'schiena',  label: 'Schiena',  recoveryHours: 48 },
+  { id: 'gambe',    label: 'Gambe',    recoveryHours: 72 },
+  { id: 'spalle',   label: 'Spalle',   recoveryHours: 48 },
+  { id: 'braccia',  label: 'Braccia',  recoveryHours: 36 },
+  { id: 'core',     label: 'Core',     recoveryHours: 24 },
 ];
 
 // Mappa attività → muscoli coinvolti
@@ -130,19 +130,22 @@ function stateLabel(state, hoursAgo) {
 }
 
 function renderRecovery(container, status) {
-  const cards = status.map(m => `
-    <div class="muscle-card ${m.state}">
-      <div class="muscle-icon">${m.icon}</div>
-      <div class="muscle-name">${m.label}</div>
-      <div class="muscle-bar-wrap">
-        <div class="muscle-bar" style="width:${m.pct}%"></div>
+  const stateText = { recovered: 'Pronto', partial: 'In recupero', fatigued: 'Stanco', rested: 'Riposato' };
+
+  const rows = status.map(m => `
+    <div class="muscle-row ${m.state}">
+      <div class="muscle-row-dot"></div>
+      <span class="muscle-row-name">${m.label}</span>
+      <div class="muscle-row-bar-wrap">
+        <div class="muscle-row-bar" style="width:${m.pct}%"></div>
       </div>
-      <div class="muscle-pct">${m.state === 'rested' ? 'Riposato' : m.pct + '%'}</div>
+      <span class="muscle-row-pct">${m.state === 'rested' ? '—' : m.pct + '%'}</span>
+      <span class="muscle-row-state">${stateText[m.state] || ''}</span>
     </div>
   `).join('');
 
   container.innerHTML = `
-    <div class="recovery-grid">${cards}</div>
+    <div class="recovery-list">${rows}</div>
     <div class="recovery-legend">
       <div class="recovery-legend-item"><div class="recovery-dot recovered"></div><span>Pronto (85%+)</span></div>
       <div class="recovery-legend-item"><div class="recovery-dot partial"></div><span>In recupero (40–84%)</span></div>

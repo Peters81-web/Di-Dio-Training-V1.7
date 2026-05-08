@@ -60,22 +60,7 @@
 
     <main class="container">
 
-        <!-- ── RECUPERO MUSCOLARE ────────────────────────────── -->
-        <section class="dashboard-section recovery-section">
-            <div class="section-header">
-                <h2><i class="fas fa-heartbeat" style="color:#dc2626;margin-right:.4rem;"></i>Recupero Muscolare</h2>
-            </div>
-            <div class="card">
-                <div id="recoverySection">
-                    <div class="loading-indicator">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <span>Analisi recupero...</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ── STREAK & MOTIVAZIONE ──────────────────────────── -->
+        <!-- ── 1. STREAK & MOTIVAZIONE ──────────────────── -->
         <div id="streakBanner" class="streak-banner" style="display:none;">
             <div class="streak-flame">
                 <i class="fas fa-fire"></i>
@@ -83,11 +68,12 @@
             </div>
             <div class="streak-info">
                 <div class="streak-title" id="streakTitle">Inizia oggi!</div>
-                <div class="streak-sub"  id="streakSub">Completa un allenamento per avviare la tua streak</div>
+                <div class="streak-sub"  id="streakSub">Completa un allenamento per avviare la tua striscia</div>
             </div>
             <div class="streak-badge" id="streakBadge"></div>
         </div>
 
+        <!-- ── 2. ALLENAMENTI ────────────────────────────── -->
         <section class="dashboard-section">
             <div class="section-header">
                 <h2>I Tuoi Allenamenti</h2>
@@ -98,35 +84,54 @@
                     </button>
                 </div>
             </div>
-            
             <div class="card-grid" id="workout-list">
-                <!-- Gli allenamenti verranno caricati dinamicamente qui -->
                 <div class="loading-indicator">
                     <i class="fas fa-spinner fa-spin"></i>
                     <span>Caricamento allenamenti...</span>
                 </div>
             </div>
         </section>
-        
-<section class="dashboard-section">
-    <div class="section-header">
-        <h2>Riepilogo Settimanale</h2>
-        <a href="/stats" class="btn btn-outline">
-            <i class="fas fa-chart-line"></i>
-            <span>Dettagli</span>
-        </a>
-    </div>
-            <div class="card">
-                <div id="weekly-stats">
-                    <!-- Statistiche settimanali caricate dinamicamente -->
-                    <div class="loading-indicator">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <span>Caricamento statistiche...</span>
+
+        <!-- ── 3. RECUPERO + RIEPILOGO (2 colonne) ──────── -->
+        <div class="dashboard-2col">
+
+            <!-- Recupero Muscolare -->
+            <section class="dashboard-section recovery-section" style="margin-bottom:0;">
+                <div class="section-header">
+                    <h2><i class="fas fa-heartbeat" style="color:#dc2626;margin-right:.4rem;"></i>Recupero Muscolare</h2>
+                </div>
+                <div class="card">
+                    <div id="recoverySection">
+                        <div class="loading-indicator">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Analisi recupero...</span>
+                        </div>
                     </div>
                 </div>
-                <div id="weekly-calendar" class="weekly-calendar" style="margin-top:1.25rem;"></div>
-            </div>
-        </section>
+            </section>
+
+            <!-- Riepilogo Settimanale -->
+            <section class="dashboard-section" style="margin-bottom:0;">
+                <div class="section-header">
+                    <h2>Riepilogo Settimanale</h2>
+                    <a href="/stats" class="btn btn-outline">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dettagli</span>
+                    </a>
+                </div>
+                <div class="card">
+                    <div id="weekly-stats">
+                        <div class="loading-indicator">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Caricamento statistiche...</span>
+                        </div>
+                    </div>
+                    <div id="weekly-calendar" class="weekly-calendar" style="margin-top:1.25rem;"></div>
+                </div>
+            </section>
+
+        </div><!-- /dashboard-2col -->
+
     </main>
 
     <!-- Timer FAB -->
