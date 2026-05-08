@@ -35,14 +35,15 @@ window.AppCore = {
     },
 
     // Icone per activity_type stringa (workout generati da AI o inseriti manualmente)
+    // Usa solo icone disponibili in Font Awesome 6.0.0
     activityTypeIcons: {
         'running':  'fa-running',
         'gym':      'fa-dumbbell',
         'cycling':  'fa-bicycle',
         'yoga':     'fa-om',
-        'mobility': 'fa-child-reaching',
-        'walking':  'fa-person-walking',
-        'nuoto':    'fa-person-swimming',
+        'mobility': 'fa-walking',
+        'walking':  'fa-walking',
+        'nuoto':    'fa-swimmer',
         'corsa':    'fa-running',
         'ciclismo': 'fa-bicycle',
         'forza':    'fa-dumbbell'

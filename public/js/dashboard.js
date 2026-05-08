@@ -411,8 +411,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         removeExistingModal('workoutDetailsModal');
         
         // Determina l'icona dell'attività
-        const iconClass = window.AppCore.getActivityIcon(workout.activity_id);
-        
+        const iconClass = window.AppCore.getActivityIcon(workout.activity_id, workout.activity_type);
+
         // Crea il modal
         const modal = createWorkoutDetailsModal(workout, iconClass);
         
