@@ -14,16 +14,15 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(67,97,238,0.12);
+    background: #1a1a2e !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 .ai-nav-inner {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 1.5rem;
-    height: 60px;
+    height: 62px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -35,11 +34,11 @@
     gap: .6rem;
     font-weight: 700;
     font-size: 1.05rem;
-    color: #4361ee;
+    color: #fff !important;
     text-decoration: none;
 }
 
-.ai-nav-brand i { font-size: 1.1rem; }
+.ai-nav-brand i { font-size: 1.1rem; color: #7c8ff5; }
 
 .ai-nav-links {
     display: flex;
@@ -50,40 +49,50 @@
 .ai-nav-link {
     display: flex;
     align-items: center;
-    gap: .4rem;
-    padding: .45rem .9rem;
+    gap: .45rem;
+    padding: .5rem 1rem;
     border-radius: 8px;
-    color: #555;
+    color: rgba(255,255,255,0.75) !important;
     text-decoration: none;
     font-size: .875rem;
     font-weight: 500;
     transition: background .15s, color .15s;
 }
-.ai-nav-link:hover { background: #f0f2ff; color: #4361ee; }
-.ai-nav-link span  { display: none; }
+.ai-nav-link:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff !important;
+}
+.ai-nav-link span { display: none; }
 @media (min-width: 480px) { .ai-nav-link span { display: inline; } }
 
-/* Dashboard button — sempre visibile con testo */
+/* Dashboard button — sempre visibile, evidenziato */
 .ai-nav-link-dashboard {
-    background: #f0f2ff;
-    color: #4361ee;
-    font-weight: 600;
-    border: 1.5px solid #d0d7ff;
+    background: #4361ee !important;
+    color: #fff !important;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: .5rem 1.1rem;
 }
 .ai-nav-link-dashboard span { display: inline !important; }
-.ai-nav-link-dashboard:hover { background: #e0e5ff; }
+.ai-nav-link-dashboard:hover {
+    background: #3451d1 !important;
+    color: #fff !important;
+}
 
 .ai-nav-btn-logout {
     width: 38px; height: 38px;
     border-radius: 50%;
     border: none;
-    background: #fee2e2;
-    color: #dc2626;
+    background: rgba(220,38,38,0.25);
+    color: #fca5a5;
     cursor: pointer;
     font-size: .95rem;
     transition: background .15s;
 }
-.ai-nav-btn-logout:hover { background: #fecaca; }
+.ai-nav-btn-logout:hover {
+    background: rgba(220,38,38,0.4);
+    color: #fff;
+}
 
 /* ── HERO ──────────────────────────────────────────────────── */
 .ai-hero {
@@ -136,7 +145,11 @@
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    color: #fff;
+    color: #fff !important;
+}
+
+.ai-hero-content * {
+    color: #fff !important;
 }
 
 .ai-hero-icon {
@@ -162,14 +175,14 @@
     font-weight: 800;
     margin-bottom: .3rem;
     line-height: 1.1;
-    color: #ffffff;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    color: #ffffff !important;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.6);
 }
 
 .ai-hero-sub {
     font-size: .95rem;
-    color: rgba(255,255,255,0.85);
-    text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+    color: rgba(255,255,255,0.9) !important;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.4);
 }
 
 @media (max-width: 480px) {
