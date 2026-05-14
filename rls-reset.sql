@@ -250,12 +250,90 @@ CREATE POLICY "training_programs_delete_own"
   USING (user_id = auth.uid());
 
 
+-- ── ACTIVITIES ────────────────────────────────────────────────────────
+-- Tabella di riferimento (dati statici: Corsa, Palestra, ecc.)
+-- Solo lettura per tutti gli utenti autenticati — nessun utente può
+-- inserire/modificare/eliminare voci di questa tabella dal client.
+
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "activities_select_all_authenticated"
+  ON public.activities FOR SELECT
+  TO authenticated
+  USING (true);
+
+
+-- ── SCHEDULED_WORKOUTS ───────────────────────────────────────────────
+-- Non ha user_id diretto: appartiene a training_programs tramite FK.
+-- La policy verifica che il programma genitore appartenga all'utente.
+-- NB: se la FK ha ON DELETE CASCADE, non serve la policy DELETE separata
+--     (la riga viene cancellata automaticamente con il programma).
+
+ALTER TABLE public.scheduled_workouts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "scheduled_workouts_select_own"
+  ON public.scheduled_workouts FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.training_programs tp
+      WHERE tp.id = scheduled_workouts.program_id
+        AND tp.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "scheduled_workouts_insert_own"
+  ON public.scheduled_workouts FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.training_programs tp
+      WHERE tp.id = scheduled_workouts.program_id
+        AND tp.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "scheduled_workouts_update_own"
+  ON public.scheduled_workouts FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.training_programs tp
+      WHERE tp.id = scheduled_workouts.program_id
+        AND tp.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "scheduled_workouts_delete_own"
+  ON public.scheduled_workouts FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.training_programs tp
+      WHERE tp.id = scheduled_workouts.program_id
+        AND tp.user_id = auth.uid()
+    )
+  );
+
+
 -- ─── VERIFICA FINALE ─────────────────────────────────────────────────
 -- Esegui questa query separatamente per controllare il risultato:
 --
--- SELECT tablename, policyname, cmd, qual
--- FROM pg_policies
--- WHERE schemaname = 'public'
--- ORDER BY tablename, cmd;
+-- SELECT tablename, policyname, cmd FROM pg_policies
+-- WHERE schemaname = 'public' ORDER BY tablename, cmd;
+--
+-- Dovresti vedere: 37 policy totali
+--   activities:          1 (SELECT only)
+--   body_measurements:   4
+--   completed_workouts:  4
+--   notifications:       4
+--   profiles:            3
+--   scheduled_workouts:  4
+--   specific_goals:      4
+--   training_programs:   4
+--   user_preferences:    3
+--   weekly_summaries:    4
+--   workout_plans:       4
+-- ─────────────────────────────────────────────────────────────────────
 --
 -- Dovresti vedere esattamente 35 righe (9 tabelle × ~4 policy ciascuna).
