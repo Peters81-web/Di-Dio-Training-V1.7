@@ -1,9 +1,7 @@
 /* ============================================================
-   AI TRAINER — Standalone CSS (no styles.css dependency)
+   AI TRAINER CSS
+   Caricato DOPO styles.css — sovrascrive i conflitti globali
    ============================================================ */
-
-/* ── RESET + BASE ──────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
     --primary:      #4361ee;
@@ -20,15 +18,28 @@
     --radius-lg:    16px;
 }
 
+/* ── Neutralizza conflitti di styles.css ────────────────────── */
 body.ai-page {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    background: var(--bg) !important;
+    background-image: none !important; /* rimuove la griglia SVG di styles.css */
+    color: var(--text) !important;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, h5, h6 { font-weight: 600; color: var(--text); }
+/* I titoli dentro l'hero devono essere bianchi */
+.ai-hero h1,
+.ai-hero h2,
+.ai-hero-title,
+.ai-hero-sub { color: #fff !important; }
+
+/* Titoli nelle card restano scuri */
+body.ai-page h1,
+body.ai-page h2,
+body.ai-page h3,
+body.ai-page h4 { color: var(--text); font-weight: 600; }
+
 a { text-decoration: none; }
 button { font-family: inherit; }
 img { max-width: 100%; }

@@ -7,109 +7,115 @@
     margin-bottom: 1.5rem;
 }
 
-/* List layout — una riga per gruppo muscolare */
 .recovery-list {
     display: flex;
     flex-direction: column;
-    gap: .45rem;
+    gap: 0;
 }
 
+/* ── Ogni riga muscolo ── */
 .muscle-row {
     display: grid;
-    grid-template-columns: 10px 70px 1fr 36px 80px;
+    grid-template-columns: 3px 72px 1fr 42px 76px;
     align-items: center;
-    gap: .6rem;
-    padding: .45rem .5rem;
-    border-radius: 6px;
-    background: var(--card-bg, #fff);
+    gap: .75rem;
+    padding: .7rem .25rem .7rem .5rem;
+    border-bottom: 1px solid var(--border-color, #f1f5f9);
     transition: background .15s;
 }
+.muscle-row:last-child { border-bottom: none; }
+.muscle-row:hover { background: var(--bg-secondary, #fafbff); }
 
-.muscle-row:hover {
-    background: var(--bg-secondary, #f8fafc);
-}
-
-/* Dot colorato di stato */
+/* Barra verticale colorata a sinistra */
 .muscle-row-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+    width: 3px;
+    height: 28px;
+    border-radius: 2px;
     flex-shrink: 0;
 }
 .muscle-row.recovered .muscle-row-dot { background: #16a34a; }
-.muscle-row.partial   .muscle-row-dot { background: #d97706; }
-.muscle-row.fatigued  .muscle-row-dot { background: #dc2626; }
-.muscle-row.rested    .muscle-row-dot { background: #9ca3af; }
+.muscle-row.partial   .muscle-row-dot { background: #f59e0b; }
+.muscle-row.fatigued  .muscle-row-dot { background: #ef4444; }
+.muscle-row.rested    .muscle-row-dot { background: #e2e8f0; }
 
+/* Nome muscolo */
 .muscle-row-name {
-    font-size: .8rem;
-    font-weight: 600;
-    color: var(--text-primary, #1a1a2e);
+    font-size: .76rem;
+    font-weight: 700;
+    color: var(--text-primary, #1e293b);
     text-transform: uppercase;
-    letter-spacing: .04em;
+    letter-spacing: .06em;
     white-space: nowrap;
 }
 
+/* Barra progresso */
 .muscle-row-bar-wrap {
     background: var(--border-color, #e8ecf0);
-    border-radius: 4px;
-    height: 7px;
+    border-radius: 99px;
+    height: 6px;
     overflow: hidden;
 }
-
 .muscle-row-bar {
     height: 100%;
-    border-radius: 4px;
-    transition: width .6s ease-out;
+    border-radius: 99px;
+    transition: width .7s cubic-bezier(.4,0,.2,1);
 }
-.muscle-row.recovered .muscle-row-bar { background: #16a34a; }
-.muscle-row.partial   .muscle-row-bar { background: #d97706; }
-.muscle-row.fatigued  .muscle-row-bar { background: #dc2626; }
+.muscle-row.recovered .muscle-row-bar { background: linear-gradient(90deg,#16a34a,#4ade80); }
+.muscle-row.partial   .muscle-row-bar { background: linear-gradient(90deg,#d97706,#fbbf24); }
+.muscle-row.fatigued  .muscle-row-bar { background: linear-gradient(90deg,#dc2626,#f87171); }
 .muscle-row.rested    .muscle-row-bar { background: #cbd5e1; }
 
+/* Percentuale */
 .muscle-row-pct {
-    font-size: .78rem;
+    font-size: .75rem;
     font-weight: 700;
     text-align: right;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 .muscle-row.recovered .muscle-row-pct { color: #16a34a; }
 .muscle-row.partial   .muscle-row-pct { color: #d97706; }
-.muscle-row.fatigued  .muscle-row-pct { color: #dc2626; }
-.muscle-row.rested    .muscle-row-pct { color: #9ca3af; }
+.muscle-row.fatigued  .muscle-row-pct { color: #ef4444; }
+.muscle-row.rested    .muscle-row-pct { color: #94a3b8; }
 
+/* Etichetta stato (badge pillola) */
 .muscle-row-state {
-    font-size: .72rem;
-    color: var(--text-secondary, #6b7280);
-    text-align: right;
+    font-size: .68rem;
+    font-weight: 600;
+    text-align: center;
     white-space: nowrap;
+    padding: .2rem .55rem;
+    border-radius: 99px;
+    letter-spacing: .02em;
 }
+.muscle-row.recovered .muscle-row-state { background: #dcfce7; color: #15803d; }
+.muscle-row.partial   .muscle-row-state { background: #fef3c7; color: #b45309; }
+.muscle-row.fatigued  .muscle-row-state { background: #fee2e2; color: #b91c1c; }
+.muscle-row.rested    .muscle-row-state { background: #f1f5f9; color: #64748b; }
 
+/* Legenda */
 .recovery-legend {
     display: flex;
-    gap: 1.25rem;
+    gap: 1rem;
     flex-wrap: wrap;
-    font-size: .75rem;
-    color: var(--text-secondary, #6b7280);
+    font-size: .72rem;
+    color: var(--text-secondary, #64748b);
     margin-top: .85rem;
     padding-top: .65rem;
     border-top: 1px solid var(--border-color, #e8ecf0);
 }
-
 .recovery-legend-item {
     display: flex;
     align-items: center;
     gap: .35rem;
 }
-
 .recovery-dot {
-    width: 9px;
-    height: 9px;
+    width: 8px; height: 8px;
     border-radius: 50%;
 }
 .recovery-dot.recovered { background: #16a34a; }
-.recovery-dot.partial   { background: #d97706; }
-.recovery-dot.fatigued  { background: #dc2626; }
+.recovery-dot.partial   { background: #f59e0b; }
+.recovery-dot.fatigued  { background: #ef4444; }
 .recovery-dot.rested    { background: #9ca3af; }
 
 /* ── OFFLINE BANNER ─────────────────────────── */
