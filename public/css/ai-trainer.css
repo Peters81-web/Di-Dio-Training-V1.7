@@ -507,6 +507,19 @@ body.ai-page .ai-response-body::-webkit-scrollbar { width: 5px; }
 body.ai-page .ai-response-body::-webkit-scrollbar-track { background: #f0f2ff; }
 body.ai-page .ai-response-body::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 4px; }
 
+/* ── ERROR MESSAGE ───────────────────────────────────────────── */
+body.ai-page .error-message {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+    border-radius: var(--ai-radius);
+    padding: 1rem 1.25rem;
+    font-size: .9rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
 @media (max-width: 860px) {
     body.ai-page .ai-main { grid-template-columns: 1fr !important; }

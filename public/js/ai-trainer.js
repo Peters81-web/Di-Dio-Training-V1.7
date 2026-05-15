@@ -302,9 +302,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? 'La generazione ha impiegato troppo tempo. Riprova con un obiettivo più breve.'
         : 'Errore: ' + error.message;
       if (elements.aiResponse) {
-        elements.aiResponse.innerHTML = '<div class="error-message">' + msg + '</div>';
+        elements.aiResponse.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${msg}</div>`;
+        elements.aiResponseContainer.style.display = 'block';
       }
-      alert(msg);
     } finally {
       elements.aiLoadingOverlay.style.display = 'none';
     }

@@ -161,6 +161,9 @@ Per i giorni di riposo usa:
 Sii specifico, concreto e adatto al livello ${levelText}.`;
 
   try {
+    const groqController = new AbortController();
+    const groqTimeout = setTimeout(() => groqController.abort(), 50000);
+
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -173,10 +176,12 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMessage  }
         ],
-        max_tokens:  3000,
+        max_tokens:  1500,
         temperature: 0.7
-      })
+      }),
+      signal: groqController.signal
     });
+    clearTimeout(groqTimeout);
 
     if (!groqRes.ok) {
       const errData = await groqRes.json().catch(() => ({}));
@@ -195,7 +200,10 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
 
   } catch (err) {
     logErr('generate-plan error:', err);
-    return res.status(500).json({ error: 'Errore interno del server durante la generazione del piano.' });
+    const msg = err.name === 'AbortError'
+      ? 'Timeout: Groq ha impiegato troppo tempo. Riprova.'
+      : 'Errore interno del server durante la generazione del piano.';
+    return res.status(500).json({ error: msg });
   }
 });
 
