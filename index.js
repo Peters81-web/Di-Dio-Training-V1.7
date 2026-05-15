@@ -162,7 +162,7 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
 
   try {
     const groqController = new AbortController();
-    const groqTimeout = setTimeout(() => groqController.abort(), 50000);
+    const groqTimeout = setTimeout(() => groqController.abort(), 9000);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -171,12 +171,12 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({
-        model:       'llama-3.3-70b-versatile',
+        model:       'llama-3.1-8b-instant',
         messages:    [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMessage  }
         ],
-        max_tokens:  1500,
+        max_tokens:  1200,
         temperature: 0.7
       }),
       signal: groqController.signal
