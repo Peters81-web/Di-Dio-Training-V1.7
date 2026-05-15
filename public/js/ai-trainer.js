@@ -272,11 +272,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     generatedWorkouts = [];
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 55000);
+
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType, workoutContext })
+        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType, workoutContext }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -293,10 +298,13 @@ document.addEventListener('DOMContentLoaded', async function () {
       }
     } catch (error) {
       console.error('Error generating plan:', error);
+      const msg = error.name === 'AbortError'
+        ? 'La generazione ha impiegato troppo tempo. Riprova con un obiettivo più breve.'
+        : 'Errore: ' + error.message;
       if (elements.aiResponse) {
-        elements.aiResponse.innerHTML = '<div class="error-message">Errore: ' + error.message + '</div>';
+        elements.aiResponse.innerHTML = '<div class="error-message">' + msg + '</div>';
       }
-      alert('Si è verificato un errore durante la generazione del piano. Riprova.');
+      alert(msg);
     } finally {
       elements.aiLoadingOverlay.style.display = 'none';
     }
