@@ -354,10 +354,14 @@ async function saveExistingWorkout(workoutId) {
         toggleSubmitButton(false);
         
         // Aggiorna nel database
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sessione non valida');
+
         const { data, error } = await supabaseClient
             .from('workout_plans')
             .update(workoutData)
             .eq('id', workoutId)
+            .eq('user_id', session.user.id)
             .select();
         
         if (error) {
