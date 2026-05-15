@@ -164,14 +164,28 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!done.length) return;
     var weekMap = {};
     done.forEach(function (w) {
+      // Usa ora locale (non UTC) per evitare shift di data col fuso orario
       var d = new Date(w.completed_at);
-      var mon = new Date(d);
-      mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-      var key = mon.toISOString().slice(0, 10);
+      var localDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var dayOfWeek = localDate.getDay();
+      var monOffset = (dayOfWeek + 6) % 7;
+      var mon = new Date(localDate);
+      mon.setDate(localDate.getDate() - monOffset);
+      var key = mon.getFullYear() + '-'
+        + String(mon.getMonth() + 1).padStart(2, '0') + '-'
+        + String(mon.getDate()).padStart(2, '0');
       weekMap[key] = (weekMap[key] || 0) + 1;
     });
     var sk = Object.keys(weekMap).sort();
-    var lb = sk.map(function (k) { var d = new Date(k + 'T12:00:00'); return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }); });
+    // Label: mostra intervallo settimana "11–17 mag" per chiarezza
+    var lb = sk.map(function (k) {
+      var mon = new Date(k + 'T12:00:00');
+      var sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      var fmtMon = mon.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+      var fmtSun = sun.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+      return fmtMon + '–' + fmtSun;
+    });
     if (weekChart) { weekChart.destroy(); weekChart = null; }
     var ctx = document.getElementById('weeklyChart').getContext('2d');
     weekChart = new Chart(ctx, {
@@ -196,7 +210,12 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderTable(ws) {
     var wrapper = document.getElementById('recentTableWrapper');
     if (!wrapper) return;
-    var recent = ws.slice().sort(function (a, b) { return new Date(b.scheduled_date) - new Date(a.scheduled_date); }).slice(0, 10);
+    // Ordina: completati per data effettiva (completed_at), da fare per data pianificata
+    var recent = ws.slice().sort(function (a, b) {
+      var da = a.completed && a.completed_at ? new Date(a.completed_at) : new Date(a.scheduled_date);
+      var db = b.completed && b.completed_at ? new Date(b.completed_at) : new Date(b.scheduled_date);
+      return db - da;
+    }).slice(0, 10);
     if (!recent.length) {
       wrapper.innerHTML = '<div class="state-box"><i class="fas fa-inbox"></i><p>Nessun allenamento nel periodo</p></div>';
       return;
@@ -205,8 +224,10 @@ document.addEventListener('DOMContentLoaded', function () {
       var act = ACT[(w.activity_type || '').toLowerCase()] || { label: 'Altro' };
       var dc  = w.difficulty === 'avanzato' ? 'badge-diff-avanzato' : w.difficulty === 'intermedio' ? 'badge-diff-intermedio' : 'badge-diff-facile';
       var sc2 = w.completed ? 'badge-done' : 'badge-todo';
+      // Mostra data effettiva per completati, data pianificata per da fare
+      var displayDate = w.completed && w.completed_at ? w.completed_at : w.scheduled_date;
       return '<tr>'
-        + '<td>' + esc(fmtDate(w.scheduled_date)) + '</td>'
+        + '<td>' + esc(fmtDate(displayDate)) + '</td>'
         + '<td>' + esc(w.name || 'Allenamento') + '</td>'
         + '<td>' + esc(act.label) + '</td>'
         + '<td><span class="badge ' + dc + '">' + esc(w.difficulty || '-') + '</span></td>'
@@ -216,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
         + '</tr>';
     }).join('');
     wrapper.innerHTML = '<table class="recent-table">'
-      + '<thead><tr><th>Data</th><th>Nome</th><th>Attivita</th><th>Difficolta</th><th>Durata</th><th>BPM</th><th>Stato</th></tr></thead>'
+      + '<thead><tr><th>Data</th><th>Nome</th><th>Attività</th><th>Difficoltà</th><th>Durata</th><th>BPM</th><th>Stato</th></tr></thead>'
       + '<tbody>' + rows + '</tbody></table>';
   }
 
@@ -231,13 +252,14 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    // Duration trend — raggruppato per settimana ISO
+    // Duration trend — raggruppato per settimana (ora locale)
     var weekDur = {};
     data.forEach(function (w) {
       var d = new Date(w.completed_at);
-      var mon = new Date(d);
-      mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-      var key = mon.toISOString().slice(0, 10);
+      var localDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var mon = new Date(localDate);
+      mon.setDate(localDate.getDate() - ((localDate.getDay() + 6) % 7));
+      var key = mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
       if (!weekDur[key]) weekDur[key] = { total: 0, count: 0 };
       weekDur[key].total += w.actual_duration;
       weekDur[key].count++;
@@ -266,13 +288,14 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // Calorie per settimana
+    // Calorie per settimana (ora locale)
     var weekCal = {};
     allCompleted.filter(function (w) { return w.calories_burned > 0; }).forEach(function (w) {
       var d = new Date(w.completed_at);
-      var mon = new Date(d);
-      mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-      var key = mon.toISOString().slice(0, 10);
+      var localDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var mon = new Date(localDate);
+      mon.setDate(localDate.getDate() - ((localDate.getDay() + 6) % 7));
+      var key = mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
       weekCal[key] = (weekCal[key] || 0) + w.calories_burned;
     });
     var calKeys = Object.keys(weekCal).sort().slice(-10);
