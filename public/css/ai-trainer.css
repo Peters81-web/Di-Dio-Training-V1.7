@@ -15,8 +15,8 @@ body.ai-page {
     -webkit-font-smoothing: antialiased;
 }
 
-body.ai-page a { text-decoration: none; color: inherit; }
-body.ai-page button { font-family: inherit; cursor: pointer; border: none; background: none; }
+body.ai-page a { text-decoration: none; }
+body.ai-page button { font-family: inherit; cursor: pointer; border: none; }
 body.ai-page input, body.ai-page textarea, body.ai-page select { font-family: inherit; }
 body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height: 1.3; }
 
