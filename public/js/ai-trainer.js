@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
 
-    elements.aiLoadingOverlay.style.display = 'flex';
+    if (window.showAiLoading) window.showAiLoading();
     generatedWorkouts = [];
 
     try {
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         elements.aiResponseContainer.style.display = 'block';
       }
     } finally {
-      elements.aiLoadingOverlay.style.display = 'none';
+      if (window.hideAiLoading) window.hideAiLoading();
     }
   }
 
