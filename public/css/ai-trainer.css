@@ -482,7 +482,7 @@ body.ai-page .ai-loading-overlay {
     background: rgba(10,10,30,0.78) !important;
     backdrop-filter: blur(8px);
     z-index: 9999 !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
+    align-items: center !important; justify-content: center !important;
 }
 body.ai-page .loading-content {
     text-align: center; color: #fff !important;
