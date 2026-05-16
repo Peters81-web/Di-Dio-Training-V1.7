@@ -6,16 +6,14 @@
     <title>AI Trainer - Di Dio Training</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/ai-trainer.css">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#4361ee">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="ai-page">
 
-<!-- ── NAVBAR ──────────────────────────────────────────────────────── -->
+<!-- NAVBAR -->
 <nav class="ai-nav">
     <div class="ai-nav-inner">
         <a href="/dashboard" class="ai-nav-brand">
@@ -23,255 +21,177 @@
             <span>Di Dio Training</span>
         </a>
         <div class="ai-nav-links">
-            <a href="/dashboard" class="ai-nav-link ai-nav-link-dashboard">
+            <a href="/dashboard" class="ai-nav-link">
                 <i class="fas fa-arrow-left"></i><span>Dashboard</span>
             </a>
             <a href="/stats" class="ai-nav-link">
                 <i class="fas fa-chart-line"></i><span>Statistiche</span>
             </a>
-            <button id="logoutBtn" class="ai-nav-btn-logout" title="Esci">
+            <button id="logoutBtn" class="ai-logout-btn" title="Esci">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
     </div>
 </nav>
 
-<!-- ── HERO ────────────────────────────────────────────────────────── -->
-<header class="ai-hero">
-    <div class="ai-hero-bg">
-        <div class="hero-orb hero-orb-1"></div>
-        <div class="hero-orb hero-orb-2"></div>
-        <div class="hero-orb hero-orb-3"></div>
-    </div>
+<!-- HERO -->
+<div class="ai-hero">
     <div class="ai-hero-content">
-        <div class="ai-hero-icon">
-            <i class="fas fa-robot"></i>
-        </div>
+        <div class="ai-hero-icon"><i class="fas fa-robot"></i></div>
         <div>
             <h1 class="ai-hero-title">Personal Trainer AI</h1>
             <p class="ai-hero-sub">Piani su misura basati sul tuo storico reale di allenamenti</p>
         </div>
     </div>
-</header>
+</div>
 
-<!-- ── MAIN ────────────────────────────────────────────────────────── -->
-<main class="ai-main">
+<!-- MAIN -->
+<div class="ai-main">
 
-    <!-- ── COLONNA SINISTRA: FORM ─────────────────────────────────── -->
-    <div class="ai-col-form">
+    <!-- COLONNA FORM -->
+    <div class="ai-col-main">
 
-        <!-- Step indicator -->
-        <div class="ai-steps">
-            <div class="ai-step active" id="step1Indicator">
-                <div class="step-dot">1</div>
-                <span>Configura</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="ai-step" id="step2Indicator">
-                <div class="step-dot">2</div>
-                <span>Piano AI</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="ai-step" id="step3Indicator">
-                <div class="step-dot">3</div>
-                <span>Salva</span>
-            </div>
-        </div>
+        <!-- FORM -->
+        <div id="formCard" class="ai-card">
+            <h2 class="ai-card-title"><i class="fas fa-sliders-h"></i> Configura il piano</h2>
 
-        <!-- STEP 1 — Form ─────────────────────────────────────────── -->
-        <div id="formStep" class="ai-form-card">
-
-            <!-- Tipo attività: visual selector -->
-            <div class="form-block">
-                <label class="form-label">Tipo di attività</label>
-                <div class="activity-grid">
-                    <button type="button" class="act-btn active" data-value="gym">
-                        <span class="act-icon">🏋️</span>
-                        <span class="act-label">Palestra</span>
-                    </button>
-                    <button type="button" class="act-btn" data-value="running">
-                        <span class="act-icon">🏃</span>
-                        <span class="act-label">Corsa</span>
-                    </button>
-                    <button type="button" class="act-btn" data-value="cycling">
-                        <span class="act-icon">🚴</span>
-                        <span class="act-label">Ciclismo</span>
-                    </button>
-                    <button type="button" class="act-btn" data-value="yoga">
-                        <span class="act-icon">🧘</span>
-                        <span class="act-label">Yoga</span>
-                    </button>
-                    <button type="button" class="act-btn" data-value="mobility">
-                        <span class="act-icon">🤸</span>
-                        <span class="act-label">Mobilità</span>
-                    </button>
-                    <button type="button" class="act-btn" data-value="walking">
-                        <span class="act-icon">🚶</span>
-                        <span class="act-label">Camminata</span>
-                    </button>
+            <!-- Tipo attività -->
+            <div class="ai-field">
+                <label class="ai-label">Tipo di attività</label>
+                <div class="act-grid">
+                    <button type="button" class="act-btn active" data-value="gym">🏋️ Palestra</button>
+                    <button type="button" class="act-btn" data-value="running">🏃 Corsa</button>
+                    <button type="button" class="act-btn" data-value="cycling">🚴 Ciclismo</button>
+                    <button type="button" class="act-btn" data-value="yoga">🧘 Yoga</button>
+                    <button type="button" class="act-btn" data-value="mobility">🤸 Mobilità</button>
+                    <button type="button" class="act-btn" data-value="walking">🚶 Camminata</button>
                 </div>
-                <!-- Hidden select for JS compatibility -->
-                <select id="activityType" name="activityType" style="display:none;" required>
-                    <option value="gym" selected>Palestra</option>
-                    <option value="running">Corsa</option>
-                    <option value="cycling">Ciclismo</option>
-                    <option value="yoga">Yoga</option>
-                    <option value="mobility">Mobilità</option>
-                    <option value="walking">Camminata</option>
-                </select>
+                <input type="hidden" id="activityType" value="gym">
             </div>
 
-            <!-- Tipo piano + Livello su una riga -->
-            <div class="form-row-2">
-                <div class="form-block">
-                    <label class="form-label" for="planType">Tipo di piano</label>
-                    <div class="pill-selector" id="planPills">
+            <!-- Piano + Livello -->
+            <div class="ai-row2">
+                <div class="ai-field">
+                    <label class="ai-label">Tipo di piano</label>
+                    <div class="pill-group">
                         <button type="button" class="pill active" data-target="planType" data-value="weekly">Settimanale</button>
                         <button type="button" class="pill" data-target="planType" data-value="monthly">Mensile</button>
                         <button type="button" class="pill" data-target="planType" data-value="custom">Custom</button>
                     </div>
-                    <select id="planType" style="display:none;">
-                        <option value="weekly" selected>Piano Settimanale</option>
-                        <option value="monthly">Piano Mensile</option>
-                        <option value="custom">Piano Personalizzato</option>
-                    </select>
+                    <input type="hidden" id="planType" value="weekly">
                 </div>
-                <div class="form-block">
-                    <label class="form-label" for="fitnessLevel">Livello</label>
-                    <div class="pill-selector" id="levelPills">
+                <div class="ai-field">
+                    <label class="ai-label">Livello fitness</label>
+                    <div class="pill-group">
                         <button type="button" class="pill" data-target="fitnessLevel" data-value="beginner">Base</button>
                         <button type="button" class="pill active" data-target="fitnessLevel" data-value="intermediate">Medio</button>
                         <button type="button" class="pill" data-target="fitnessLevel" data-value="advanced">Avanzato</button>
                     </div>
-                    <select id="fitnessLevel" style="display:none;">
-                        <option value="beginner">Principiante</option>
-                        <option value="intermediate" selected>Intermedio</option>
-                        <option value="advanced">Avanzato</option>
-                    </select>
+                    <input type="hidden" id="fitnessLevel" value="intermediate">
                 </div>
             </div>
 
-            <!-- Textarea obiettivo -->
-            <div class="form-block">
-                <label class="form-label" for="aiPrompt">Descrivi il tuo obiettivo</label>
+            <!-- Obiettivo -->
+            <div class="ai-field">
+                <label class="ai-label" for="aiPrompt">Descrivi il tuo obiettivo</label>
                 <textarea id="aiPrompt" class="ai-textarea" rows="4"
-                    placeholder="Es: Voglio perdere peso e aumentare la resistenza. Mi alleno 3 volte a settimana e ho 45 minuti per sessione..."></textarea>
-                <div class="char-count"><span id="charCount">0</span> / 500</div>
+                    placeholder="Es: Voglio perdere peso e aumentare la resistenza. Mi alleno 3 volte a settimana con 45 minuti per sessione..."></textarea>
+                <div class="char-count"><span id="charCount">0</span>/500</div>
             </div>
 
-            <button id="generatePlanBtn" class="btn-generate">
+            <button id="generatePlanBtn" class="ai-btn-generate">
                 <i class="fas fa-wand-magic-sparkles"></i>
                 Genera il mio piano
-                <span class="btn-arrow">→</span>
             </button>
         </div>
 
-        <!-- STEP 2 — Risposta AI ───────────────────────────────────── -->
-        <div id="aiResponseContainer" class="ai-response-card" style="display:none;">
+        <!-- RISPOSTA AI -->
+        <div id="aiResponseContainer" class="ai-card" style="display:none;">
             <div class="response-header">
-                <div class="response-header-icon"><i class="fas fa-robot"></i></div>
+                <div class="response-icon"><i class="fas fa-robot"></i></div>
                 <div>
-                    <h3>Il tuo piano personalizzato</h3>
-                    <p class="response-subtitle">Generato in base al tuo profilo e ai tuoi obiettivi</p>
+                    <h2 class="ai-card-title" style="margin:0;">Il tuo piano personalizzato</h2>
+                    <p class="response-sub">Generato in base al tuo profilo</p>
                 </div>
             </div>
             <div id="aiResponse" class="ai-response-body"></div>
             <div class="response-actions">
-                <button id="saveWorkoutsBtn" class="btn-action btn-action-primary">
+                <button id="saveWorkoutsBtn" class="ai-btn ai-btn-primary">
                     <i class="fas fa-save"></i> Salva allenamenti
                 </button>
-                <button id="regenerateBtn" class="btn-action btn-action-secondary">
+                <button id="regenerateBtn" class="ai-btn ai-btn-secondary">
                     <i class="fas fa-redo"></i> Rigenera
                 </button>
-                <button id="newPlanBtn" class="btn-action btn-action-ghost">
+                <button id="newPlanBtn" class="ai-btn ai-btn-ghost">
                     <i class="fas fa-plus"></i> Nuovo piano
                 </button>
             </div>
         </div>
 
-        <!-- STEP 3 — Anteprima ─────────────────────────────────────── -->
-        <div id="workoutPreviewContainer" class="ai-preview-card" style="display:none;">
-            <div class="preview-header">
-                <i class="fas fa-clipboard-check"></i>
-                <h3>Anteprima allenamenti</h3>
-                <p>Verifica prima di salvare</p>
-            </div>
+        <!-- ANTEPRIMA -->
+        <div id="workoutPreviewContainer" class="ai-card" style="display:none;">
+            <h2 class="ai-card-title"><i class="fas fa-clipboard-check"></i> Anteprima allenamenti</h2>
+            <p class="response-sub">Verifica prima di salvare</p>
             <div id="workoutPreviewList" class="preview-list"></div>
-            <div class="preview-actions">
-                <button id="confirmSaveBtn" class="btn-action btn-action-primary">
+            <div class="response-actions">
+                <button id="confirmSaveBtn" class="ai-btn ai-btn-primary">
                     <i class="fas fa-check"></i> Conferma e salva
                 </button>
-                <button id="cancelSaveBtn" class="btn-action btn-action-ghost">
+                <button id="cancelSaveBtn" class="ai-btn ai-btn-ghost">
                     <i class="fas fa-times"></i> Annulla
                 </button>
             </div>
         </div>
 
-    </div><!-- /ai-col-form -->
+    </div>
 
-    <!-- ── COLONNA DESTRA: CONTESTO + TIPS ───────────────────────── -->
+    <!-- COLONNA LATERALE -->
     <div class="ai-col-side">
 
-        <!-- Card contesto (da JS) -->
-        <div id="contextCard" class="side-card context-card" style="display:none;">
-            <div class="context-header">
-                <div class="context-header-left">
-                    <i class="fas fa-chart-bar"></i>
-                    <h3>Il tuo profilo</h3>
-                </div>
-                <span class="context-badge" id="contextBadge"></span>
+        <!-- Profilo utente (popolato da JS) -->
+        <div id="contextCard" class="ai-card ai-card-side" style="display:none;">
+            <div class="ctx-header">
+                <i class="fas fa-chart-bar"></i>
+                <h3 class="ctx-title">Il tuo profilo</h3>
+                <span class="ctx-badge" id="contextBadge"></span>
             </div>
-            <div class="context-stats" id="contextStats"></div>
+            <div class="ctx-stats" id="contextStats"></div>
             <div id="contextSuggestions">
-                <p class="context-hint"><i class="fas fa-bolt"></i> Suggerimenti rapidi</p>
-                <div class="quick-prompts" id="quickPrompts"></div>
+                <p class="ctx-hint"><i class="fas fa-bolt"></i> Suggerimenti rapidi</p>
+                <div id="quickPrompts" class="quick-prompts"></div>
             </div>
         </div>
 
-        <!-- Card tips statici -->
-        <div class="side-card tips-card">
-            <h4 class="tips-title"><i class="fas fa-lightbulb"></i> Come ottenere il miglior piano</h4>
+        <!-- Tips -->
+        <div class="ai-card ai-card-side">
+            <h4 class="side-title"><i class="fas fa-lightbulb"></i> Come ottenere il miglior piano</h4>
             <ul class="tips-list">
-                <li><span class="tip-num">1</span> Sii specifico sugli obiettivi: "perdere 5kg" è meglio di "dimagrire"</li>
-                <li><span class="tip-num">2</span> Indica il tempo disponibile per sessione</li>
-                <li><span class="tip-num">3</span> Segnala eventuali infortuni o limitazioni</li>
-                <li><span class="tip-num">4</span> Usa i suggerimenti rapidi basati sul tuo storico</li>
+                <li>Sii specifico: "perdere 5kg" meglio di "dimagrire"</li>
+                <li>Indica il tempo disponibile per sessione</li>
+                <li>Segnala eventuali infortuni o limitazioni</li>
+                <li>Usa i suggerimenti rapidi basati sul tuo storico</li>
             </ul>
         </div>
 
-        <!-- Card cosa aspettarsi -->
-        <div class="side-card expect-card">
-            <h4 class="tips-title"><i class="fas fa-magic"></i> Cosa include il piano</h4>
-            <div class="expect-grid">
-                <div class="expect-item">
-                    <i class="fas fa-fire-alt"></i>
-                    <span>Riscaldamento</span>
-                </div>
-                <div class="expect-item">
-                    <i class="fas fa-dumbbell"></i>
-                    <span>Fase principale</span>
-                </div>
-                <div class="expect-item">
-                    <i class="fas fa-snowflake"></i>
-                    <span>Defaticamento</span>
-                </div>
-                <div class="expect-item">
-                    <i class="fas fa-notes-medical"></i>
-                    <span>Note e consigli</span>
-                </div>
+        <!-- Cosa include -->
+        <div class="ai-card ai-card-side">
+            <h4 class="side-title"><i class="fas fa-magic"></i> Cosa include il piano</h4>
+            <div class="includes-grid">
+                <div class="inc-item"><i class="fas fa-fire-alt"></i><span>Riscaldamento</span></div>
+                <div class="inc-item"><i class="fas fa-dumbbell"></i><span>Fase principale</span></div>
+                <div class="inc-item"><i class="fas fa-snowflake"></i><span>Defaticamento</span></div>
+                <div class="inc-item"><i class="fas fa-notes-medical"></i><span>Note e consigli</span></div>
             </div>
         </div>
 
-    </div><!-- /ai-col-side -->
+    </div>
 
-</main>
+</div>
 
-<!-- ── LOADING OVERLAY ─────────────────────────────────────────────── -->
-<div id="aiLoadingOverlay" style="display:none;" class="ai-loading-overlay">
-    <div class="loading-content">
-        <div class="loading-robot">
-            <i class="fas fa-robot"></i>
-        </div>
+<!-- LOADING OVERLAY — display controllato SOLO da JavaScript -->
+<div id="aiLoadingOverlay" class="ai-loading-overlay" style="display:none;">
+    <div class="loading-box">
+        <div class="loading-robot"><i class="fas fa-robot"></i></div>
         <div class="loading-dots">
             <span></span><span></span><span></span>
         </div>
@@ -286,40 +206,39 @@
 <script src="/js/utils.js"></script>
 <script src="/js/app-core.js"></script>
 
-<!-- Visual selector sync -->
 <script>
-(function() {
-    // Activity card buttons → hidden select
-    document.querySelectorAll('.act-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.act-btn').forEach(b => b.classList.remove('active'));
+(function () {
+    // Activity buttons
+    document.querySelectorAll('.act-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.act-btn').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             document.getElementById('activityType').value = btn.dataset.value;
         });
     });
 
-    // Pill buttons → hidden select
-    document.querySelectorAll('.pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-            const target = pill.dataset.target;
-            document.querySelectorAll(`.pill[data-target="${target}"]`).forEach(p => p.classList.remove('active'));
+    // Pill buttons
+    document.querySelectorAll('.pill').forEach(function (pill) {
+        pill.addEventListener('click', function () {
+            var target = pill.dataset.target;
+            document.querySelectorAll('.pill[data-target="' + target + '"]').forEach(function (p) { p.classList.remove('active'); });
             pill.classList.add('active');
             document.getElementById(target).value = pill.dataset.value;
         });
     });
 
     // Character counter
-    const ta = document.getElementById('aiPrompt');
-    const cc = document.getElementById('charCount');
+    var ta = document.getElementById('aiPrompt');
+    var cc = document.getElementById('charCount');
     if (ta && cc) {
-        ta.addEventListener('input', () => {
+        ta.addEventListener('input', function () {
             cc.textContent = ta.value.length;
-            cc.style.color = ta.value.length > 450 ? '#dc2626' : '';
+            cc.style.color = ta.value.length > 450 ? '#ef4444' : '';
         });
     }
 
-    // Animated loading messages
-    const msgs = [
+    // Loading animation — gestita con funzioni globali usate da ai-trainer.js
+    var msgs = [
         'Analizzo il tuo profilo...',
         'Studio il tuo storico...',
         'Calibro intensità e volume...',
@@ -327,62 +246,35 @@
         'Aggiungo note personalizzate...',
         'Quasi pronto...'
     ];
-    let msgTimer = null;
+    var msgTimer = null;
 
-    // Observe overlay visibility to trigger animation
-    const overlayEl = document.getElementById('aiLoadingOverlay');
-    if (overlayEl) {
-        const loadingObs = new MutationObserver(() => {
-            if (overlayEl.style.display !== 'none') startLoadingAnim();
-            else stopLoadingAnim();
-        });
-        loadingObs.observe(overlayEl, { attributes: true, attributeFilter: ['style'] });
-    }
-
-    function startLoadingAnim() {
-        let idx = 0;
-        const msgEl = document.getElementById('loadingMsg');
-        const bar   = document.getElementById('loadingBar');
+    window.showAiLoading = function () {
+        var overlay = document.getElementById('aiLoadingOverlay');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+        var idx = 0;
+        var pct = 5;
+        var msgEl = document.getElementById('loadingMsg');
+        var bar   = document.getElementById('loadingBar');
         if (msgEl) msgEl.textContent = msgs[0];
-        if (bar)   bar.style.width = '5%';
-
-        let pct = 5;
-        msgTimer = setInterval(() => {
+        if (bar)   bar.style.width   = '5%';
+        clearInterval(msgTimer);
+        msgTimer = setInterval(function () {
             idx = (idx + 1) % msgs.length;
             if (msgEl) msgEl.textContent = msgs[idx];
             pct = Math.min(88, pct + 14);
             if (bar) bar.style.width = pct + '%';
         }, 1800);
-    }
-
-    function stopLoadingAnim() {
-        clearInterval(msgTimer);
-        const bar = document.getElementById('loadingBar');
-        if (bar) { bar.style.transition = 'width .3s'; bar.style.width = '100%'; }
-    }
-
-    // Step indicator helper exposed globally
-    window.setAiStep = function(n) {
-        [1,2,3].forEach(i => {
-            const el = document.getElementById('step' + i + 'Indicator');
-            if (!el) return;
-            el.classList.toggle('active',   i === n);
-            el.classList.toggle('done',     i < n);
-        });
     };
 
-    // Watch response/preview containers to auto-advance steps
-    const obs = new MutationObserver(() => {
-        const r = document.getElementById('aiResponseContainer');
-        const p = document.getElementById('workoutPreviewContainer');
-        if (p && p.style.display !== 'none') { window.setAiStep(3); return; }
-        if (r && r.style.display !== 'none') { window.setAiStep(2); return; }
-        window.setAiStep(1);
-    });
-    ['aiResponseContainer','workoutPreviewContainer'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) obs.observe(el, { attributes: true, attributeFilter: ['style'] });
-    });
+    window.hideAiLoading = function () {
+        clearInterval(msgTimer);
+        var overlay = document.getElementById('aiLoadingOverlay');
+        if (!overlay) return;
+        var bar = document.getElementById('loadingBar');
+        if (bar) bar.style.width = '100%';
+        setTimeout(function () { overlay.style.display = 'none'; }, 300);
+    };
 })();
 </script>
 
