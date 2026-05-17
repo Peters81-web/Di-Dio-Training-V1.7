@@ -4,95 +4,18 @@
  * degli allenamenti nell'applicazione Di Dio Training
  */
 
-// Mappatura dei valori numerici agli UUID
-const activityUuids = {
-  '1': '3f731db5-9b4e-4375-9d01-056d9b592387', // Corsa
-  '2': '0bf5223d-c272-4f5b-b7d5-a1bf4acf14a5', // Ciclismo
-  '3': '57c626f0-43fe-42bf-a3fb-c0b4d43bfcb3', // Nuoto
-  '4': '2006eb2a-9ec4-47f8-8c1c-fd95c27f43a9', // Forza
-  '5': '83a0851a-dee1-4cb1-b69d-b57df587d6f9'  // Yoga
-};
-
-// Mappatura inversa degli UUID agli ID numerici
-const uuidToActivityMap = {
-  '3f731db5-9b4e-4375-9d01-056d9b592387': 1, // Corsa
-  '0bf5223d-c272-4f5b-b7d5-a1bf4acf14a5': 2, // Ciclismo
-  '57c626f0-43fe-42bf-a3fb-c0b4d43bfcb3': 3, // Nuoto
-  '2006eb2a-9ec4-47f8-8c1c-fd95c27f43a9': 4, // Forza
-  '83a0851a-dee1-4cb1-b69d-b57df587d6f9': 5  // Yoga
-};
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Inizializzazione workout-editor.js');
-    
+
     // Inizializzazione degli editor di testo ricco
     initRichTextEditors();
-    
+
     // Gestione del submit del form
     setupFormSubmission();
-    
+
     // Verifiche iniziali
     performInitialChecks();
-    
-    // Converti i valori del selettore attività in UUID
-    convertActivitySelectToUuid();
 });
-
-/**
- * Converte i valori numerici nel selettore delle attività in UUID
- */
-function convertActivitySelectToUuid() {
-    const activitySelect = document.getElementById('activityType');
-    if (!activitySelect) {
-        console.log('Selettore attività non trovato');
-        return;
-    }
-    
-    console.log('Converti valori selettore attività in UUID');
-    
-    // Salva le opzioni attuali
-    const currentOptions = [];
-    for (let i = 0; i < activitySelect.options.length; i++) {
-        const option = activitySelect.options[i];
-        currentOptions.push({
-            value: option.value,
-            text: option.textContent
-        });
-    }
-    
-    // Svuota il selettore
-    activitySelect.innerHTML = '';
-    
-    // Ricrea le opzioni con i valori UUID
-    currentOptions.forEach(option => {
-        const newOption = document.createElement('option');
-        
-        // Se è l'opzione vuota, mantienila così
-        if (option.value === '') {
-            newOption.value = '';
-        } else {
-            // Altrimenti converti il valore numerico in UUID
-            const uuid = activityUuids[option.value];
-            if (uuid) {
-                newOption.value = uuid;
-            } else {
-                // Se è già un UUID valido, usalo così com'è
-                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                if (uuidRegex.test(option.value)) {
-                    newOption.value = option.value;
-                } else {
-                    console.warn(`Valore non convertibile in UUID: ${option.value}`);
-                    newOption.value = option.value;
-                }
-            }
-        }
-        
-        newOption.textContent = option.text;
-        activitySelect.appendChild(newOption);
-    });
-    
-    console.log('Conversione UUID completata');
-}
 
 /**
  * Inizializza gli editor di testo ricco nella pagina
@@ -189,8 +112,6 @@ function setupFormSubmission() {
         }
     });
     
-    // Aggiorna il selettore dopo la clonazione
-    convertActivitySelectToUuid();
 }
 
 /**
@@ -263,13 +184,13 @@ async function saveNewWorkout() {
         // Prepara i dati dell'allenamento
         const workoutData = {
             name: document.getElementById('workoutName').value.trim(),
-            activity_id: document.getElementById('activityType').value, // Già un UUID dopo la conversione
+            activity_id: null,
+            activity_type: document.getElementById('activityType').value,
             total_duration: parseInt(document.getElementById('duration').value),
             difficulty: document.getElementById('difficulty').value,
             objective: document.getElementById('objective').value.trim(),
             user_id: session.user.id,
             created_at: new Date().toISOString()
-            // Non includere updated_at perché non esiste nella tabella
         };
         
         // Pulisci il contenuto degli editor (rimuovi placeholder)
@@ -329,11 +250,11 @@ async function saveExistingWorkout(workoutId) {
         // Prepara i dati dell'allenamento
         const workoutData = {
             name: document.getElementById('workoutName').value.trim(),
-            activity_id: document.getElementById('activityType').value, // Già un UUID dopo la conversione
+            activity_id: null,
+            activity_type: document.getElementById('activityType').value,
             total_duration: parseInt(document.getElementById('duration').value),
             difficulty: document.getElementById('difficulty').value,
             objective: document.getElementById('objective').value.trim()
-            // Non includere updated_at perché non esiste nella tabella
         };
         
         // Pulisci il contenuto degli editor (rimuovi placeholder)
