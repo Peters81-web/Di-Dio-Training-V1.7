@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .eq('user_id', currentUser.id)
         .order('scheduled_date', { ascending: true }),
       sc.from('completed_workouts')
-        .select('completed_at,actual_duration,calories_burned,distance,activity_type,workout_plans(name,activity_type)')
+        .select('completed_at,actual_duration,calories_burned,distance,workout_plans(name,activity_type)')
         .eq('user_id', currentUser.id)
         .order('completed_at', { ascending: true })
         .limit(200)

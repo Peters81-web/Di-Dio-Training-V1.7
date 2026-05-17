@@ -76,7 +76,7 @@ async function initRecovery() {
 
     const { data: completed } = await supabase
       .from('completed_workouts')
-      .select('completed_at, activity_type, workout_plans(name, objective, activity_type)')
+      .select('completed_at, workout_plans(name, objective, activity_type)')
       .eq('user_id', session.user.id)
       .gte('completed_at', sevenDaysAgo.toISOString())
       .order('completed_at', { ascending: false })
