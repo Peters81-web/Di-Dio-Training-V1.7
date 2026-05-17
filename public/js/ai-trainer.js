@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       const { data: completed, error } = await supabaseClient
         .from('completed_workouts')
-        .select('completed_at, actual_duration, activity_type, workout_plans(name, activity_type)')
+        .select('completed_at, actual_duration, workout_plans(name, activity_type)')
         .eq('user_id', currentUser.id)
         .gte('completed_at', thirtyDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
