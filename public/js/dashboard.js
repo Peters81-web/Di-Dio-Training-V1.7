@@ -265,18 +265,18 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const { data: completed } = await supabaseClient
                 .from('completed_workouts')
-                .select('workout_plan_id, actual_duration, completed_at')
+                .select('workout_id, actual_duration, completed_at')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', thirtyDaysAgo.toISOString())
                 .order('completed_at', { ascending: false });
 
             if (!completed?.length) return;
 
-            // Raggruppa per workout_plan_id
+            // Raggruppa per workout_id (FK verso workout_plans.id)
             const byPlan = {};
             completed.forEach(c => {
-                if (!byPlan[c.workout_plan_id]) byPlan[c.workout_plan_id] = [];
-                byPlan[c.workout_plan_id].push(c.actual_duration || 0);
+                if (!byPlan[c.workout_id]) byPlan[c.workout_id] = [];
+                byPlan[c.workout_id].push(c.actual_duration || 0);
             });
 
             workoutsData.forEach(workout => {
@@ -925,16 +925,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    /**
-     * Escape HTML per prevenire XSS
-     */
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
+    // escapeHtml è definita globalmente in utils.js (window.escapeHtml)
+
     /**
      * Rimuove modal esistenti per evitare conflitti
      */
