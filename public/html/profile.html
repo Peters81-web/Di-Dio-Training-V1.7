@@ -213,6 +213,85 @@
         </div>
 
     </div>
+
+    <!-- ── PESO & PROGRESSI ─────────────────────────────────────── -->
+    <section class="weight-section">
+        <h2 class="weight-section-title"><i class="fas fa-weight"></i> Peso & Progressi</h2>
+
+        <!-- Riepilogo -->
+        <div class="weight-top-row">
+            <div class="wt-stat-card">
+                <div class="wt-stat-icon blue"><i class="fas fa-weight"></i></div>
+                <div>
+                    <div class="wt-stat-val" id="wtCurrentWeight">--</div>
+                    <div class="wt-stat-lbl">Peso attuale</div>
+                </div>
+            </div>
+            <div class="wt-stat-card">
+                <div class="wt-stat-icon" id="wtTrendIcon"><i class="fas fa-minus"></i></div>
+                <div>
+                    <div class="wt-stat-val" id="wtTrend">--</div>
+                    <div class="wt-stat-lbl">Variazione (7gg)</div>
+                </div>
+            </div>
+            <div class="wt-stat-card">
+                <div class="wt-stat-icon amber"><i class="fas fa-bullseye"></i></div>
+                <div>
+                    <div class="wt-stat-val" id="wtGoal">--</div>
+                    <div class="wt-stat-lbl">Peso obiettivo</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafico -->
+        <div class="weight-chart-card">
+            <div class="weight-chart-header">
+                <h4><i class="fas fa-chart-line" style="color:#4361ee;margin-right:.4rem;"></i>Andamento peso</h4>
+                <div class="wt-period-btns">
+                    <button class="wt-period-btn active" data-days="7">7gg</button>
+                    <button class="wt-period-btn" data-days="30">30gg</button>
+                    <button class="wt-period-btn" data-days="90">3 mesi</button>
+                    <button class="wt-period-btn" data-days="0">Tutto</button>
+                </div>
+            </div>
+            <div class="wt-chart-wrap">
+                <canvas id="weightChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Input + Storico -->
+        <div class="weight-bottom-row">
+            <div class="wt-add-card">
+                <div class="wt-card-title"><i class="fas fa-plus-circle"></i> Aggiungi misurazione</div>
+                <div class="wt-form">
+                    <div class="wt-form-row">
+                        <div class="wt-form-group">
+                            <label for="wtDate">Data</label>
+                            <input type="date" id="wtDate">
+                        </div>
+                        <div class="wt-form-group">
+                            <label for="wtWeight">Peso (kg)</label>
+                            <input type="number" id="wtWeight" placeholder="Es. 72.5" step="0.1" min="20" max="300">
+                        </div>
+                    </div>
+                    <div class="wt-form-group">
+                        <label for="wtNote">Nota (opzionale)</label>
+                        <input type="text" id="wtNote" placeholder="Es. dopo allenamento">
+                    </div>
+                    <button class="wt-btn-add" id="wtAddBtn">
+                        <i class="fas fa-save"></i> Salva misurazione
+                    </button>
+                </div>
+            </div>
+            <div class="wt-history-card">
+                <div class="wt-card-title"><i class="fas fa-history"></i> Ultime misurazioni</div>
+                <div class="wt-history-list" id="wtHistoryList">
+                    <div class="wt-empty">Nessuna misurazione ancora</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
 </main>
 
 <!-- ── MODAL MODIFICA PROFILO ──────────────────────────────────────── -->
@@ -363,10 +442,12 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/js/utils.js"></script>
 <script src="/js/supabase-config.js"></script>
 <script src="/js/notifications.js"></script>
 <script src="/js/profile.js"></script>
+<script src="/js/weight-tracker.js"></script>
 <script src="/js/app-core.js"></script>
 
 </body>
