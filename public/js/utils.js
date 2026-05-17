@@ -125,6 +125,17 @@ function formatDuration(minutes) {
     return `${minutes}m`;
 }
 
+// Escape HTML per prevenire XSS quando si inietta testo via innerHTML
+function escapeHtml(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Genera un ID univoco
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -168,6 +179,7 @@ window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.formatDate = formatDate;
 window.formatDuration = formatDuration;
+window.escapeHtml = escapeHtml;
 window.generateUniqueId = generateUniqueId;
 window.getBaseUrl = getBaseUrl;
 window.checkUserAuthentication = checkUserAuthentication;

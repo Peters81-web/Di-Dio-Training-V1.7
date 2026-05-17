@@ -38,15 +38,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
-  function escapeHtml(text) {
-    return (text || '')
-      .toString()
-      .replace(/&/g,  '&amp;')
-      .replace(/</g,  '&lt;')
-      .replace(/>/g,  '&gt;')
-      .replace(/"/g,  '&quot;')
-      .replace(/'/g,  '&#039;');
-  }
+  // escapeHtml è definita globalmente in utils.js (window.escapeHtml)
 
   // Mappe centralizzate — aggiungere nuovi tipi qui, non sparsi nel codice
   const ACTIVITY_MAP = {
