@@ -9,13 +9,27 @@ const IS_DEV = process.env.NODE_ENV !== 'production';
 const log     = IS_DEV ? (...a) => console.log(...a)   : () => {};
 const logErr  = (...a) => console.error(...a); // errori sempre visibili
 
-// ─── CORS (solo origini autorizzate) ─────────────────────────────────────────
-const allowedOrigins = IS_DEV
-  ? ['http://localhost:3000']
-  : ['https://di-dio-training-v1-7.vercel.app'];
+// ─── CORS (origini autorizzate) ──────────────────────────────────────────────
+// In produzione accettiamo:
+//   - il dominio principale (di-dio-training-v1-7.vercel.app)
+//   - qualsiasi preview deployment di Vercel (*-peters81*.vercel.app o
+//     *-git-*.vercel.app) per consentire testing su PR/branch
+// In dev solo localhost.
+const PROD_ORIGIN_REGEX = /^https:\/\/di-dio-training-v1-7(-[a-z0-9-]+)?\.vercel\.app$/;
+const DEV_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+function corsOriginCheck(origin, callback) {
+  // Richieste server-to-server (es. curl, health checks) non hanno Origin → consenti
+  if (!origin) return callback(null, true);
+
+  if (IS_DEV) {
+    return callback(null, DEV_ORIGINS.includes(origin));
+  }
+  return callback(null, PROD_ORIGIN_REGEX.test(origin));
+}
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: corsOriginCheck,
   methods: ['GET', 'POST', 'PUT'],
   optionsSuccessStatus: 200
 }));
@@ -123,6 +137,17 @@ app.post('/api/generate-plan', aiLimiter, async (req, res) => {
   const planTypeText = planTypeMap[planType]   || 'settimanale (7 giorni)';
   const levelText    = levelMap[fitnessLevel]  || 'intermedio';
 
+  // Budget token in base al tipo di piano (evita troncamenti su piani lunghi)
+  // weekly ~ 7 giorni × ~150 token/giorno = ~1100 + intro
+  // monthly ~ 28 giorni → serve molto più spazio
+  // custom = manteniamo margine ampio
+  const tokenBudgetMap = {
+    weekly:  1500,
+    monthly: 3500,
+    custom:  2500
+  };
+  const maxTokens = tokenBudgetMap[planType] || 1500;
+
   const systemPrompt = `Sei un personal trainer professionista italiano. Crea piani di allenamento dettagliati, pratici e motivanti in italiano. Struttura sempre la risposta in Markdown con sezioni chiare.`;
 
   const contextSection = workoutContext ? `
@@ -176,7 +201,7 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMessage  }
         ],
-        max_tokens:  1200,
+        max_tokens:  maxTokens,
         temperature: 0.7
       }),
       signal: groqController.signal
