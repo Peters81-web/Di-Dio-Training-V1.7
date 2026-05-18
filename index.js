@@ -82,9 +82,55 @@ try {
 }
 
 // ─── Costanti validazione ─────────────────────────────────────────────────────
-const VALID_PLAN_TYPES   = ['weekly', 'monthly', 'custom'];
-const VALID_LEVELS       = ['beginner', 'intermediate', 'advanced'];
-const MAX_PROMPT_LENGTH  = 2000;
+const VALID_PLAN_TYPES        = ['weekly', 'monthly', 'custom'];
+const VALID_LEVELS            = ['beginner', 'intermediate', 'advanced'];
+const MAX_PROMPT_LENGTH       = 2000;
+const MAX_TOP_ACTIVITY_LENGTH = 60;
+const MAX_LAST_WORKOUTS_ITEMS = 10;
+const MAX_LAST_WORKOUT_LENGTH = 100;
+
+/**
+ * Sanitizza workoutContext (proveniente dal client) prima di iniettarlo
+ * nel prompt Groq. Difesa in profondità contro:
+ *  - prompt injection (input troppo lunghi che gonfiano il prompt e
+ *    sprecano token / cambiano la struttura attesa)
+ *  - tipi inattesi (numero negativo, oggetto al posto di stringa, ecc.)
+ *  - array gigante (lastWorkouts esploso)
+ * Ritorna un nuovo oggetto pulito, o null se l'input non è utilizzabile.
+ */
+function sanitizeWorkoutContext(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+  const clampInt = (v, min, max, fallback) => {
+    const n = Number.parseInt(v, 10);
+    if (Number.isNaN(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  };
+  const clampNum = (v, min, max, fallback) => {
+    const n = Number.parseFloat(v);
+    if (Number.isNaN(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  };
+  const clampStr = (v, maxLen) =>
+    (typeof v === 'string' ? v : '').trim().slice(0, maxLen);
+
+  const lastWorkoutsArr = Array.isArray(raw.lastWorkouts)
+    ? raw.lastWorkouts
+        .filter(s => typeof s === 'string')
+        .slice(0, MAX_LAST_WORKOUTS_ITEMS)
+        .map(s => clampStr(s, MAX_LAST_WORKOUT_LENGTH))
+        .filter(Boolean)
+    : [];
+
+  return {
+    totalCompleted: clampInt(raw.totalCompleted, 0, 10000, 0),
+    avgPerWeek:     clampNum(raw.avgPerWeek,     0, 100,   0).toFixed(1),
+    avgDuration:    clampInt(raw.avgDuration,    0, 600,   0),
+    topActivity:    clampStr(raw.topActivity, MAX_TOP_ACTIVITY_LENGTH),
+    streak:         clampInt(raw.streak,         0, 3650,  0),
+    lastWorkouts:   lastWorkoutsArr
+  };
+}
 
 // ─── Rotte pagine HTML ────────────────────────────────────────────────────────
 app.get('/',               (req, res) => sendHtmlFile(res, 'index.html'));
@@ -100,7 +146,11 @@ app.get('/reports',        (req, res) => sendHtmlFile(res, 'reports.html'));
 
 // ─── API AI Trainer (Groq) ────────────────────────────────────────────────────
 app.post('/api/generate-plan', aiLimiter, async (req, res) => {
-  const { prompt, planType, fitnessLevel, activityType, workoutContext } = req.body || {};
+  const { prompt, planType, fitnessLevel, activityType, workoutContext: rawWorkoutContext } = req.body || {};
+
+  // Sanitizza workoutContext lato server (anche se il client lo costruisce
+  // correttamente, non possiamo fidarci di payload arbitrari)
+  const workoutContext = sanitizeWorkoutContext(rawWorkoutContext);
 
   // Validazione input
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {

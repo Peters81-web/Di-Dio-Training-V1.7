@@ -8,7 +8,21 @@
     { "src": "/api/(.*)", "dest": "/index.js" },
     {
       "src": "/(.*)\\.(js|css|woff2|woff|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp)",
-      "headers": { "Cache-Control": "public, max-age=31536000, immutable" },
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      },
+      "continue": true
+    },
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+      },
       "continue": true
     },
     { "handle": "filesystem" },
