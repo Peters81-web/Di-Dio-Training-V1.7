@@ -797,7 +797,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 { table: 'workout_plans',      label: 'piani allenamento' },
                 { table: 'completed_workouts', label: 'allenamenti completati' },
                 { table: 'weekly_summaries',   label: 'riepiloghi settimanali' },
-                { table: 'body_measurements',  label: 'misure corporee' }
+                { table: 'body_measurements',  label: 'misure corporee' },
+                { table: 'user_preferences',   label: 'preferenze utente' }
             ];
 
             const results = await Promise.allSettled(

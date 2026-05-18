@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentUser = null;
     let notifications = [];
     let hasUnreadNotifications = false;
+    let realtimeChannel = null; // Canale Supabase Realtime per nuove notifiche push
     
     // Elementi UI
     const notificationContainer = document.createElement('div');
@@ -41,11 +42,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Setup event listener per mostrare/nascondere pannello notifiche
             setupNotificationPanel();
-            
-            // Attiva il polling delle notifiche (ogni 5 minuti)
-            setInterval(checkNewNotifications, 5 * 60 * 1000);
-            
-            console.log('Sistema di notifiche inizializzato');
+
+            // Sottoscrivi al canale Realtime di Supabase (push, no polling)
+            subscribeToRealtimeNotifications();
+
+            // Fallback: quando l'utente torna sulla tab dopo essere stato via,
+            // facciamo una sync esplicita per recuperare eventi che il WebSocket
+            // potrebbe aver perso (es. dopo sleep/sospensione del browser).
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            // Cleanup canale alla chiusura/refresh della pagina
+            window.addEventListener('beforeunload', unsubscribeFromRealtimeNotifications);
+
+            console.log('Sistema di notifiche inizializzato (Realtime + visibility-sync)');
         } catch (error) {
             console.error('Errore nell\'inizializzazione del sistema di notifiche:', error);
         }
@@ -205,7 +214,73 @@ async function createDefaultNotificationPreferences() {
         }
     }
     
-    // Controlla se ci sono nuove notifiche
+    // ─── REALTIME (Supabase WebSocket channel) ────────────────────────────
+    // Push-based: il server notifica il client all'INSERT sulla riga di sua
+    // competenza (filtro user_id=eq lato server). Sostituisce il vecchio
+    // polling che generava ~12 query inutili/ora per ogni utente attivo.
+    function subscribeToRealtimeNotifications() {
+        if (!currentUser?.id) return;
+
+        // Se per qualche motivo è già attivo (re-init), rimuovi prima
+        if (realtimeChannel) {
+            unsubscribeFromRealtimeNotifications();
+        }
+
+        realtimeChannel = supabaseClient
+            .channel(`notifications:${currentUser.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${currentUser.id}`
+                },
+                (payload) => {
+                    const newNotif = payload.new;
+                    if (!newNotif) return;
+
+                    // Evita duplicati (per sicurezza, anche se il filter
+                    // server-side dovrebbe già impedirlo)
+                    if (notifications.some(n => n.id === newNotif.id)) return;
+
+                    notifications.unshift(newNotif);
+                    if (notifications.length > 20) notifications = notifications.slice(0, 20);
+
+                    hasUnreadNotifications = true;
+                    updateNotificationBadges();
+                    showNotificationToast(newNotif);
+                }
+            )
+            .subscribe((status, err) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[notifications] Realtime channel subscribed');
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('[notifications] Realtime channel error:', status, err);
+                }
+            });
+    }
+
+    function unsubscribeFromRealtimeNotifications() {
+        if (!realtimeChannel) return;
+        try {
+            supabaseClient.removeChannel(realtimeChannel);
+        } catch (e) {
+            console.warn('[notifications] removeChannel error:', e);
+        }
+        realtimeChannel = null;
+    }
+
+    // Sync esplicita quando la tab torna visibile (recupera eventi persi
+    // se il browser ha sospeso il WS, es. dopo sleep o backgrounding)
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible' && currentUser) {
+            checkNewNotifications();
+        }
+    }
+
+    // Controlla se ci sono nuove notifiche (usato solo come fallback su
+    // visibilitychange — non più in polling)
     async function checkNewNotifications() {
         if (!currentUser) return;
         
