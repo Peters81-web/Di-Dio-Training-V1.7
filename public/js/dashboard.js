@@ -788,29 +788,54 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         try {
             showLoading();
-            
+
             // Elimina tutti i dati dell'utente
-            const deleteTasks = [
-                supabaseClient.from('workout_plans').delete().eq('user_id', currentUser.id),
-                supabaseClient.from('completed_workouts').delete().eq('user_id', currentUser.id),
-                supabaseClient.from('weekly_summaries').delete().eq('user_id', currentUser.id),
-                supabaseClient.from('body_measurements').delete().eq('user_id', currentUser.id)
+            // NOTA: Supabase NON lancia eccezioni su query error (ritorna {error}),
+            // quindi Promise.all maschererebbe i fallimenti parziali. Usiamo
+            // allSettled + ispezione esplicita di result.error per ogni tabella.
+            const targets = [
+                { table: 'workout_plans',      label: 'piani allenamento' },
+                { table: 'completed_workouts', label: 'allenamenti completati' },
+                { table: 'weekly_summaries',   label: 'riepiloghi settimanali' },
+                { table: 'body_measurements',  label: 'misure corporee' }
             ];
-            
-            await Promise.all(deleteTasks);
-            
-            // Reset variabili locali
+
+            const results = await Promise.allSettled(
+                targets.map(t =>
+                    supabaseClient.from(t.table).delete().eq('user_id', currentUser.id)
+                )
+            );
+
+            // Raccoglie tabelle che hanno fallito (rete OR errore Supabase)
+            const failures = [];
+            results.forEach((r, i) => {
+                const label = targets[i].label;
+                if (r.status === 'rejected') {
+                    failures.push(`${label} (rete: ${r.reason?.message || 'errore sconosciuto'})`);
+                } else if (r.value?.error) {
+                    failures.push(`${label} (${r.value.error.message})`);
+                }
+            });
+
+            // Reset variabili locali (lo facciamo comunque: se rimangono dati
+            // l'utente li rivedrà al prossimo reload)
             workouts = [];
-            
-            // Aggiorna UI
             displayWorkouts([]);
             displayWeeklyStats([]);
-            
-            showToast('Tutti i dati sono stati eliminati con successo', 'success');
-            
+
+            if (failures.length === 0) {
+                showToast('Tutti i dati sono stati eliminati con successo', 'success');
+            } else if (failures.length < targets.length) {
+                console.warn('Reset parziale, fallimenti:', failures);
+                showToast(`Reset parziale — fallita eliminazione di: ${failures.join('; ')}`, 'warning', 8000);
+            } else {
+                console.error('Reset completamente fallito:', failures);
+                showToast(`Errore: impossibile eliminare i dati (${failures[0]})`, 'error', 8000);
+            }
+
         } catch (error) {
-            console.error('Errore durante l\'eliminazione dei dati:', error);
-            showToast('Errore durante l\'eliminazione dei dati', 'error');
+            console.error('Errore inatteso durante l\'eliminazione dei dati:', error);
+            showToast('Errore inatteso durante l\'eliminazione dei dati', 'error');
         } finally {
             hideLoading();
             closeModal('confirmModal');
