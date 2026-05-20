@@ -54,9 +54,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function fetchData() {
     Promise.all([
       sc.from('workout_plans')
-        .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty')
+        // created_at incluso per usarlo come fallback quando scheduled_date è NULL
+        // (caso comune per le schede generate da AI Trainer / inserite manualmente)
+        .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty,created_at')
         .eq('user_id', currentUser.id)
-        .order('scheduled_date', { ascending: true }),
+        .order('created_at', { ascending: true }),
       sc.from('completed_workouts')
         .select('completed_at,actual_duration,calories_burned,distance,workout_plans(name,activity_type)')
         .eq('user_id', currentUser.id)
@@ -71,11 +73,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Restituisce la data di riferimento "logica" della scheda per il
+  // filtro temporale. Priorità:
+  //   1. scheduled_date — quando l'allenamento era pianificato
+  //   2. completed_at   — quando è stato effettivamente completato
+  //   3. created_at     — fallback se nessuno dei due è valorizzato
+  // Le schede generate da AI / inserite senza pianificazione hanno
+  // scheduled_date = NULL: senza fallback venivano escluse silenziosamente
+  // da TUTTI i KPI quando il filtro tempo non era "Tutto".
+  function getReferenceDate(w) {
+    return w.scheduled_date || w.completed_at || w.created_at || null;
+  }
+
   function getFiltered() {
     if (activePeriod === 0) return allWorkouts;
     var cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - activePeriod);
-    return allWorkouts.filter(function (w) { return new Date(w.scheduled_date) >= cutoff; });
+    return allWorkouts.filter(function (w) {
+      var ref = getReferenceDate(w);
+      if (!ref) return false;
+      var d = new Date(ref);
+      if (isNaN(d.getTime())) return false;
+      return d >= cutoff;
+    });
   }
 
   function renderAll() {
