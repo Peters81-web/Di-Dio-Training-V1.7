@@ -79,6 +79,70 @@
     }
     .btn-logout:hover { background: #3a40b0; }
 
+    /* ── Hamburger (visibile solo su mobile) ──────────────── */
+    .mobile-menu-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: #f0f1ff;
+      border: 1px solid #d6d8ff;
+      color: #4e54c8;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .mobile-menu-toggle:hover { background: #e2e4ff; }
+    .mobile-menu-toggle:active { transform: scale(0.95); }
+
+    /* ── Responsive navbar (≤ 768px) ──────────────────────── */
+    @media (max-width: 768px) {
+      .navbar {
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        position: relative;
+      }
+      .mobile-menu-toggle { display: flex; }
+
+      /* Menu chiuso di default: drop-down sotto la navbar */
+      .navbar-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 8px;
+        right: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        border: 1px solid #e9ebf5;
+        z-index: 200;
+        animation: navDrop 0.18s ease-out;
+      }
+      .navbar-links.open { display: flex; }
+      .navbar-links a,
+      .navbar-links .btn-logout {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        text-align: left;
+        border-radius: 8px;
+        width: 100%;
+      }
+      .navbar-links .btn-logout {
+        margin-top: 6px;
+        text-align: center;
+      }
+      @keyframes navDrop {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0);    }
+      }
+    }
+
     /* ── Layout pagina ────────────────────────────────────── */
     .stats-page {
       max-width: 1100px;
@@ -249,7 +313,10 @@
     <a class="navbar-brand" href="/dashboard">
       <i class="fas fa-dumbbell"></i> Di Dio Training
     </a>
-    <div class="navbar-links">
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menu" aria-expanded="false">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="navbar-links" id="navbarLinks">
       <a href="/dashboard">Dashboard</a>
       <a href="/planner">Planner</a>
       <a href="/stats" class="active">Statistiche</a>
@@ -257,6 +324,48 @@
       <button class="btn-logout" id="logoutBtn">Logout</button>
     </div>
   </nav>
+
+  <!-- Mobile menu toggle (self-contained, no dipendenze esterne) -->
+  <script>
+    (function () {
+      var toggle = document.getElementById('mobileMenuToggle');
+      var menu   = document.getElementById('navbarLinks');
+      if (!toggle || !menu) return;
+
+      var icon = toggle.querySelector('i');
+
+      function setOpen(open) {
+        menu.classList.toggle('open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (icon) {
+          icon.classList.toggle('fa-bars',  !open);
+          icon.classList.toggle('fa-times',  open);
+        }
+      }
+
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setOpen(!menu.classList.contains('open'));
+      });
+
+      // Chiudi cliccando fuori
+      document.addEventListener('click', function (e) {
+        if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+          setOpen(false);
+        }
+      });
+
+      // Chiudi su navigazione interna (click su un link)
+      menu.addEventListener('click', function (e) {
+        if (e.target.tagName === 'A') setOpen(false);
+      });
+
+      // Reset stato su resize a desktop
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 768) setOpen(false);
+      });
+    })();
+  </script>
 
   <!-- PAGINA -->
   <main class="stats-page">
