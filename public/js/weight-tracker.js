@@ -349,7 +349,27 @@
         cutoff.setDate(cutoff.getDate() - days);
         var cutoffStr = cutoff.toISOString().slice(0, 10);
         // Confronto su YYYY-MM-DD per gestire sia date pure sia timestamptz
-        return entries.filter(function (e) { return toISODate(e.date) >= cutoffStr; });
+        var inWindow = entries.filter(function (e) {
+            return toISODate(e.date) >= cutoffStr;
+        });
+
+        // Ancoraggio: includi anche l'ultima entry PRIMA del cutoff (se esiste)
+        // così il grafico mostra la "transizione" entrando nel periodo invece
+        // di un singolo pallino isolato. Coerente con il calcolo del trend
+        // nel summary (renderSummary cerca anche entry più vecchie del cutoff
+        // come reference). entries è già ordinata asc per data, quindi
+        // l'ultima fuori finestra è quella più vicina al cutoff.
+        if (entries.length > inWindow.length) {
+            var lastBefore = null;
+            for (var i = entries.length - 1; i >= 0; i--) {
+                if (toISODate(entries[i].date) < cutoffStr) {
+                    lastBefore = entries[i];
+                    break;
+                }
+            }
+            if (lastBefore) return [lastBefore].concat(inWindow);
+        }
+        return inWindow;
     }
 
     function todayISO() {
