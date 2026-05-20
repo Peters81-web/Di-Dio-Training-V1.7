@@ -14,12 +14,15 @@
 <body class="ai-page">
 
 <!-- NAVBAR -->
-<nav class="ai-nav">
+<nav class="ai-nav" id="aiNav">
     <div class="ai-nav-inner">
         <a href="/dashboard" class="ai-nav-brand">
             <i class="fas fa-dumbbell"></i>
             <span>Di Dio Training</span>
         </a>
+        <button class="ai-nav-toggle" id="aiNavToggle" aria-label="Menu" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
         <div class="ai-nav-links">
             <a href="/dashboard" class="ai-nav-link">
                 <i class="fas fa-arrow-left"></i><span>Dashboard</span>
@@ -33,6 +36,43 @@
         </div>
     </div>
 </nav>
+
+<!-- Mobile menu toggle (self-contained) -->
+<script>
+    (function () {
+        var nav    = document.getElementById('aiNav');
+        var toggle = document.getElementById('aiNavToggle');
+        if (!nav || !toggle) return;
+
+        var icon = toggle.querySelector('i');
+
+        function setOpen(open) {
+            nav.classList.toggle('open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (icon) {
+                icon.classList.toggle('fa-bars',  !open);
+                icon.classList.toggle('fa-times',  open);
+            }
+        }
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            setOpen(!nav.classList.contains('open'));
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!nav.contains(e.target)) setOpen(false);
+        });
+
+        nav.querySelectorAll('.ai-nav-links a').forEach(function (a) {
+            a.addEventListener('click', function () { setOpen(false); });
+        });
+
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 768) setOpen(false);
+        });
+    })();
+</script>
 
 <!-- HERO -->
 <div class="ai-hero">
