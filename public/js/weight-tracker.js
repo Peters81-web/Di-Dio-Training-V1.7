@@ -127,8 +127,10 @@
                     }
                     var saved = res2.data && res2.data[0];
                     if (saved) {
-                        // Aggiorna array locale
-                        allEntries = allEntries.filter(function (e) { return e.date !== date; });
+                        // Aggiorna array locale — confronta sulla parte YYYY-MM-DD
+                        // perché in DB la colonna è timestamptz (es. "...T00:00:00+00:00")
+                        // mentre l'input form è puro "YYYY-MM-DD"
+                        allEntries = allEntries.filter(function (e) { return toISODate(e.date) !== date; });
                         allEntries.push(saved);
                         allEntries.sort(function (a, b) { return a.date.localeCompare(b.date); });
                         renderAll();
@@ -346,20 +348,59 @@
         var cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         var cutoffStr = cutoff.toISOString().slice(0, 10);
-        return entries.filter(function (e) { return e.date >= cutoffStr; });
+        // Confronto su YYYY-MM-DD per gestire sia date pure sia timestamptz
+        var inWindow = entries.filter(function (e) {
+            return toISODate(e.date) >= cutoffStr;
+        });
+
+        // Ancoraggio: includi anche l'ultima entry PRIMA del cutoff (se esiste)
+        // così il grafico mostra la "transizione" entrando nel periodo invece
+        // di un singolo pallino isolato. Coerente con il calcolo del trend
+        // nel summary (renderSummary cerca anche entry più vecchie del cutoff
+        // come reference). entries è già ordinata asc per data, quindi
+        // l'ultima fuori finestra è quella più vicina al cutoff.
+        if (entries.length > inWindow.length) {
+            var lastBefore = null;
+            for (var i = entries.length - 1; i >= 0; i--) {
+                if (toISODate(entries[i].date) < cutoffStr) {
+                    lastBefore = entries[i];
+                    break;
+                }
+            }
+            if (lastBefore) return [lastBefore].concat(inWindow);
+        }
+        return inWindow;
     }
 
     function todayISO() {
         return new Date().toISOString().slice(0, 10);
     }
 
+    // Estrae la parte YYYY-MM-DD da qualunque rappresentazione di data:
+    //   "2026-05-20"                        → "2026-05-20"
+    //   "2026-05-20T00:00:00+00:00"         → "2026-05-20"  (DB timestamptz)
+    //   "2026-05-20T22:30:00.123Z"          → "2026-05-20"
+    // Restituisce '' se l'input non è utilizzabile.
+    function toISODate(dateStr) {
+        if (!dateStr) return '';
+        var s = String(dateStr).slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+    }
+
     function formatDateShort(dateStr) {
-        var d = new Date(dateStr + 'T12:00:00');
+        var iso = toISODate(dateStr);
+        if (!iso) return '--';
+        // 'T12:00:00' (mezzogiorno) evita shift di un giorno tra fusi orari
+        var d = new Date(iso + 'T12:00:00');
+        if (isNaN(d.getTime())) return '--';
         return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
     }
 
     function formatDateFull(dateStr) {
-        var d = new Date(dateStr + 'T12:00:00');
+        var iso = toISODate(dateStr);
+        if (!iso) return '--';
+        var d = new Date(iso + 'T12:00:00');
+        if (isNaN(d.getTime())) return '--';
         return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
