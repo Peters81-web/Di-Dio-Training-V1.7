@@ -12,26 +12,30 @@
     <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
     <link rel="stylesheet" href="/css/menu-mobile-fix.css">
     <link rel="stylesheet" href="/css/profile.css">
+    <link rel="stylesheet" href="/css/app-nav.css">
+    <script src="/js/app-nav.js" defer></script>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#4361ee">
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="container">
-        <h1 class="navbar-brand">
-            <i class="fas fa-user mr-2"></i>
-            Profilo
-        </h1>
-        <button class="mobile-menu-toggle" id="mobileMenuToggle">
-            <i class="fas fa-bars"></i>
+<nav class="app-nav">
+    <div class="app-nav-inner">
+        <a href="/dashboard" class="app-nav-brand">
+            <i class="fas fa-user"></i>
+            <span>Profilo</span>
+        </a>
+        <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
         </button>
-        <div class="nav-links" id="navLinks">
-            <a href="/dashboard" class="btn btn-outline"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a href="/stats" class="btn btn-outline"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
-            <a href="/ai-trainer" class="btn btn-outline"><i class="fas fa-robot"></i><span>AI Trainer</span></a>
-            <a href="/workout" class="btn btn-primary"><i class="fas fa-plus"></i><span>Nuovo Allenamento</span></a>
-            <button id="logoutBtn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+        <div class="app-nav-menu" id="appNavMenu">
+            <a href="/dashboard" class="app-nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a href="/stats" class="app-nav-link"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+            <a href="/ai-trainer" class="app-nav-link"><i class="fas fa-robot"></i><span>AI Trainer</span></a>
+            <a href="/workout" class="app-nav-link app-nav-link--primary"><i class="fas fa-plus"></i><span>Nuovo Allenamento</span></a>
+            <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
         </div>
     </div>
 </nav>

@@ -10,37 +10,27 @@
     <link rel="stylesheet" href="/css/enhanced-design.css">
     <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
     <link rel="stylesheet" href="/css/menu-mobile-fix.css">
+    <link rel="stylesheet" href="/css/app-nav.css">
+    <script src="/js/app-nav.js" defer></script>
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar">
-<nav class="navbar">
-    <div class="container">
-        <h1 class="navbar-brand">
-            <i class="fas fa-calendar-week mr-2"></i>
-            Riepilogo Settimanale
-        </h1>
-         <button class="mobile-menu-toggle" id="mobileMenuToggle">
-            <i class="fas fa-bars"></i>
-        </button>
-
-             <div class="nav-links" id="navLinks">
-                <button onclick="window.location.href='/dashboard'" class="btn">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </button>
-                <button onclick="window.location.href='/planner'" class="btn">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span>Pianificatore</span>
-                </button>
-                <button onclick="window.location.href='/stats'" class="btn">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Statistiche</span>
-                </button>
-                <button id="logoutBtn" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Esci</span>
-                </button>
+    <nav class="app-nav">
+        <div class="app-nav-inner">
+            <a href="/dashboard" class="app-nav-brand">
+                <i class="fas fa-calendar-week"></i>
+                <span>Riepilogo Settimanale</span>
+            </a>
+            <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+                <span class="app-nav-toggle-line"></span>
+                <span class="app-nav-toggle-line"></span>
+                <span class="app-nav-toggle-line"></span>
+            </button>
+            <div class="app-nav-menu" id="appNavMenu">
+                <a href="/dashboard" class="app-nav-link"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
+                <a href="/planner" class="app-nav-link"><i class="fas fa-calendar-alt"></i><span>Pianificatore</span></a>
+                <a href="/stats" class="app-nav-link"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+                <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Esci</span></button>
             </div>
         </div>
     </nav>

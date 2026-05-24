@@ -70,24 +70,37 @@ function initRichTextEditors() {
 // Inizializza le barre degli strumenti per la formattazione
 function initializeToolbars() {
     const toolbarButtons = document.querySelectorAll('.rich-text-toolbar button');
-    
+
     toolbarButtons.forEach(button => {
+        // FIX CRITICO: impedisce al bottone di rubare il focus dall'editor.
+        // Senza questo, cliccando il bottone (es. "Grassetto") il focus passa
+        // al bottone, la selezione di testo nell'editor viene persa, e
+        // document.execCommand('bold') non sa su cosa applicare la formattazione.
+        // mousedown.preventDefault() blocca il trasferimento di focus ma
+        // permette comunque al click di scattare.
+        button.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+        });
+
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             // Trova l'editor associato alla barra degli strumenti corrente
             const toolbar = this.closest('.rich-text-toolbar');
             const container = toolbar.closest('.rich-text-container');
-            const editor = container.querySelector('.rich-text-editor');
-            
+            const editor = container ? container.querySelector('.rich-text-editor') : null;
+
             if (!editor) {
                 console.warn('Editor non trovato per la barra degli strumenti');
                 return;
             }
-            
-            // Metti il focus sull'editor per assicurarsi che il comando venga applicato
-            editor.focus();
-            
+
+            // Assicurati che l'editor abbia il focus prima di applicare il comando
+            // (necessario se il bottone è stato cliccato senza prima cliccare nell'editor)
+            if (document.activeElement !== editor) {
+                editor.focus();
+            }
+
             // Esegui il comando di formattazione
             const command = this.getAttribute('onclick')?.match(/formatText\(['"](.+?)['"]\)/)?.[1];
             if (command) {
