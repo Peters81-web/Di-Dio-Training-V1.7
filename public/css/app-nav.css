@@ -353,3 +353,124 @@
 .app-nav .container {
   display: contents;
 }
+
+/* =============================================================
+ * ARMOR — override forzati per battere regole legacy con !important
+ *
+ * styles.css:145 dichiara `nav a, nav button { color: white !important }`
+ * che rende invisibili tutti i nostri link plain (testo bianco su
+ * sfondo bianco). Selettori più specifici + !important sono l'unico
+ * modo di vincere quella regola senza modificare styles.css (che
+ * potrebbe rompere altre pagine).
+ * ============================================================= */
+
+nav.app-nav .app-nav-brand,
+nav.app-nav .app-nav-brand:visited {
+  color: var(--nav-fg) !important;
+  text-decoration: none !important;
+}
+nav.app-nav .app-nav-brand:hover {
+  color: var(--nav-accent) !important;
+}
+nav.app-nav .app-nav-brand i {
+  color: var(--nav-accent) !important;
+  background: var(--nav-accent-light) !important;
+}
+
+nav.app-nav .app-nav-link,
+nav.app-nav .app-nav-link:visited {
+  color: var(--nav-fg) !important;
+  background: transparent !important;
+  text-decoration: none !important;
+  border: 1px solid transparent !important;
+  margin: 0 !important; /* la legacy aggiungeva margin: 0 5px */
+}
+nav.app-nav .app-nav-link i {
+  color: inherit !important;
+  background: transparent !important;
+}
+nav.app-nav .app-nav-link:hover {
+  color: var(--nav-accent) !important;
+  background: var(--nav-accent-light) !important;
+}
+nav.app-nav .app-nav-link.is-active {
+  color: var(--nav-accent) !important;
+  background: var(--nav-accent-light) !important;
+}
+
+/* Modifier primary (CTA blu pieno) */
+nav.app-nav .app-nav-link--primary,
+nav.app-nav .app-nav-link--primary:visited {
+  color: #fff !important;
+  background: var(--nav-accent) !important;
+  border-color: var(--nav-accent) !important;
+}
+nav.app-nav .app-nav-link--primary:hover {
+  color: #fff !important;
+  background: var(--primary-hover, #3a56d4) !important;
+  border-color: var(--primary-hover, #3a56d4) !important;
+}
+
+/* Modifier danger (logout) */
+nav.app-nav .app-nav-link--danger,
+nav.app-nav .app-nav-link--danger:visited {
+  color: var(--nav-danger) !important;
+}
+nav.app-nav .app-nav-link--danger:hover {
+  color: var(--nav-danger) !important;
+  background: var(--nav-danger-light) !important;
+}
+
+/* Tema scuro (AI Trainer) */
+nav.app-nav.app-nav--dark .app-nav-brand,
+nav.app-nav.app-nav--dark .app-nav-brand:visited {
+  color: var(--nav-fg-on-dark) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-brand:hover { color: #fff !important; }
+nav.app-nav.app-nav--dark .app-nav-brand i {
+  background: rgba(67, 97, 238, 0.18) !important;
+  color: #93b4ff !important;
+}
+nav.app-nav.app-nav--dark .app-nav-link,
+nav.app-nav.app-nav--dark .app-nav-link:visited {
+  color: var(--nav-fg-on-dark-muted) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-link:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-link.is-active {
+  color: #fff !important;
+  background: rgba(67, 97, 238, 0.22) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-link--danger,
+nav.app-nav.app-nav--dark .app-nav-link--danger:visited {
+  color: #f87171 !important;
+}
+nav.app-nav.app-nav--dark .app-nav-link--danger:hover {
+  color: #fca5a5 !important;
+  background: rgba(220, 38, 38, 0.18) !important;
+}
+
+/* Hamburger toggle: garantisce visibilità linee e bordo */
+nav.app-nav .app-nav-toggle {
+  background: transparent !important;
+  border: 1px solid var(--nav-border) !important;
+  color: inherit !important;
+}
+nav.app-nav .app-nav-toggle:hover {
+  background: var(--nav-accent-light) !important;
+  border-color: transparent !important;
+}
+nav.app-nav.app-nav--dark .app-nav-toggle {
+  border-color: var(--nav-border-dark) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-toggle:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+nav.app-nav .app-nav-toggle-line {
+  background: var(--nav-fg) !important;
+}
+nav.app-nav.app-nav--dark .app-nav-toggle-line {
+  background: var(--nav-fg-on-dark) !important;
+}

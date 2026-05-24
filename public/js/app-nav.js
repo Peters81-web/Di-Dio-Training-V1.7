@@ -65,10 +65,11 @@
         }
       });
 
-      // Chiusura su click di un link nel menu (per ancore interne;
-      // su href esterni la navigazione chiude comunque la pagina)
+      // Chiusura su click di un LINK ancora (<a>) — non sui <button> che
+      // possono aprire panel laterali (es. #notificationsBtn) o che fanno
+      // il loro lavoro senza voler chiudere la navbar.
       menu.addEventListener('click', (e) => {
-        const link = e.target.closest('.app-nav-link');
+        const link = e.target.closest('a.app-nav-link');
         if (link) setOpen(false);
       });
 
