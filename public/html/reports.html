@@ -10,34 +10,28 @@
     <link rel="stylesheet" href="/css/enhanced-design.css">
     <link rel="stylesheet" href="/css/reports.css">
     <link rel="stylesheet" href="/css/mobile-responsive-fix.css">
+    <link rel="stylesheet" href="/css/app-nav.css">
+    <script src="/js/app-nav.js" defer></script>
 </head>
 <body>
-<nav class="navbar">
-    <div class="container">
-        <h1 class="navbar-brand">
-            <i class="fas fa-file-alt mr-2"></i>
-            Report Avanzati
-        </h1>
-         <button class="mobile-menu-toggle" id="mobileMenuToggle">
-            <i class="fas fa-bars"></i>
+<nav class="app-nav">
+    <div class="app-nav-inner">
+        <a href="/dashboard" class="app-nav-brand">
+            <i class="fas fa-file-alt"></i>
+            <span>Report</span>
+        </a>
+        <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
         </button>
-
-           <div class="nav-links" id="navLinks">
-                <button onclick="window.location.href='/dashboard'" class="btn">
-                    <i class="fas fa-home"></i>
-                    <span>Dashboard</span>
-                </button>
-                <button onclick="window.location.href='/stats'" class="btn">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Statistiche</span>
-                </button>
-                <button id="logoutBtn" class="btn btn-danger">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Esci</span>
-                </button>
-            </div>
+        <div class="app-nav-menu" id="appNavMenu">
+            <a href="/dashboard" class="app-nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a href="/stats" class="app-nav-link"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+            <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Esci</span></button>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <main class="container reports-container">
         <div class="reports-header">

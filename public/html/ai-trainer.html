@@ -7,72 +7,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/ai-trainer.css">
+    <link rel="stylesheet" href="/css/app-nav.css">
+    <script src="/js/app-nav.js" defer></script>
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="ai-page">
 
-<!-- NAVBAR -->
-<nav class="ai-nav" id="aiNav">
-    <div class="ai-nav-inner">
-        <a href="/dashboard" class="ai-nav-brand">
-            <i class="fas fa-dumbbell"></i>
-            <span>Di Dio Training</span>
+<!-- NAVBAR (unificata via /css/app-nav.css + /js/app-nav.js, tema scuro) -->
+<nav class="app-nav app-nav--dark">
+    <div class="app-nav-inner">
+        <a href="/dashboard" class="app-nav-brand">
+            <i class="fas fa-robot"></i>
+            <span>AI Trainer</span>
         </a>
-        <button class="ai-nav-toggle" id="aiNavToggle" aria-label="Menu" aria-expanded="false">
-            <i class="fas fa-bars"></i>
+        <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
         </button>
-        <div class="ai-nav-links">
-            <a href="/dashboard" class="ai-nav-link">
-                <i class="fas fa-arrow-left"></i><span>Dashboard</span>
-            </a>
-            <a href="/stats" class="ai-nav-link">
-                <i class="fas fa-chart-line"></i><span>Statistiche</span>
-            </a>
-            <button id="logoutBtn" class="ai-logout-btn" title="Esci">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
+        <div class="app-nav-menu" id="appNavMenu">
+            <a href="/dashboard" class="app-nav-link"><i class="fas fa-arrow-left"></i><span>Dashboard</span></a>
+            <a href="/stats" class="app-nav-link"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+            <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Esci</span></button>
         </div>
     </div>
 </nav>
-
-<!-- Mobile menu toggle (self-contained) -->
-<script>
-    (function () {
-        var nav    = document.getElementById('aiNav');
-        var toggle = document.getElementById('aiNavToggle');
-        if (!nav || !toggle) return;
-
-        var icon = toggle.querySelector('i');
-
-        function setOpen(open) {
-            nav.classList.toggle('open', open);
-            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (icon) {
-                icon.classList.toggle('fa-bars',  !open);
-                icon.classList.toggle('fa-times',  open);
-            }
-        }
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            setOpen(!nav.classList.contains('open'));
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!nav.contains(e.target)) setOpen(false);
-        });
-
-        nav.querySelectorAll('.ai-nav-links a').forEach(function (a) {
-            a.addEventListener('click', function () { setOpen(false); });
-        });
-
-        window.addEventListener('resize', function () {
-            if (window.innerWidth > 768) setOpen(false);
-        });
-    })();
-</script>
 
 <!-- HERO -->
 <div class="ai-hero">

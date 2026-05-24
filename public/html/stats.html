@@ -11,6 +11,10 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
+  <!-- Navbar unificata -->
+  <link rel="stylesheet" href="/css/app-nav.css">
+  <script src="/js/app-nav.js" defer></script>
+
   <!-- ① Supabase CDN — DEVE venire PRIMA di supabase-config.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <!-- ② Config Supabase — inclusa UNA SOLA VOLTA -->
@@ -308,64 +312,26 @@
 </head>
 <body>
 
-  <!-- NAVBAR -->
-  <nav class="navbar">
-    <a class="navbar-brand" href="/dashboard">
-      <i class="fas fa-dumbbell"></i> Di Dio Training
-    </a>
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menu" aria-expanded="false">
-      <i class="fas fa-bars"></i>
-    </button>
-    <div class="navbar-links" id="navbarLinks">
-      <a href="/dashboard">Dashboard</a>
-      <a href="/planner">Planner</a>
-      <a href="/stats" class="active">Statistiche</a>
-      <a href="/ai-trainer">AI Trainer</a>
-      <button class="btn-logout" id="logoutBtn">Logout</button>
+  <!-- NAVBAR (unificata via /css/app-nav.css + /js/app-nav.js) -->
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <a href="/dashboard" class="app-nav-brand">
+        <i class="fas fa-chart-line"></i>
+        <span>Statistiche</span>
+      </a>
+      <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+        <span class="app-nav-toggle-line"></span>
+        <span class="app-nav-toggle-line"></span>
+        <span class="app-nav-toggle-line"></span>
+      </button>
+      <div class="app-nav-menu" id="appNavMenu">
+        <a href="/dashboard" class="app-nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a>
+        <a href="/planner" class="app-nav-link"><i class="fas fa-calendar-alt"></i><span>Planner</span></a>
+        <a href="/ai-trainer" class="app-nav-link"><i class="fas fa-robot"></i><span>AI Trainer</span></a>
+        <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+      </div>
     </div>
   </nav>
-
-  <!-- Mobile menu toggle (self-contained, no dipendenze esterne) -->
-  <script>
-    (function () {
-      var toggle = document.getElementById('mobileMenuToggle');
-      var menu   = document.getElementById('navbarLinks');
-      if (!toggle || !menu) return;
-
-      var icon = toggle.querySelector('i');
-
-      function setOpen(open) {
-        menu.classList.toggle('open', open);
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (icon) {
-          icon.classList.toggle('fa-bars',  !open);
-          icon.classList.toggle('fa-times',  open);
-        }
-      }
-
-      toggle.addEventListener('click', function (e) {
-        e.stopPropagation();
-        setOpen(!menu.classList.contains('open'));
-      });
-
-      // Chiudi cliccando fuori
-      document.addEventListener('click', function (e) {
-        if (!menu.contains(e.target) && !toggle.contains(e.target)) {
-          setOpen(false);
-        }
-      });
-
-      // Chiudi su navigazione interna (click su un link)
-      menu.addEventListener('click', function (e) {
-        if (e.target.tagName === 'A') setOpen(false);
-      });
-
-      // Reset stato su resize a desktop
-      window.addEventListener('resize', function () {
-        if (window.innerWidth > 768) setOpen(false);
-      });
-    })();
-  </script>
 
   <!-- PAGINA -->
   <main class="stats-page">
