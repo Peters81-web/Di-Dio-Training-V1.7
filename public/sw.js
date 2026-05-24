@@ -6,7 +6,13 @@
    - API calls → Network-Only (never cache)
    ================================================ */
 
-const CACHE_NAME  = 'didio-v1';
+// IMPORTANTE: bumpare questa versione ad ogni deploy che modifica CSS/JS,
+// altrimenti il Service Worker servirà le versioni cached vecchie causando
+// disallineamento (HTML nuovo + asset vecchi → bug visivi imprevedibili).
+// Sequenza storica:
+//   v1 → setup iniziale PWA
+//   v2 → Phase A navbar unificata (.app-nav) + DOMPurify restore + bug fix UX
+const CACHE_NAME  = 'didio-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -18,8 +24,10 @@ const PRECACHE = [
   '/css/fase1-features.css',
   '/css/fase3-features.css',
   '/css/notifications.css',
+  '/css/app-nav.css',
   '/js/utils.js',
   '/js/app-core.js',
+  '/js/app-nav.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',
   '/js/fase3-features.js',
