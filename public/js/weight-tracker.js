@@ -1,7 +1,21 @@
 /**
  * weight-tracker.js
- * Tracciamento peso nel profilo — usa tabella body_measurements
- * Colonne usate: id, user_id, date (DATE), weight (FLOAT), notes (TEXT)
+ * Tracciamento misurazioni corporee — usa tabella body_measurements.
+ * Colonne usate: id, user_id, date (TIMESTAMPTZ), weight (NUMERIC),
+ *                height (NUMERIC), body_fat (NUMERIC), muscle_mass (NUMERIC),
+ *                notes (TEXT).
+ *
+ * Comportamento "merge-per-data":
+ *   - L'utente può inserire una o più metriche in qualsiasi combinazione.
+ *   - Se esiste già una riga per (user_id, date), i campi NON valorizzati
+ *     dall'utente vengono PRESERVATI (Postgres ON CONFLICT DO UPDATE
+ *     aggiorna solo le colonne specificate nell'INSERT).
+ *   - Per cancellare un valore, l'utente elimina l'intera riga (icona
+ *     cestino in cronologia).
+ *
+ * Il grafico e il riepilogo si basano sul peso; le altre metriche sono
+ * mostrate in cronologia. Saranno usate dalla feature "Bilancio Calorico"
+ * (BMR/TDEE) in un secondo step.
  */
 (function () {
     'use strict';
@@ -24,7 +38,7 @@
                 });
                 btn.classList.add('active');
                 currentDays = parseInt(btn.dataset.days, 10);
-                renderChart(filterByDays(allEntries, currentDays));
+                renderChart(filterByDays(weightOnly(allEntries), currentDays));
             });
         });
 
@@ -57,42 +71,58 @@
         }, 200);
     }
 
-    // ── Carica misurazioni da Supabase ───────────────────────────
+    // ── Carica TUTTE le misurazioni da Supabase ──────────────────
     function loadEntries(client, userId) {
         client
             .from('body_measurements')
-            .select('id, date, weight, notes')
+            .select('id, date, weight, height, body_fat, muscle_mass, notes')
             .eq('user_id', userId)
-            .not('weight', 'is', null)
             .order('date', { ascending: true })
             .then(function (res) {
                 if (res.error) {
                     console.error('WeightTracker: errore caricamento', res.error);
                     return;
                 }
-                allEntries = (res.data || []).filter(function (e) {
-                    return e.weight && e.weight > 0;
-                });
+                allEntries = res.data || [];
                 renderAll();
             });
     }
 
-    // ── Aggiunge una nuova misurazione ───────────────────────────
+    // ── Restituisce solo entries con peso valorizzato (per chart/summary)
+    function weightOnly(entries) {
+        return entries.filter(function (e) { return e.weight && e.weight > 0; });
+    }
+
+    // ── Aggiunge / aggiorna una misurazione (merge-per-data) ─────
     function addEntry() {
         var dateInput   = document.getElementById('wtDate');
         var weightInput = document.getElementById('wtWeight');
+        var heightInput = document.getElementById('wtHeight');
+        var bodyFatInput   = document.getElementById('wtBodyFat');
+        var muscleInput    = document.getElementById('wtMuscleMass');
         var noteInput   = document.getElementById('wtNote');
 
-        var date   = dateInput   ? dateInput.value.trim()   : '';
-        var weight = weightInput ? parseFloat(weightInput.value) : NaN;
-        var note   = noteInput   ? noteInput.value.trim()   : '';
-
+        var date = dateInput ? dateInput.value.trim() : '';
         if (!date) {
             showMsg('Inserisci una data.', 'error');
             return;
         }
-        if (isNaN(weight) || weight <= 0) {
-            showMsg('Inserisci un peso valido.', 'error');
+
+        // Costruisce dinamicamente l'oggetto: include solo i campi
+        // valorizzati dall'utente. Le colonne non presenti nell'INSERT
+        // vengono preservate dall'UPDATE on conflict.
+        var payload = { user_id: null /* lo settiamo sotto */, date: date };
+        var parsed = parseInputs(weightInput, heightInput, bodyFatInput, muscleInput, noteInput);
+        if (parsed.error) {
+            showMsg(parsed.error, 'error');
+            return;
+        }
+        Object.assign(payload, parsed.values);
+
+        // Almeno un campo deve essere stato fornito
+        var filledKeys = Object.keys(parsed.values);
+        if (filledKeys.length === 0) {
+            showMsg('Inserisci almeno una misurazione.', 'error');
             return;
         }
 
@@ -103,65 +133,82 @@
             var session = res.data && res.data.session;
             if (!session) return;
 
-            var userId = session.user.id;
+            payload.user_id = session.user.id;
+
             var addBtn = document.getElementById('wtAddBtn');
             if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Salvo...'; }
 
-            // Upsert: se esiste già una riga con la stessa data → aggiorna
+            // Upsert: la UNIQUE su (user_id, date) garantisce che
+            // ON CONFLICT DO UPDATE aggiorni solo le colonne nell'INSERT,
+            // preservando i campi esistenti non specificati.
             client
                 .from('body_measurements')
-                .upsert(
-                    { user_id: userId, date: date, weight: weight, notes: note || null },
-                    { onConflict: 'user_id,date', ignoreDuplicates: false }
-                )
-                .select('id, date, weight, notes')
+                .upsert(payload, { onConflict: 'user_id,date', ignoreDuplicates: false })
+                .select('id, date, weight, height, body_fat, muscle_mass, notes')
                 .then(function (res2) {
                     if (addBtn) {
                         addBtn.disabled = false;
                         addBtn.innerHTML = '<i class="fas fa-save"></i> Salva misurazione';
                     }
                     if (res2.error) {
-                        // Se upsert non è supportato (constraint mancante) prova insert
-                        insertFallback(client, userId, date, weight, note);
+                        showMsg('Errore: ' + res2.error.message, 'error');
                         return;
                     }
                     var saved = res2.data && res2.data[0];
-                    if (saved) {
-                        // Aggiorna array locale — confronta sulla parte YYYY-MM-DD
-                        // perché in DB la colonna è timestamptz (es. "...T00:00:00+00:00")
-                        // mentre l'input form è puro "YYYY-MM-DD"
-                        allEntries = allEntries.filter(function (e) { return toISODate(e.date) !== date; });
-                        allEntries.push(saved);
-                        allEntries.sort(function (a, b) { return a.date.localeCompare(b.date); });
-                        renderAll();
-                        // Reset form
-                        if (weightInput) weightInput.value = '';
-                        if (noteInput)   noteInput.value   = '';
-                        dateInput.value = todayISO();
-                        showMsg('Misurazione salvata!', 'success');
+                    if (!saved) {
+                        showMsg('Salvataggio non riuscito.', 'error');
+                        return;
                     }
+
+                    // Merge nell'array locale: sostituisce per data (toISODate
+                    // gestisce sia formato pure YYYY-MM-DD sia timestamptz)
+                    allEntries = allEntries.filter(function (e) {
+                        return toISODate(e.date) !== date;
+                    });
+                    allEntries.push(saved);
+                    allEntries.sort(function (a, b) { return a.date.localeCompare(b.date); });
+                    renderAll();
+
+                    // Reset form (mantieni la data, sgancia gli altri campi)
+                    [weightInput, heightInput, bodyFatInput, muscleInput, noteInput].forEach(function (el) {
+                        if (el) el.value = '';
+                    });
+                    if (dateInput) dateInput.value = todayISO();
+                    showMsg('Misurazione salvata!', 'success');
                 });
         });
     }
 
-    function insertFallback(client, userId, date, weight, note) {
-        client
-            .from('body_measurements')
-            .insert({ user_id: userId, date: date, weight: weight, notes: note || null })
-            .select('id, date, weight, notes')
-            .then(function (res) {
-                if (res.error) {
-                    showMsg('Errore: ' + res.error.message, 'error');
-                    return;
-                }
-                var saved = res.data && res.data[0];
-                if (saved) {
-                    allEntries.push(saved);
-                    allEntries.sort(function (a, b) { return a.date.localeCompare(b.date); });
-                    renderAll();
-                    showMsg('Misurazione salvata!', 'success');
-                }
-            });
+    // ── Parsing + validazione input ──────────────────────────────
+    // Restituisce { values: { campi inseriti } } oppure { error: 'msg' }.
+    function parseInputs(weight, height, bodyFat, muscle, note) {
+        var values = {};
+
+        if (weight && weight.value !== '') {
+            var w = parseFloat(weight.value);
+            if (isNaN(w) || w < 20 || w > 300) return { error: 'Peso non valido (20-300 kg).' };
+            values.weight = w;
+        }
+        if (height && height.value !== '') {
+            var h = parseInt(height.value, 10);
+            if (isNaN(h) || h < 100 || h > 250) return { error: 'Altezza non valida (100-250 cm).' };
+            values.height = h;
+        }
+        if (bodyFat && bodyFat.value !== '') {
+            var bf = parseFloat(bodyFat.value);
+            if (isNaN(bf) || bf < 3 || bf > 60) return { error: '% grasso non valida (3-60).' };
+            values.body_fat = bf;
+        }
+        if (muscle && muscle.value !== '') {
+            var mm = parseFloat(muscle.value);
+            if (isNaN(mm) || mm < 10 || mm > 120) return { error: 'Massa muscolare non valida (10-120 kg).' };
+            values.muscle_mass = mm;
+        }
+        if (note && note.value.trim() !== '') {
+            values.notes = note.value.trim();
+        }
+
+        return { values: values };
     }
 
     // ── Elimina una misurazione ──────────────────────────────────
@@ -188,8 +235,9 @@
 
     // ── Render completo ──────────────────────────────────────────
     function renderAll() {
-        renderSummary(allEntries);
-        renderChart(filterByDays(allEntries, currentDays));
+        var weighted = weightOnly(allEntries);
+        renderSummary(weighted);
+        renderChart(filterByDays(weighted, currentDays));
         renderHistory(allEntries);
     }
 
@@ -255,7 +303,7 @@
         }
     }
 
-    // ── Grafico Chart.js ─────────────────────────────────────────
+    // ── Grafico Chart.js (solo peso) ─────────────────────────────
     function renderChart(entries) {
         var ctx = document.getElementById('weightChart');
         if (!ctx) return;
@@ -316,7 +364,7 @@
         });
     }
 
-    // ── Storico ──────────────────────────────────────────────────
+    // ── Storico (mostra tutti i campi presenti per ciascuna entry)
     function renderHistory(entries) {
         var list = document.getElementById('wtHistoryList');
         if (!list) return;
@@ -329,9 +377,16 @@
         }
 
         list.innerHTML = recent.map(function (e) {
+            // Costruisce dinamicamente i blocchi metriche presenti
+            var metrics = [];
+            if (e.weight)      metrics.push('<span class="wt-entry-weight">' + e.weight.toFixed(1) + ' kg</span>');
+            if (e.height)      metrics.push('<span class="wt-entry-metric">' + e.height + ' <span class="wt-entry-metric-label">cm</span></span>');
+            if (e.body_fat)    metrics.push('<span class="wt-entry-metric">' + e.body_fat.toFixed(1) + '% <span class="wt-entry-metric-label">grasso</span></span>');
+            if (e.muscle_mass) metrics.push('<span class="wt-entry-metric">' + e.muscle_mass.toFixed(1) + ' kg <span class="wt-entry-metric-label">muscolo</span></span>');
+
             return '<div class="wt-entry">' +
                 '<div class="wt-entry-left">' +
-                    '<span class="wt-entry-weight">' + e.weight.toFixed(1) + ' kg</span>' +
+                    '<div class="wt-entry-metrics">' + metrics.join('') + '</div>' +
                     '<span class="wt-entry-date">' + formatDateFull(e.date) + '</span>' +
                     (e.notes ? '<span class="wt-entry-note">' + escHtml(e.notes) + '</span>' : '') +
                 '</div>' +
@@ -348,7 +403,6 @@
         var cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         var cutoffStr = cutoff.toISOString().slice(0, 10);
-        // Confronto su YYYY-MM-DD per gestire sia date pure sia timestamptz
         var inWindow = entries.filter(function (e) {
             return toISODate(e.date) >= cutoffStr;
         });

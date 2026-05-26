@@ -403,6 +403,18 @@
 }
 .wt-card-title i { color: #4361ee; font-size: .85rem; }
 
+.wt-form-hint {
+    font-size: .78rem;
+    color: #6b7280;
+    line-height: 1.45;
+    margin: 0 0 .6rem 0;
+    padding: .55rem .7rem;
+    background: #f0f4ff;
+    border-left: 3px solid #4361ee;
+    border-radius: 6px;
+}
+.wt-form-hint strong { color: #4361ee; font-weight: 700; }
+
 .wt-form { display: flex; flex-direction: column; gap: .65rem; }
 .wt-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
 .wt-form-group { display: flex; flex-direction: column; gap: .3rem; }
@@ -412,6 +424,19 @@
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: .05em;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+.wt-form-opt {
+    font-size: .62rem;
+    font-weight: 600;
+    color: #9ca3af;
+    background: #f3f4f6;
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    letter-spacing: 0;
+    text-transform: none;
 }
 .wt-form-group input {
     padding: .55rem .75rem;
@@ -453,8 +478,20 @@
     border-radius: 8px;
     font-size: .83rem;
 }
-.wt-entry-left { display: flex; flex-direction: column; gap: .1rem; }
-.wt-entry-weight { font-weight: 700; color: #1a1a2e; }
+.wt-entry-left { display: flex; flex-direction: column; gap: .2rem; flex: 1; min-width: 0; }
+.wt-entry-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .3rem .65rem;
+}
+.wt-entry-weight { font-weight: 700; color: #1a1a2e; font-size: .92rem; }
+.wt-entry-metric {
+    font-size: .76rem;
+    color: #4b5563;
+    font-weight: 500;
+}
+.wt-entry-metric-label { color: #9ca3af; font-weight: 400; }
 .wt-entry-date   { font-size: .72rem; color: #9ca3af; }
 .wt-entry-note   { font-size: .72rem; color: #6b7280; font-style: italic; }
 .wt-entry-del {

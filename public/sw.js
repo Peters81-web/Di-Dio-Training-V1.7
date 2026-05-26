@@ -12,7 +12,9 @@
 // Sequenza storica:
 //   v1 → setup iniziale PWA
 //   v2 → Phase A navbar unificata (.app-nav) + DOMPurify restore + bug fix UX
-const CACHE_NAME  = 'didio-v2';
+//   v3 → Step 1 Bilancio Calorico: espansione form misurazioni
+//        (height/body_fat/muscle_mass) + merge-per-data
+const CACHE_NAME  = 'didio-v3';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
