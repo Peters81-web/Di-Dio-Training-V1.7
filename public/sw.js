@@ -16,7 +16,9 @@
 //        (height/body_fat/muscle_mass) + merge-per-data
 //   v4 → Step 2 Calorie chiare: label espliciti su dashboard + kcal per
 //        giorno nel calendario settimanale + nuova KPI calorie su /stats
-const CACHE_NAME  = 'didio-v4';
+//   v5 → Step 3a Bilancio Calorico: caloric-math.js + card BMR/TDEE/
+//        deficit sulla dashboard
+const CACHE_NAME  = 'didio-v5';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -32,6 +34,7 @@ const PRECACHE = [
   '/js/utils.js',
   '/js/app-core.js',
   '/js/app-nav.js',
+  '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',
   '/js/fase3-features.js',

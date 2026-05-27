@@ -63,6 +63,19 @@
             <div class="streak-badge" id="streakBadge"></div>
         </div>
 
+        <!-- ── 1B. BILANCIO CALORICO STIMATO ──────────────── -->
+        <section class="dashboard-section" id="caloricBalanceSection" style="display:none;">
+            <div class="section-header">
+                <h2><i class="fas fa-balance-scale" style="color:#f59e0b;margin-right:.4rem;"></i>Bilancio Calorico Stimato</h2>
+            </div>
+            <div class="card caloric-balance-card" id="caloricBalanceCard">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Calcolo stima...</span>
+                </div>
+            </div>
+        </section>
+
         <!-- ── 2. ALLENAMENTI ────────────────────────────── -->
         <section class="dashboard-section">
             <div class="section-header">
@@ -332,6 +345,8 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Calcoli BMR/TDEE/deficit per il Bilancio Calorico -->
+    <script src="/js/caloric-math.js" defer></script>
     <!-- DOMPurify: sanitizza l'HTML rich-text salvato nelle note dei workout
          (rich-text-editor + contenuti incollati da editor esterni come
          Perplexity, Word, Notion). Senza questa lib dashboard.js:555 fa
