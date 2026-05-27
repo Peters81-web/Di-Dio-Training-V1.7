@@ -12,7 +12,13 @@
 // Sequenza storica:
 //   v1 → setup iniziale PWA
 //   v2 → Phase A navbar unificata (.app-nav) + DOMPurify restore + bug fix UX
-const CACHE_NAME  = 'didio-v2';
+//   v3 → Step 1 Bilancio Calorico: espansione form misurazioni
+//        (height/body_fat/muscle_mass) + merge-per-data
+//   v4 → Step 2 Calorie chiare: label espliciti su dashboard + kcal per
+//        giorno nel calendario settimanale + nuova KPI calorie su /stats
+//   v5 → Step 3a Bilancio Calorico: caloric-math.js + card BMR/TDEE/
+//        deficit sulla dashboard
+const CACHE_NAME  = 'didio-v5';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -28,6 +34,7 @@ const PRECACHE = [
   '/js/utils.js',
   '/js/app-core.js',
   '/js/app-nav.js',
+  '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',
   '/js/fase3-features.js',

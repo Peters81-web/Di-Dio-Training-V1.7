@@ -103,15 +103,35 @@ document.addEventListener('DOMContentLoaded', function () {
     renderKPI(w); renderBpm(w); renderActivity(w); renderWeekly(w); renderTable(w);
   }
 
+  // Filtra allCompleted per lo stesso periodo selezionato (activePeriod).
+  // Usata sia da renderKPI (calorie) che potenzialmente da future logiche.
+  function getFilteredCompleted() {
+    if (activePeriod === 0) return allCompleted;
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - activePeriod);
+    return allCompleted.filter(function (c) {
+      if (!c.completed_at) return false;
+      return new Date(c.completed_at) >= cutoff;
+    });
+  }
+
   function renderKPI(ws) {
     var done = ws.filter(function (w) { return w.completed; });
     var bpmList = done.map(function (w) { return w.average_heart_rate; }).filter(function (v) { return v && v > 0; });
     var mins = ws.reduce(function (a, w) { return a + (w.total_duration || 0); }, 0);
     var avg = bpmList.length ? Math.round(bpmList.reduce(function (a, b) { return a + b; }, 0) / bpmList.length) + ' bpm' : '-';
+
+    // Calorie: somma da allCompleted (completed_workouts.calories_burned)
+    // filtrato per il periodo attivo. Più accurato di sommare da workout_plans
+    // che non ha la colonna calories_burned.
+    var completedInPeriod = getFilteredCompleted();
+    var kcal = completedInPeriod.reduce(function (sum, c) { return sum + (c.calories_burned || 0); }, 0);
+
     setText('kpiTotale', ws.length);
     setText('kpiCompletati', done.length);
     setText('kpiBpm', avg);
     setText('kpiDurata', mins > 0 ? mins + ' min' : '-');
+    setText('kpiCalorie', kcal > 0 ? kcal + ' kcal' : '-');
   }
 
   function renderBpm(ws) {

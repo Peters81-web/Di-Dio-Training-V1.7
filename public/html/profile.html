@@ -267,6 +267,7 @@
         <div class="weight-bottom-row">
             <div class="wt-add-card">
                 <div class="wt-card-title"><i class="fas fa-plus-circle"></i> Aggiungi misurazione</div>
+                <p class="wt-form-hint">Compila solo i campi che vuoi tracciare oggi. Se esiste già una misurazione per questa data, verrà <strong>aggiornata</strong> conservando i valori precedenti non sovrascritti.</p>
                 <div class="wt-form">
                     <div class="wt-form-row">
                         <div class="wt-form-group">
@@ -278,9 +279,25 @@
                             <input type="number" id="wtWeight" placeholder="Es. 72.5" step="0.1" min="20" max="300">
                         </div>
                     </div>
-                    <div class="wt-form-group">
-                        <label for="wtNote">Nota (opzionale)</label>
-                        <input type="text" id="wtNote" placeholder="Es. dopo allenamento">
+                    <div class="wt-form-row">
+                        <div class="wt-form-group">
+                            <label for="wtHeight">Altezza (cm) <span class="wt-form-opt">opz.</span></label>
+                            <input type="number" id="wtHeight" placeholder="Es. 178" step="1" min="100" max="250">
+                        </div>
+                        <div class="wt-form-group">
+                            <label for="wtBodyFat">% Grasso corporeo <span class="wt-form-opt">opz.</span></label>
+                            <input type="number" id="wtBodyFat" placeholder="Es. 18.5" step="0.1" min="3" max="60">
+                        </div>
+                    </div>
+                    <div class="wt-form-row">
+                        <div class="wt-form-group">
+                            <label for="wtMuscleMass">Massa muscolare (kg) <span class="wt-form-opt">opz.</span></label>
+                            <input type="number" id="wtMuscleMass" placeholder="Es. 38.2" step="0.1" min="10" max="120">
+                        </div>
+                        <div class="wt-form-group">
+                            <label for="wtNote">Nota <span class="wt-form-opt">opz.</span></label>
+                            <input type="text" id="wtNote" placeholder="Es. dopo allenamento">
+                        </div>
                     </div>
                     <button class="wt-btn-add" id="wtAddBtn">
                         <i class="fas fa-save"></i> Salva misurazione

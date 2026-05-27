@@ -91,19 +91,183 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadDashboardData() {
         try {
             showLoading();
-            
+
             // Carica dati in parallelo per migliori performance
             await Promise.all([
                 loadWorkouts(),
-                loadWeeklyStats()
+                loadWeeklyStats(),
+                loadCaloricBalance()
             ]);
-            
+
         } catch (error) {
             console.error('Errore nel caricamento dati dashboard:', error);
             showToast('Errore nel caricamento dei dati', 'error');
         } finally {
             hideLoading();
         }
+    }
+
+    /**
+     * Carica e mostra il "Bilancio Calorico Stimato" del giorno corrente.
+     *
+     * Logica:
+     *   1) profile.gender + profile.birthdate → età
+     *   2) body_measurements: ultimo peso e ultima altezza non-null
+     *   3) completed_workouts di OGGI → somma calories_burned
+     *   4) CaloricMath.computeAll() → BMR/TDEE/deficit potenziale
+     *
+     * Se mancano dati essenziali, mostra una card "completa il profilo"
+     * con link al /profile. Sempre con disclaimer onesto.
+     */
+    async function loadCaloricBalance() {
+        const section = document.getElementById('caloricBalanceSection');
+        const card    = document.getElementById('caloricBalanceCard');
+        if (!section || !card || !window.CaloricMath) return;
+
+        // Mostra la sezione (sempre — anche se profilo incompleto, l'utente
+        // deve sapere che la feature esiste e come abilitarla)
+        section.style.display = '';
+
+        try {
+            const todayIso = new Date().toISOString().slice(0, 10);
+
+            // 3 query parallele
+            const [profileRes, measureRes, todayWorkoutsRes] = await Promise.all([
+                // NB: activity_level non esiste come colonna oggi; useremo
+                // 'sedentary' di default. Quando aggiungeremo la colonna basta
+                // includerla nel select.
+                supabaseClient
+                    .from('profiles')
+                    .select('gender, birthdate')
+                    .eq('id', currentUser.id)
+                    .maybeSingle(),
+                supabaseClient
+                    .from('body_measurements')
+                    .select('weight, height, date')
+                    .eq('user_id', currentUser.id)
+                    .order('date', { ascending: false })
+                    .limit(30),
+                supabaseClient
+                    .from('completed_workouts')
+                    .select('calories_burned, completed_at')
+                    .eq('user_id', currentUser.id)
+                    .gte('completed_at', todayIso + 'T00:00:00')
+            ]);
+
+            // Profilo: prendi gender + birthdate (activity_level può non esistere)
+            const profile = profileRes.data || {};
+            // Misurazioni: trova ultimo weight e ultimo height non-null
+            const measures = measureRes.data || [];
+            const latestWeight = measures.find(m => m.weight != null);
+            const latestHeight = measures.find(m => m.height != null);
+            // Calorie oggi
+            const todayWorkouts = todayWorkoutsRes.data || [];
+            const todayKcal = todayWorkouts.reduce((s, w) => s + (w.calories_burned || 0), 0);
+
+            // Chiama l'utility pura
+            const result = window.CaloricMath.computeAll({
+                gender:    profile.gender,
+                birthdate: profile.birthdate,
+                weight:    latestWeight ? latestWeight.weight : null,
+                height:    latestHeight ? latestHeight.height : null,
+                activity:  profile.activity_level || 'sedentary' // fallback per quando aggiungeremo la colonna
+            }, todayKcal);
+
+            if (!result.ok) {
+                renderCaloricCardIncomplete(card, result.missing, todayKcal);
+            } else {
+                renderCaloricCardComplete(card, result);
+            }
+        } catch (err) {
+            console.warn('Caloric balance load error:', err);
+            card.innerHTML = `
+                <div class="cb-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Impossibile calcolare il bilancio adesso. Riprova più tardi.</span>
+                </div>
+            `;
+        }
+    }
+
+    function renderCaloricCardIncomplete(card, missing, todayKcal) {
+        const missingList = missing.map(m => `<li>${escapeHtml(m)}</li>`).join('');
+        card.innerHTML = `
+            <div class="cb-incomplete">
+                <div class="cb-incomplete-icon">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <div class="cb-incomplete-content">
+                    <h3>Completa il tuo profilo</h3>
+                    <p>Per stimare il tuo fabbisogno calorico giornaliero servono questi dati:</p>
+                    <ul>${missingList}</ul>
+                    <a href="/profile" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Vai al profilo
+                    </a>
+                </div>
+                ${todayKcal > 0 ? `
+                <div class="cb-incomplete-aside">
+                    <div class="cb-aside-label">Hai bruciato oggi</div>
+                    <div class="cb-aside-value">${todayKcal} <span>kcal</span></div>
+                </div>` : ''}
+            </div>
+        `;
+    }
+
+    function renderCaloricCardComplete(card, r) {
+        const deficitAbs = Math.abs(r.potentialDeficit);
+        const inDeficit  = r.potentialDeficit < 0;
+        const reliabilityMsg = r.reliability.message
+            ? `<div class="cb-warn"><i class="fas fa-info-circle"></i> ${escapeHtml(r.reliability.message)}</div>`
+            : '';
+
+        card.innerHTML = `
+            <div class="cb-grid">
+                <div class="cb-breakdown">
+                    <div class="cb-row">
+                        <div class="cb-row-label"><i class="fas fa-bed"></i> Fabbisogno base (BMR)</div>
+                        <div class="cb-row-value">${r.bmr} <span>kcal</span></div>
+                    </div>
+                    <div class="cb-row">
+                        <div class="cb-row-label"><i class="fas fa-walking"></i> Stile ${escapeHtml(r.activityLabel)} × ${r.activityFactor}</div>
+                        <div class="cb-row-value">${r.tdeeBase} <span>kcal</span></div>
+                    </div>
+                    <div class="cb-row cb-row-plus">
+                        <div class="cb-row-label"><i class="fas fa-dumbbell"></i> Allenamenti oggi</div>
+                        <div class="cb-row-value">+ ${r.workoutKcal} <span>kcal</span></div>
+                    </div>
+                    <div class="cb-row cb-row-total">
+                        <div class="cb-row-label"><i class="fas fa-fire"></i> Spesa totale stimata oggi</div>
+                        <div class="cb-row-value">${r.totalExpenditure} <span>kcal</span></div>
+                    </div>
+                </div>
+                <div class="cb-balance ${inDeficit ? 'cb-balance--deficit' : 'cb-balance--surplus'}">
+                    <div class="cb-balance-icon">
+                        ${inDeficit ? '<i class="fas fa-arrow-trend-down"></i>' : '<i class="fas fa-arrow-trend-up"></i>'}
+                    </div>
+                    <div class="cb-balance-label">
+                        ${inDeficit ? 'Deficit potenziale oggi' : 'Pareggio / surplus'}
+                    </div>
+                    <div class="cb-balance-value">
+                        ${inDeficit ? '−' : ''}${deficitAbs} <span>kcal</span>
+                    </div>
+                    <div class="cb-balance-note">
+                        ${inDeficit
+                            ? 'Se mantieni la dieta abituale, sei in deficit di queste calorie grazie agli allenamenti di oggi.'
+                            : 'Oggi non hai ancora generato deficit con gli allenamenti. Aggiungi una sessione per crearne uno.'
+                        }
+                    </div>
+                </div>
+            </div>
+            ${reliabilityMsg}
+            <div class="cb-disclaimer">
+                <i class="fas fa-info-circle"></i>
+                <span>
+                    <strong>Stima indicativa</strong> basata su formula Mifflin-St Jeor (BMR) e moltiplicatore attività ${r.activityFactor}.
+                    Variazione individuale ±10-15%. Per un piano nutrizionale personalizzato consulta un dietista certificato.
+                    Non include cosa mangi (intake calorico) — il "deficit potenziale" assume che tu mangi al tuo TDEE base abituale.
+                </span>
+            </div>
+        `;
     }
     
     /**
@@ -149,10 +313,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6); // Domenica
             lastDayOfWeek.setHours(23, 59, 59, 999);
             
-            // Carica allenamenti completati questa settimana
+            // Carica allenamenti completati questa settimana.
+            // completed_at incluso per separare "totale settimana" da "oggi".
             const { data: completedWorkouts, error } = await supabaseClient
                 .from('completed_workouts')
-                .select('actual_duration, calories_burned, distance')
+                .select('actual_duration, calories_burned, distance, completed_at')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', firstDayOfWeek.toISOString())
                 .lte('completed_at', lastDayOfWeek.toISOString());
@@ -325,12 +490,18 @@ document.addEventListener('DOMContentLoaded', async function() {
      */
     function displayWeeklyStats(completedWorkouts) {
         if (!elements.weeklyStats) return;
-        
+
         const totalWorkouts = completedWorkouts.length;
-        const totalTime = completedWorkouts.reduce((sum, w) => sum + (w.actual_duration || 0), 0);
-        const totalCalories = completedWorkouts.reduce((sum, w) => sum + (w.calories_burned || 0), 0);
+        const totalTime     = completedWorkouts.reduce((sum, w) => sum + (w.actual_duration || 0), 0);
+        const weekCalories  = completedWorkouts.reduce((sum, w) => sum + (w.calories_burned || 0), 0);
         const totalDistance = completedWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
-        
+
+        // Calorie bruciate OGGI (slice della settimana per data corrente, ora locale)
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayCalories = completedWorkouts
+            .filter(w => w.completed_at && w.completed_at.slice(0, 10) === todayKey)
+            .reduce((sum, w) => sum + (w.calories_burned || 0), 0);
+
         elements.weeklyStats.innerHTML = `
             <div class="weekly-stats-grid">
                 <div class="stat-card">
@@ -339,41 +510,51 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">${totalWorkouts}</div>
-                        <div class="stat-label">Allenamenti</div>
+                        <div class="stat-label">Allenamenti (settimana)</div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon time-icon">
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">${formatDuration(totalTime)}</div>
-                        <div class="stat-label">Tempo Totale</div>
+                        <div class="stat-label">Tempo totale (settimana)</div>
                     </div>
                 </div>
-                
-                <div class="stat-card">
+
+                <div class="stat-card stat-card--highlight" title="Calorie bruciate negli allenamenti completati oggi">
+                    <div class="stat-icon calories-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${todayCalories} <span class="stat-unit">kcal</span></div>
+                        <div class="stat-label">Calorie bruciate OGGI</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" title="Somma calorie bruciate negli allenamenti completati in questa settimana">
                     <div class="stat-icon calories-icon">
                         <i class="fas fa-fire"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value">${totalCalories}</div>
-                        <div class="stat-label">Calorie</div>
+                        <div class="stat-value">${weekCalories} <span class="stat-unit">kcal</span></div>
+                        <div class="stat-label">Calorie settimana</div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon distance-icon">
                         <i class="fas fa-route"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value">${totalDistance.toFixed(1)} km</div>
-                        <div class="stat-label">Distanza</div>
+                        <div class="stat-value">${totalDistance.toFixed(1)} <span class="stat-unit">km</span></div>
+                        <div class="stat-label">Distanza (settimana)</div>
                     </div>
                 </div>
             </div>
-            
+
             ${totalWorkouts === 0 ? `
                 <div class="weekly-info">
                     <i class="fas fa-info-circle"></i>
