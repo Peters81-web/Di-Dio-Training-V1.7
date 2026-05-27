@@ -133,6 +133,23 @@
 .wc-day.today     .wc-day-name,
 .wc-day.today     .wc-day-num  { color: var(--primary-color); }
 
+/* Calorie bruciate quel giorno (mostrate solo nei giorni completed) */
+.wc-day-kcal {
+    font-size: .65rem;
+    font-weight: 700;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-top: -.15rem;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+.wc-day.today .wc-day-kcal {
+    color: var(--primary-color);
+    background: rgba(67, 97, 238, 0.12);
+}
+
 .wc-legend {
     display: flex;
     gap: 1rem;

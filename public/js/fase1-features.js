@@ -21,7 +21,7 @@ async function initStreak() {
 
         const { data: completed } = await supabase
             .from('completed_workouts')
-            .select('completed_at')
+            .select('completed_at, calories_burned')
             .eq('user_id', session.user.id)
             .gte('completed_at', thirtyDaysAgo.toISOString())
             .order('completed_at', { ascending: false });
@@ -103,9 +103,15 @@ function renderWeeklyCalendar(completedWorkouts) {
     const container = document.getElementById('weekly-calendar');
     if (!container) return;
 
-    const completedDays = new Set(
-        completedWorkouts.map(w => w.completed_at.slice(0, 10))
-    );
+    // Aggrega per giorno: kcal sommate + flag completato
+    const dayMap = new Map(); // 'YYYY-MM-DD' → { completed: true, kcal: 0 }
+    completedWorkouts.forEach(w => {
+        if (!w.completed_at) return;
+        const k = w.completed_at.slice(0, 10);
+        const cur = dayMap.get(k) || { completed: true, kcal: 0 };
+        cur.kcal += (w.calories_burned || 0);
+        dayMap.set(k, cur);
+    });
 
     const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
     const today = new Date();
@@ -124,14 +130,19 @@ function renderWeeklyCalendar(completedWorkouts) {
         const key = d.toISOString().slice(0, 10);
         const name = dayNames[d.getDay()];
         const num  = d.getDate();
+        const dayData = dayMap.get(key);
 
         let cls = 'wc-day';
         let icon = '';
+        let kcalLine = '';
 
         if (key === todayKey) cls += ' today';
-        if (completedDays.has(key)) {
+        if (dayData) {
             cls += ' completed';
             icon = '<i class="fas fa-check"></i>';
+            if (dayData.kcal > 0) {
+                kcalLine = `<span class="wc-day-kcal">${dayData.kcal} kcal</span>`;
+            }
         } else if (d > today) {
             // future day — plain
         } else if (key !== todayKey) {
@@ -139,10 +150,11 @@ function renderWeeklyCalendar(completedWorkouts) {
         }
 
         daysHtml += `
-            <div class="${cls}">
+            <div class="${cls}" title="${key}${dayData ? ` — ${dayData.kcal} kcal bruciate` : ''}">
                 <span class="wc-day-name">${name}</span>
                 <span class="wc-day-num">${num}</span>
                 <span class="wc-day-icon">${icon}</span>
+                ${kcalLine}
             </div>`;
     }
 
@@ -154,6 +166,10 @@ function renderWeeklyCalendar(completedWorkouts) {
             </div>
             <div class="wc-legend-item">
                 <div class="wc-dot today"></div><span>Oggi</span>
+            </div>
+            <div class="wc-legend-item" style="opacity:.75;">
+                <i class="fas fa-bolt" style="color:#f59e0b;font-size:.7rem;"></i>
+                <span>Calorie bruciate quel giorno</span>
             </div>
         </div>`;
 }

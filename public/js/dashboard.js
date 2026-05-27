@@ -149,10 +149,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6); // Domenica
             lastDayOfWeek.setHours(23, 59, 59, 999);
             
-            // Carica allenamenti completati questa settimana
+            // Carica allenamenti completati questa settimana.
+            // completed_at incluso per separare "totale settimana" da "oggi".
             const { data: completedWorkouts, error } = await supabaseClient
                 .from('completed_workouts')
-                .select('actual_duration, calories_burned, distance')
+                .select('actual_duration, calories_burned, distance, completed_at')
                 .eq('user_id', currentUser.id)
                 .gte('completed_at', firstDayOfWeek.toISOString())
                 .lte('completed_at', lastDayOfWeek.toISOString());
@@ -325,12 +326,18 @@ document.addEventListener('DOMContentLoaded', async function() {
      */
     function displayWeeklyStats(completedWorkouts) {
         if (!elements.weeklyStats) return;
-        
+
         const totalWorkouts = completedWorkouts.length;
-        const totalTime = completedWorkouts.reduce((sum, w) => sum + (w.actual_duration || 0), 0);
-        const totalCalories = completedWorkouts.reduce((sum, w) => sum + (w.calories_burned || 0), 0);
+        const totalTime     = completedWorkouts.reduce((sum, w) => sum + (w.actual_duration || 0), 0);
+        const weekCalories  = completedWorkouts.reduce((sum, w) => sum + (w.calories_burned || 0), 0);
         const totalDistance = completedWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
-        
+
+        // Calorie bruciate OGGI (slice della settimana per data corrente, ora locale)
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayCalories = completedWorkouts
+            .filter(w => w.completed_at && w.completed_at.slice(0, 10) === todayKey)
+            .reduce((sum, w) => sum + (w.calories_burned || 0), 0);
+
         elements.weeklyStats.innerHTML = `
             <div class="weekly-stats-grid">
                 <div class="stat-card">
@@ -339,41 +346,51 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">${totalWorkouts}</div>
-                        <div class="stat-label">Allenamenti</div>
+                        <div class="stat-label">Allenamenti (settimana)</div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon time-icon">
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">${formatDuration(totalTime)}</div>
-                        <div class="stat-label">Tempo Totale</div>
+                        <div class="stat-label">Tempo totale (settimana)</div>
                     </div>
                 </div>
-                
-                <div class="stat-card">
+
+                <div class="stat-card stat-card--highlight" title="Calorie bruciate negli allenamenti completati oggi">
+                    <div class="stat-icon calories-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${todayCalories} <span class="stat-unit">kcal</span></div>
+                        <div class="stat-label">Calorie bruciate OGGI</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" title="Somma calorie bruciate negli allenamenti completati in questa settimana">
                     <div class="stat-icon calories-icon">
                         <i class="fas fa-fire"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value">${totalCalories}</div>
-                        <div class="stat-label">Calorie</div>
+                        <div class="stat-value">${weekCalories} <span class="stat-unit">kcal</span></div>
+                        <div class="stat-label">Calorie settimana</div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon distance-icon">
                         <i class="fas fa-route"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value">${totalDistance.toFixed(1)} km</div>
-                        <div class="stat-label">Distanza</div>
+                        <div class="stat-value">${totalDistance.toFixed(1)} <span class="stat-unit">km</span></div>
+                        <div class="stat-label">Distanza (settimana)</div>
                     </div>
                 </div>
             </div>
-            
+
             ${totalWorkouts === 0 ? `
                 <div class="weekly-info">
                     <i class="fas fa-info-circle"></i>

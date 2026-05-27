@@ -844,6 +844,42 @@
   }
 }
 
+/* ===== STAT CARD — modifier highlight (es. "Calorie OGGI") ===== */
+.stat-card.stat-card--highlight {
+    position: relative;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border: 1.5px solid #f59e0b;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+    transform: scale(1.02);
+    z-index: 1;
+}
+.stat-card.stat-card--highlight::before {
+    content: 'OGGI';
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #f59e0b;
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #fed7aa;
+}
+.stat-card.stat-card--highlight .stat-icon {
+    background: linear-gradient(135deg, #f59e0b, #ea580c) !important;
+    color: #fff !important;
+}
+
+/* Unità (kcal, km) accanto al valore numerico — più discreta */
+.stat-card .stat-unit {
+    font-size: 0.65em;
+    font-weight: 500;
+    color: var(--text-secondary, #6c757d);
+    margin-left: 2px;
+}
+
 /* ===== GLASSMORPHISM EFFECTS ===== */
 .glass-card {
   background: var(--glass-bg);

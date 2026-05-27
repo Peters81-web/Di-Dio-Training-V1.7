@@ -14,7 +14,9 @@
 //   v2 → Phase A navbar unificata (.app-nav) + DOMPurify restore + bug fix UX
 //   v3 → Step 1 Bilancio Calorico: espansione form misurazioni
 //        (height/body_fat/muscle_mass) + merge-per-data
-const CACHE_NAME  = 'didio-v3';
+//   v4 → Step 2 Calorie chiare: label espliciti su dashboard + kcal per
+//        giorno nel calendario settimanale + nuova KPI calorie su /stats
+const CACHE_NAME  = 'didio-v4';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
