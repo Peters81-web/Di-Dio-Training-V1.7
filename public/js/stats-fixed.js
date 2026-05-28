@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: true }),
       sc.from('completed_workouts')
-        .select('completed_at,actual_duration,calories_burned,distance,workout_plans(name,activity_type)')
+        // id e workout_id servono per le azioni Annulla/Modifica.
+        // Includi tutti i campi modificabili nel modal.
+        .select('id,workout_id,completed_at,actual_duration,calories_burned,distance,heart_rate_avg,perceived_difficulty,rating,notes,workout_plans(name,activity_type)')
         .eq('user_id', currentUser.id)
         .order('completed_at', { ascending: true })
         .limit(200)
@@ -71,6 +73,22 @@ document.addEventListener('DOMContentLoaded', function () {
       renderProgressCharts();
       renderPersonalRecords();
     });
+  }
+
+  // ── Recupera il record completed_workouts per un dato workout_id ─
+  //   Restituisce il più recente se ce ne sono più di uno (caso raro
+  //   teorico). Null se non esiste.
+  function findCompletionFor(workoutId) {
+    if (!workoutId) return null;
+    var matches = allCompleted.filter(function (c) {
+      return c.workout_id === workoutId;
+    });
+    if (!matches.length) return null;
+    // Più recente per completed_at
+    matches.sort(function (a, b) {
+      return new Date(b.completed_at) - new Date(a.completed_at);
+    });
+    return matches[0];
   }
 
   // Restituisce la data di riferimento "logica" della scheda per il
@@ -266,6 +284,21 @@ document.addEventListener('DOMContentLoaded', function () {
       var sc2 = w.completed ? 'badge-done' : 'badge-todo';
       // Mostra data effettiva per completati, data pianificata per da fare
       var displayDate = w.completed && w.completed_at ? w.completed_at : w.scheduled_date;
+
+      // Azioni: solo per i completati. Modifica e Annulla.
+      var actionsHtml = '';
+      if (w.completed) {
+        actionsHtml =
+            '<button class="rt-action rt-action--edit" onclick="statsEditCompletion(\'' + esc(w.id) + '\')" title="Modifica completamento">' +
+                '<i class="fas fa-pen"></i>' +
+            '</button>' +
+            '<button class="rt-action rt-action--cancel" onclick="statsCancelCompletion(\'' + esc(w.id) + '\')" title="Annulla completamento">' +
+                '<i class="fas fa-undo"></i>' +
+            '</button>';
+      } else {
+        actionsHtml = '<span class="rt-actions-empty">—</span>';
+      }
+
       return '<tr>'
         + '<td>' + esc(fmtDate(displayDate)) + '</td>'
         + '<td>' + esc(w.name || 'Allenamento') + '</td>'
@@ -274,11 +307,192 @@ document.addEventListener('DOMContentLoaded', function () {
         + '<td>' + (w.total_duration ? w.total_duration + ' min' : '-') + '</td>'
         + '<td>' + (w.average_heart_rate ? w.average_heart_rate + ' bpm' : '-') + '</td>'
         + '<td><span class="badge ' + sc2 + '">' + (w.completed ? 'Completato' : 'Da fare') + '</span></td>'
+        + '<td class="rt-actions-cell">' + actionsHtml + '</td>'
         + '</tr>';
     }).join('');
     wrapper.innerHTML = '<table class="recent-table">'
-      + '<thead><tr><th>Data</th><th>Nome</th><th>Attività</th><th>Difficoltà</th><th>Durata</th><th>BPM</th><th>Stato</th></tr></thead>'
+      + '<thead><tr><th>Data</th><th>Nome</th><th>Attività</th><th>Difficoltà</th><th>Durata</th><th>BPM</th><th>Stato</th><th>Azioni</th></tr></thead>'
       + '<tbody>' + rows + '</tbody></table>';
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // OPZIONE B — Annulla + Modifica completamento workout
+  // ════════════════════════════════════════════════════════════════
+
+  // ── ANNULLA completamento ────────────────────────────────────────
+  // 1) DELETE riga completed_workouts (se esiste)
+  // 2) UPDATE workout_plans SET completed=false, completed_at=null,
+  //    average_heart_rate=null
+  // 3) Ricarica dati e ridisegna tutto
+  // Su mobile la scheda riapparirà nella dashboard come "Da fare".
+  function cancelCompletion(workoutId) {
+    if (!workoutId) return;
+    var w = allWorkouts.find(function (x) { return x.id === workoutId; });
+    var name = w ? (w.name || 'questo allenamento') : 'questo allenamento';
+    if (!confirm('Annullare il completamento di "' + name + '"?\n\n' +
+                 'Verranno cancellati i dati di svolgimento (data, calorie, durata effettiva, FC) ' +
+                 'e la scheda tornerà tra quelle "Da fare". Operazione irreversibile.')) {
+      return;
+    }
+
+    var completion = findCompletionFor(workoutId);
+
+    Promise.all([
+      // 1) Cancella riga completed_workouts se esiste
+      completion
+        ? sc.from('completed_workouts').delete().eq('id', completion.id)
+        : Promise.resolve({ error: null }),
+      // 2) Resetta i flag su workout_plans
+      sc.from('workout_plans').update({
+        completed: false,
+        completed_at: null,
+        average_heart_rate: null
+      }).eq('id', workoutId).eq('user_id', currentUser.id)
+    ]).then(function (results) {
+      var errors = results.filter(function (r) { return r.error; });
+      if (errors.length) {
+        console.error('Errori annullamento:', errors);
+        toast('Errore durante l\'annullamento: ' + (errors[0].error.message || 'verifica la connessione'), 'error');
+        return;
+      }
+      toast('Completamento annullato. La scheda è di nuovo "Da fare".', 'success');
+      fetchData(); // ricarica tutto: KPI, grafici, tabella
+    });
+  }
+  window.statsCancelCompletion = cancelCompletion;
+
+  // ── MODIFICA completamento (apre modal pre-compilato) ────────────
+  function editCompletion(workoutId) {
+    if (!workoutId) return;
+    var w = allWorkouts.find(function (x) { return x.id === workoutId; });
+    var c = findCompletionFor(workoutId);
+
+    if (!c) {
+      // Caso edge: workout_plans.completed=true ma nessuna riga
+      // completed_workouts (incoerenza pregressa). Suggerisci Annulla.
+      if (!confirm('Non trovo i dati di svolgimento di questa scheda (potrebbe essere stata completata con una versione precedente dell\'app). ' +
+                   'Vuoi annullare il completamento per poterla rifare con valori corretti?')) {
+        return;
+      }
+      cancelCompletion(workoutId);
+      return;
+    }
+
+    openEditModal(w, c);
+  }
+  window.statsEditCompletion = editCompletion;
+
+  function openEditModal(workoutPlan, completion) {
+    var modal   = document.getElementById('editCompletionModal');
+    var titleEl = document.getElementById('ecmTitle');
+    if (!modal || !titleEl) {
+      console.error('Modal #editCompletionModal non trovato in stats.html');
+      return;
+    }
+
+    // Pre-compila campi
+    titleEl.textContent = workoutPlan ? (workoutPlan.name || 'Allenamento') : 'Allenamento';
+
+    // datetime-local format: YYYY-MM-DDTHH:MM (ora locale, no fuso)
+    var d = completion.completed_at ? new Date(completion.completed_at) : new Date();
+    // Offset locale per visualizzare l'ora del browser
+    var local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    document.getElementById('ecmDate').value         = local.toISOString().slice(0, 16);
+    document.getElementById('ecmDuration').value     = completion.actual_duration   || '';
+    document.getElementById('ecmCalories').value     = completion.calories_burned   || '';
+    document.getElementById('ecmDistance').value     = completion.distance          || '';
+    document.getElementById('ecmHeartRate').value    = completion.heart_rate_avg    || '';
+    document.getElementById('ecmNotes').value        = completion.notes             || '';
+
+    // Memorizza ID nei dataset per il save
+    modal.dataset.completionId = completion.id;
+    modal.dataset.workoutId    = workoutPlan ? workoutPlan.id : '';
+
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeEditModal() {
+    var modal = document.getElementById('editCompletionModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+  window.statsCloseEditModal = closeEditModal;
+
+  function saveEditCompletion() {
+    var modal = document.getElementById('editCompletionModal');
+    if (!modal) return;
+    var completionId = modal.dataset.completionId;
+    var workoutId    = modal.dataset.workoutId;
+    if (!completionId) return;
+
+    // Leggi form
+    var dateInput     = document.getElementById('ecmDate').value.trim();
+    var duration      = parseInt(document.getElementById('ecmDuration').value, 10);
+    var calories      = parseInt(document.getElementById('ecmCalories').value, 10);
+    var distance      = parseFloat(document.getElementById('ecmDistance').value);
+    var heartRate     = parseInt(document.getElementById('ecmHeartRate').value, 10);
+    var notes         = document.getElementById('ecmNotes').value.trim();
+
+    // Validazione minima
+    if (!dateInput) {
+      toast('Inserisci la data di svolgimento.', 'error');
+      return;
+    }
+    if (isNaN(duration) || duration <= 0) {
+      toast('Inserisci una durata valida (minuti, > 0).', 'error');
+      return;
+    }
+
+    // Costruisci payload UPDATE (solo campi valorizzati o esplicitamente svuotati)
+    var completedAtIso = new Date(dateInput).toISOString();
+    var payload = {
+      completed_at:    completedAtIso,
+      actual_duration: duration,
+      calories_burned: !isNaN(calories) && calories > 0 ? calories : null,
+      distance:        !isNaN(distance) && distance > 0 ? distance : null,
+      heart_rate_avg:  !isNaN(heartRate) && heartRate > 0 ? heartRate : null,
+      notes:           notes || null
+    };
+
+    // Disabilita bottone per evitare doppio click
+    var saveBtn = document.getElementById('ecmSaveBtn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvo...'; }
+
+    Promise.all([
+      // 1) UPDATE completed_workouts
+      sc.from('completed_workouts').update(payload).eq('id', completionId),
+      // 2) Sync workout_plans.completed_at + average_heart_rate (denormalizzato)
+      workoutId
+        ? sc.from('workout_plans').update({
+            completed_at:       completedAtIso,
+            average_heart_rate: payload.heart_rate_avg
+          }).eq('id', workoutId).eq('user_id', currentUser.id)
+        : Promise.resolve({ error: null })
+    ]).then(function (results) {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salva modifiche';
+      }
+      var errors = results.filter(function (r) { return r.error; });
+      if (errors.length) {
+        console.error('Errori salvataggio modifica:', errors);
+        toast('Errore salvataggio: ' + (errors[0].error.message || 'riprova'), 'error');
+        return;
+      }
+      closeEditModal();
+      toast('Modifiche salvate.', 'success');
+      fetchData();
+    });
+  }
+  window.statsSaveEditCompletion = saveEditCompletion;
+
+  // Toast/showMsg helper (usa window.showToast se disponibile, fallback alert)
+  function toast(msg, type) {
+    if (window.showToast) { window.showToast(msg, type); return; }
+    if (window.AppCore && window.AppCore.showToast) { window.AppCore.showToast(msg, type); return; }
+    alert(msg);
   }
 
   // ── Trend durata per attività ───────────────────────────

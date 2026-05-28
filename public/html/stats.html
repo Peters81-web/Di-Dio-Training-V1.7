@@ -290,6 +290,215 @@
     .state-box i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
     .state-box p { font-size: 0.95rem; }
 
+    /* ── Recent Table — colonna Azioni ─────────────────────── */
+    .rt-actions-cell {
+      white-space: nowrap;
+      text-align: center;
+    }
+    .rt-actions-empty {
+      color: #d1d5db;
+      font-size: 1.1rem;
+    }
+    .rt-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: .85rem;
+      margin: 0 2px;
+      transition: background .15s, color .15s, transform .15s;
+    }
+    .rt-action:hover {
+      transform: translateY(-1px);
+    }
+    .rt-action--edit:hover {
+      background: #eaefff;
+      color: #4361ee;
+    }
+    .rt-action--cancel:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    /* ── Modal "Modifica completamento" ────────────────────── */
+    .ecm-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .ecm-modal.is-open {
+      display: flex;
+      animation: ecmFadeIn .18s ease-out;
+    }
+    .ecm-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+    .ecm-dialog {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+      margin: auto;
+      overflow: hidden;
+      animation: ecmSlideIn .25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes ecmFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes ecmSlideIn { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .ecm-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 18px 22px;
+      background: linear-gradient(135deg, #4361ee 0%, #7c3aed 100%);
+      color: #fff;
+    }
+    .ecm-header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ecm-header-title > i {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+    .ecm-header-sub {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      opacity: .85;
+      font-weight: 600;
+    }
+    .ecm-header h3 {
+      margin: 2px 0 0 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .ecm-close {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .ecm-close:hover { background: rgba(255, 255, 255, 0.28); }
+
+    .ecm-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ecm-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 540px) {
+      .ecm-form-row { grid-template-columns: 1fr; }
+    }
+    .ecm-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ecm-field label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .ecm-field input {
+      padding: 10px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: .92rem;
+      color: #1a1a2e;
+      background: #f9fafb;
+      transition: border-color .15s, background .15s;
+      width: 100%;
+      font-family: inherit;
+    }
+    .ecm-field input:focus {
+      outline: none;
+      border-color: #4361ee;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.12);
+    }
+
+    .ecm-info {
+      display: flex;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f0f4ff;
+      border-radius: 8px;
+      color: #4b5563;
+      font-size: .78rem;
+      line-height: 1.5;
+    }
+    .ecm-info i { color: #4361ee; margin-top: 2px; flex-shrink: 0; }
+    .ecm-info strong { color: #1a1a2e; }
+
+    .ecm-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 22px;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+    }
+    .ecm-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: background .15s, border-color .15s, transform .12s;
+      font-family: inherit;
+    }
+    .ecm-btn:active { transform: scale(0.98); }
+    .ecm-btn--secondary {
+      background: #fff;
+      border-color: #e5e7eb;
+      color: #4b5563;
+    }
+    .ecm-btn--secondary:hover { background: #f3f4f6; }
+    .ecm-btn--primary {
+      background: linear-gradient(135deg, #4361ee, #7c3aed);
+      color: #fff;
+    }
+    .ecm-btn--primary:hover { opacity: .92; }
+    .ecm-btn--primary:disabled { opacity: .6; cursor: not-allowed; }
+
     /* ── Personal Records ─────────────────────────────────── */
     .pr-grid {
       display: grid;
@@ -489,8 +698,90 @@
 
   </main>
 
+  <!-- ════════════════════════════════════════════════════════════════
+       MODAL "Modifica completamento" (Opzione B)
+       Aperto da stats-fixed.js → openEditModal()
+       ════════════════════════════════════════════════════════════════ -->
+  <div id="editCompletionModal" class="ecm-modal" role="dialog" aria-modal="true" aria-labelledby="ecmTitle">
+    <div class="ecm-backdrop" onclick="statsCloseEditModal()"></div>
+    <div class="ecm-dialog">
+      <div class="ecm-header">
+        <div class="ecm-header-title">
+          <i class="fas fa-pen-to-square"></i>
+          <div>
+            <div class="ecm-header-sub">Modifica completamento</div>
+            <h3 id="ecmTitle">—</h3>
+          </div>
+        </div>
+        <button class="ecm-close" onclick="statsCloseEditModal()" aria-label="Chiudi">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="ecm-body">
+        <div class="ecm-form-row">
+          <div class="ecm-field">
+            <label for="ecmDate">Data e ora svolgimento *</label>
+            <input type="datetime-local" id="ecmDate" required>
+          </div>
+          <div class="ecm-field">
+            <label for="ecmDuration">Durata effettiva (min) *</label>
+            <input type="number" id="ecmDuration" min="1" max="600" step="1" placeholder="Es. 45" required>
+          </div>
+        </div>
+
+        <div class="ecm-form-row">
+          <div class="ecm-field">
+            <label for="ecmCalories">Calorie bruciate</label>
+            <input type="number" id="ecmCalories" min="0" max="5000" step="1" placeholder="Es. 300">
+          </div>
+          <div class="ecm-field">
+            <label for="ecmDistance">Distanza (km)</label>
+            <input type="number" id="ecmDistance" min="0" max="500" step="0.1" placeholder="Es. 5.2">
+          </div>
+        </div>
+
+        <div class="ecm-form-row">
+          <div class="ecm-field">
+            <label for="ecmHeartRate">FC media (bpm)</label>
+            <input type="number" id="ecmHeartRate" min="30" max="240" step="1" placeholder="Es. 145">
+          </div>
+          <div class="ecm-field">
+            <label for="ecmNotes">Note</label>
+            <input type="text" id="ecmNotes" placeholder="Es. ottima forma">
+          </div>
+        </div>
+
+        <div class="ecm-info">
+          <i class="fas fa-info-circle"></i>
+          <span>
+            Le modifiche aggiornano <strong>completed_workouts</strong> e sincronizzano <strong>workout_plans</strong>.
+            Per annullare invece il completamento usa il pulsante <i class="fas fa-undo"></i> nella tabella.
+          </span>
+        </div>
+      </div>
+
+      <div class="ecm-footer">
+        <button class="ecm-btn ecm-btn--secondary" onclick="statsCloseEditModal()">Annulla</button>
+        <button class="ecm-btn ecm-btn--primary" id="ecmSaveBtn" onclick="statsSaveEditCompletion()">
+          <i class="fas fa-save"></i> Salva modifiche
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- stats-fixed.js caricato PER ULTIMO, dopo tutti gli script sopra -->
   <script src="/js/stats-fixed.js"></script>
+
+  <!-- ESC chiude il modal -->
+  <script>
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var m = document.getElementById('editCompletionModal');
+        if (m && m.classList.contains('is-open')) statsCloseEditModal();
+      }
+    });
+  </script>
 
 </body>
 </html>

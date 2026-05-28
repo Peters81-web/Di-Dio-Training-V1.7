@@ -18,7 +18,9 @@
 //        giorno nel calendario settimanale + nuova KPI calorie su /stats
 //   v5 → Step 3a Bilancio Calorico: caloric-math.js + card BMR/TDEE/
 //        deficit sulla dashboard
-const CACHE_NAME  = 'didio-v5';
+//   v6 → Opzione B: Annulla + Modifica completamento workout su /stats
+//        (modal pre-compilato + sync workout_plans/completed_workouts)
+const CACHE_NAME  = 'didio-v6';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
