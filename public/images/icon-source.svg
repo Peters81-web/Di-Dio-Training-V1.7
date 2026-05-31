@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#4361ee"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sfondo full-bleed (necessario per icone maskable) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Manubrio bianco, centrato nella safe-zone -->
+  <g fill="#ffffff">
+    <!-- Piastra esterna sinistra -->
+    <rect x="116" y="176" width="36" height="160" rx="16"/>
+    <!-- Piastra interna sinistra -->
+    <rect x="158" y="201" width="28" height="110" rx="13"/>
+    <!-- Barra centrale -->
+    <rect x="186" y="242" width="140" height="28" rx="14"/>
+    <!-- Piastra interna destra -->
+    <rect x="326" y="201" width="28" height="110" rx="13"/>
+    <!-- Piastra esterna destra -->
+    <rect x="360" y="176" width="36" height="160" rx="16"/>
+  </g>
+</svg>
