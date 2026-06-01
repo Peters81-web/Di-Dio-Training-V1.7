@@ -88,6 +88,22 @@
     };
     setScrolled();
     window.addEventListener('scroll', setScrolled, { passive: true });
+
+    // ── 4. Credito autore in fondo a ogni pagina ──────────────
+    injectCredit();
+  }
+
+  // Inserisce un footer discreto con il credito dell'autore.
+  // DRY: definito una volta qui, app-nav.js è caricato su tutte le
+  // pagine principali → il credito appare ovunque senza duplicare HTML.
+  function injectCredit() {
+    if (document.querySelector('.app-credit')) return; // evita doppioni
+    const footer = document.createElement('footer');
+    footer.className = 'app-credit';
+    const year = new Date().getFullYear();
+    footer.innerHTML =
+      'Vortex Stride &middot; Realizzato da <strong>Di Dio Pietro</strong> &middot; &copy; ' + year;
+    document.body.appendChild(footer);
   }
 
   if (document.readyState === 'loading') {

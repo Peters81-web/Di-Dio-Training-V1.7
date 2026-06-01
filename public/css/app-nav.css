@@ -347,6 +347,28 @@
   }
 }
 
+/* ─── CREDITO AUTORE (footer iniettato da app-nav.js) ───────── */
+.app-credit {
+  text-align: center;
+  padding: 22px 16px 30px;
+  margin-top: 24px;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+.app-credit strong {
+  color: #6b7280;
+  font-weight: 600;
+}
+.app-nav--dark ~ .app-credit,
+body:has(.app-nav--dark) .app-credit {
+  color: rgba(255, 255, 255, 0.5);
+}
+body:has(.app-nav--dark) .app-credit strong {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* ─── COMPATIBILITÀ — bridge per pagine che usano .container ── */
 /* Alcune pagine wrappano la navbar in <div class="container">.
  * Lo ignoriamo per non rompere il layout: app-nav-inner ha già max-width. */

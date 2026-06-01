@@ -20,7 +20,9 @@
 //        deficit sulla dashboard
 //   v6 → Opzione B: Annulla + Modifica completamento workout su /stats
 //        (modal pre-compilato + sync workout_plans/completed_workouts)
-const CACHE_NAME  = 'didio-v6';
+//   v7 → Rebrand: icona runner + nome app "Vortex Stride" + credito
+//        "Di Dio Pietro" su ogni pagina (bump per rinfrescare icone+JS)
+const CACHE_NAME  = 'didio-v7';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

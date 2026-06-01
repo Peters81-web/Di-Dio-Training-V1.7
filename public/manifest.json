@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Di Dio Training",
-  "short_name": "DiDio",
-  "description": "Il tuo personal trainer digitale",
+  "name": "Vortex Stride",
+  "short_name": "Vortex Stride",
+  "description": "Il tuo personal trainer digitale — realizzato da Di Dio Pietro",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
