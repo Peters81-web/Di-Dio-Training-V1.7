@@ -22,7 +22,8 @@
 //        (modal pre-compilato + sync workout_plans/completed_workouts)
 //   v7 → Rebrand: icona runner + nome app "Vortex Stride" + credito
 //        "Di Dio Pietro" su ogni pagina (bump per rinfrescare icone+JS)
-const CACHE_NAME  = 'didio-v7';
+//   v8 → Pagina Archivio (calendario mensile + dettaglio giorno)
+const CACHE_NAME  = 'didio-v8';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -35,9 +36,11 @@ const PRECACHE = [
   '/css/fase3-features.css',
   '/css/notifications.css',
   '/css/app-nav.css',
+  '/css/archivio.css',
   '/js/utils.js',
   '/js/app-core.js',
   '/js/app-nav.js',
+  '/js/archivio.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',

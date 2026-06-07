@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivio - Vortex Stride</title>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/app-nav.css">
+    <link rel="stylesheet" href="/css/archivio.css">
+    <script src="/js/app-nav.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabase-config.js"></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4361ee">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="app-nav">
+    <div class="app-nav-inner">
+        <a href="/dashboard" class="app-nav-brand">
+            <i class="fas fa-box-archive"></i>
+            <span>Archivio</span>
+        </a>
+        <button class="app-nav-toggle" id="appNavToggle" aria-controls="appNavMenu" aria-expanded="false" aria-label="Apri menu">
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
+            <span class="app-nav-toggle-line"></span>
+        </button>
+        <div class="app-nav-menu" id="appNavMenu">
+            <a href="/dashboard" class="app-nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a href="/stats" class="app-nav-link"><i class="fas fa-chart-line"></i><span>Statistiche</span></a>
+            <a href="/ai-trainer" class="app-nav-link"><i class="fas fa-robot"></i><span>AI Trainer</span></a>
+            <button id="logoutBtn" class="app-nav-link app-nav-link--danger"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+        </div>
+    </div>
+</nav>
+
+<main class="arc-page">
+
+    <div class="arc-header">
+        <h1><i class="fas fa-box-archive"></i> Archivio Allenamenti</h1>
+        <p>Naviga tra i mesi e clicca un giorno per vedere cosa hai fatto.</p>
+    </div>
+
+    <!-- KPI mese corrente -->
+    <div class="arc-month-summary" id="arcMonthSummary"></div>
+
+    <!-- Calendario -->
+    <div class="arc-calendar-card">
+        <div class="arc-cal-nav">
+            <button class="arc-cal-arrow" id="arcPrev" aria-label="Mese precedente"><i class="fas fa-chevron-left"></i></button>
+            <div class="arc-cal-title" id="arcMonthLabel">—</div>
+            <button class="arc-cal-arrow" id="arcNext" aria-label="Mese successivo"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <button class="arc-today-btn" id="arcToday"><i class="fas fa-calendar-day"></i> Oggi</button>
+
+        <div class="arc-weekdays">
+            <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
+        </div>
+        <div class="arc-grid" id="arcGrid">
+            <div class="arc-loading"><i class="fas fa-spinner fa-spin"></i> Caricamento...</div>
+        </div>
+
+        <div class="arc-legend">
+            <span class="arc-legend-item"><span class="arc-dot arc-dot--done"></span> Giorno con allenamenti</span>
+            <span class="arc-legend-item"><span class="arc-dot arc-dot--today"></span> Oggi</span>
+        </div>
+    </div>
+
+    <!-- Dettaglio giorno selezionato -->
+    <div class="arc-detail-card" id="arcDetailCard" style="display:none;">
+        <div class="arc-detail-header">
+            <h2 id="arcDetailDate">—</h2>
+            <button class="arc-detail-close" id="arcDetailClose" aria-label="Chiudi"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="arcDetailBody"></div>
+    </div>
+
+</main>
+
+<!-- Modal modifica completamento (riusa pattern .ecm- di /stats) -->
+<div id="editCompletionModal" class="ecm-modal" role="dialog" aria-modal="true" aria-labelledby="ecmTitle">
+    <div class="ecm-backdrop" onclick="arcCloseEditModal()"></div>
+    <div class="ecm-dialog">
+        <div class="ecm-header">
+            <div class="ecm-header-title">
+                <i class="fas fa-pen-to-square"></i>
+                <div>
+                    <div class="ecm-header-sub">Modifica completamento</div>
+                    <h3 id="ecmTitle">—</h3>
+                </div>
+            </div>
+            <button class="ecm-close" onclick="arcCloseEditModal()" aria-label="Chiudi"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ecm-body">
+            <div class="ecm-form-row">
+                <div class="ecm-field">
+                    <label for="ecmDate">Data e ora svolgimento *</label>
+                    <input type="datetime-local" id="ecmDate" required>
+                </div>
+                <div class="ecm-field">
+                    <label for="ecmDuration">Durata effettiva (min) *</label>
+                    <input type="number" id="ecmDuration" min="1" max="600" step="1" placeholder="Es. 45" required>
+                </div>
+            </div>
+            <div class="ecm-form-row">
+                <div class="ecm-field">
+                    <label for="ecmCalories">Calorie bruciate</label>
+                    <input type="number" id="ecmCalories" min="0" max="5000" step="1" placeholder="Es. 300">
+                </div>
+                <div class="ecm-field">
+                    <label for="ecmDistance">Distanza (km)</label>
+                    <input type="number" id="ecmDistance" min="0" max="500" step="0.1" placeholder="Es. 5.2">
+                </div>
+            </div>
+            <div class="ecm-form-row">
+                <div class="ecm-field">
+                    <label for="ecmHeartRate">FC media (bpm)</label>
+                    <input type="number" id="ecmHeartRate" min="30" max="240" step="1" placeholder="Es. 145">
+                </div>
+                <div class="ecm-field">
+                    <label for="ecmNotes">Note</label>
+                    <input type="text" id="ecmNotes" placeholder="Es. ottima forma">
+                </div>
+            </div>
+        </div>
+        <div class="ecm-footer">
+            <button class="ecm-btn ecm-btn--secondary" onclick="arcCloseEditModal()">Annulla</button>
+            <button class="ecm-btn ecm-btn--primary" id="ecmSaveBtn" onclick="arcSaveEditCompletion()">
+                <i class="fas fa-save"></i> Salva modifiche
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/utils.js"></script>
+<script src="/js/archivio.js"></script>
+
+</body>
+</html>
