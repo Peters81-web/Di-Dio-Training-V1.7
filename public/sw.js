@@ -23,7 +23,8 @@
 //   v7 → Rebrand: icona runner + nome app "Vortex Stride" + credito
 //        "Di Dio Pietro" su ogni pagina (bump per rinfrescare icone+JS)
 //   v8 → Pagina Archivio (calendario mensile + dettaglio giorno)
-const CACHE_NAME  = 'didio-v8';
+//   v9 → Icone maskable separate (runner 60% safe-zone, niente tagli)
+const CACHE_NAME  = 'didio-v9';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
