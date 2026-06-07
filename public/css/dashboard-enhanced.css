@@ -425,11 +425,16 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
   transition: all 0.3s var(--transition-bounce);
   position: relative;
   z-index: 2;
   box-shadow: var(--shadow-medium);
+  /* Evita overflow su schermi stretti: il testo va a capo e resta nei bordi */
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
 
 .empty-state .btn:hover {
@@ -786,9 +791,22 @@
     height: 100px;
     font-size: 2.5rem;
   }
-  
+
   .empty-state h3 {
     font-size: 1.5rem;
+  }
+
+  /* Empty-state: meno padding e bottone a tutta larghezza centrato */
+  .empty-state {
+    padding: 2.5rem 1.25rem;
+  }
+  .empty-state p {
+    font-size: 1rem;
+  }
+  .empty-state .btn {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    font-size: 1rem;
   }
 }
 

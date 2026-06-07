@@ -27,7 +27,8 @@
 //   v10 → Icona "any" finale: runner + scritta VORTEX STRIDE (Opzione B)
 //   v11 → Icona: runner avvicinato alla scritta (meno spazio bianco)
 //   v12 → Icona: gruppo runner+scritta ingrandito per riempire il canvas
-const CACHE_NAME  = 'didio-v12';
+//   v13 → Fix mobile: bottone empty-state "Crea primo allenamento" centrato
+const CACHE_NAME  = 'didio-v13';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
