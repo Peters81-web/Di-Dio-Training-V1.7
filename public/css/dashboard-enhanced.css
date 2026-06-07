@@ -127,6 +127,88 @@
   position: relative;
 }
 
+/* ===== RAGGRUPPAMENTO PER MESE (cartelle collassabili) ===== */
+/* Quando #workout-list contiene i gruppi mese, diventa colonna verticale */
+#workout-list.has-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.month-group {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.month-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1rem 1.4rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.15s;
+}
+.month-header:hover { background: #f7f8fc; }
+
+.month-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.month-chevron {
+  color: var(--primary-color, #4361ee);
+  font-size: 0.95rem;
+  transition: transform 0.25s ease;
+}
+.month-group.is-open .month-chevron { transform: rotate(90deg); }
+
+.month-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #2d3748;
+  text-transform: capitalize;
+}
+.month-count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 13px;
+  background: var(--primary-light, #eaefff);
+  color: var(--primary-color, #4361ee);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Corpo collassabile */
+.month-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.month-group.is-open .month-body {
+  grid-template-rows: 1fr;
+}
+.month-body > .card-grid {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0 1.4rem 1.4rem;
+}
+/* gap interno tra le card di un mese (un po' più compatto del grande grid) */
+.month-body > .card-grid {
+  gap: 1.5rem;
+}
+
 /* ===== WORKOUT CARDS SPETTACOLARI ===== */
 .workout-card {
   background: white;

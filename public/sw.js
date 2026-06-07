@@ -28,7 +28,8 @@
 //   v11 → Icona: runner avvicinato alla scritta (meno spazio bianco)
 //   v12 → Icona: gruppo runner+scritta ingrandito per riempire il canvas
 //   v13 → Fix mobile: bottone empty-state "Crea primo allenamento" centrato
-const CACHE_NAME  = 'didio-v13';
+//   v14 → Dashboard: allenamenti raggruppati per mese (cartelle collassabili)
+const CACHE_NAME  = 'didio-v14';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

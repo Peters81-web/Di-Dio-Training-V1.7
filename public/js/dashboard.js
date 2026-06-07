@@ -344,9 +344,10 @@ document.addEventListener('DOMContentLoaded', async function() {
      */
     function displayWorkouts(workoutsData) {
         if (!elements.workoutList) return;
-        
+
         elements.workoutList.innerHTML = '';
-        
+        elements.workoutList.classList.toggle('has-groups', workoutsData.length > 0);
+
         if (workoutsData.length === 0) {
             elements.workoutList.innerHTML = `
                 <div class="empty-state">
@@ -362,61 +363,128 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
             return;
         }
-        
-        // Crea le card degli allenamenti
-        workoutsData.forEach((workout, index) => {
-            const iconClass = window.AppCore.getActivityIcon(workout.activity_id, workout.activity_type);
-            
-            const card = document.createElement('div');
-            card.className = 'card workout-card';
-            card.dataset.id = workout.id;
-            card.style.animationDelay = `${index * 0.1}s`;
-            
-            card.innerHTML = `
-                <div class="workout-header">
-                    <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
-                    <div class="workout-icon">
-                        <i class="fas ${iconClass}"></i>
-                    </div>
-                </div>
-                
-                <div class="workout-details">
-                    <div class="detail-row">
-                        <span class="detail-label">Durata:</span>
-                        <span class="detail-value">${formatDuration(workout.total_duration)}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Difficoltà:</span>
-                        <span class="detail-value">${escapeHtml(workout.difficulty || 'Non specificata')}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Obiettivo:</span>
-                        <span class="detail-value">${escapeHtml(workout.objective || 'Non specificato')}</span>
-                    </div>
-                </div>
-                
-                <div class="workout-actions">
-                    <button class="btn btn-primary view-btn" onclick="viewWorkout('${workout.id}')">
-                        <i class="fas fa-eye"></i>
-                        <span>Visualizza</span>
-                    </button>
-                    <button class="btn btn-secondary edit-btn" onclick="editWorkout('${workout.id}')">
-                        <i class="fas fa-edit"></i>
-                        <span>Modifica</span>
-                    </button>
-                    <button class="btn btn-danger delete-btn" onclick="confirmDeleteWorkout('${workout.id}')">
-                        <i class="fas fa-trash"></i>
-                        <span>Elimina</span>
-                    </button>
-                    <button class="btn btn-success complete-btn" onclick="completeWorkout('${workout.id}')">
-                        <i class="fas fa-check"></i>
-                        <span>Completa</span>
-                    </button>
-                </div>
+
+        // Raggruppa per mese-anno di creazione (created_at). I dati arrivano
+        // già ordinati per created_at desc da loadWorkouts → i gruppi e le
+        // card mantengono l'ordine dal più recente.
+        const groups = groupWorkoutsByMonth(workoutsData);
+        const currentKey = monthKeyOf(new Date());
+
+        groups.forEach(group => {
+            const isCurrent = group.key === currentKey;
+
+            const section = document.createElement('section');
+            section.className = 'month-group' + (isCurrent ? ' is-open' : '');
+            section.dataset.month = group.key;
+
+            const header = document.createElement('button');
+            header.type = 'button';
+            header.className = 'month-header';
+            header.setAttribute('aria-expanded', isCurrent ? 'true' : 'false');
+            header.innerHTML = `
+                <span class="month-header-left">
+                    <i class="fas fa-chevron-right month-chevron"></i>
+                    <span class="month-title">${escapeHtml(group.label)}</span>
+                </span>
+                <span class="month-count">${group.items.length}</span>
             `;
-            
-            elements.workoutList.appendChild(card);
+            header.addEventListener('click', () => {
+                const open = section.classList.toggle('is-open');
+                header.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+
+            const body = document.createElement('div');
+            body.className = 'month-body';
+            const grid = document.createElement('div');
+            grid.className = 'card-grid';
+            group.items.forEach((workout, index) => grid.appendChild(buildWorkoutCard(workout, index)));
+            body.appendChild(grid);
+
+            section.appendChild(header);
+            section.appendChild(body);
+            elements.workoutList.appendChild(section);
         });
+    }
+
+    // Costruisce la card di un singolo allenamento (estratta per riuso nei gruppi)
+    function buildWorkoutCard(workout, index) {
+        const iconClass = window.AppCore.getActivityIcon(workout.activity_id, workout.activity_type);
+        const card = document.createElement('div');
+        card.className = 'card workout-card';
+        card.dataset.id = workout.id;
+        card.style.animationDelay = `${index * 0.08}s`;
+        card.innerHTML = `
+            <div class="workout-header">
+                <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
+                <div class="workout-icon">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+            </div>
+
+            <div class="workout-details">
+                <div class="detail-row">
+                    <span class="detail-label">Durata:</span>
+                    <span class="detail-value">${formatDuration(workout.total_duration)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Difficoltà:</span>
+                    <span class="detail-value">${escapeHtml(workout.difficulty || 'Non specificata')}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Obiettivo:</span>
+                    <span class="detail-value">${escapeHtml(workout.objective || 'Non specificato')}</span>
+                </div>
+            </div>
+
+            <div class="workout-actions">
+                <button class="btn btn-primary view-btn" onclick="viewWorkout('${workout.id}')">
+                    <i class="fas fa-eye"></i>
+                    <span>Visualizza</span>
+                </button>
+                <button class="btn btn-secondary edit-btn" onclick="editWorkout('${workout.id}')">
+                    <i class="fas fa-edit"></i>
+                    <span>Modifica</span>
+                </button>
+                <button class="btn btn-danger delete-btn" onclick="confirmDeleteWorkout('${workout.id}')">
+                    <i class="fas fa-trash"></i>
+                    <span>Elimina</span>
+                </button>
+                <button class="btn btn-success complete-btn" onclick="completeWorkout('${workout.id}')">
+                    <i class="fas fa-check"></i>
+                    <span>Completa</span>
+                </button>
+            </div>
+        `;
+        return card;
+    }
+
+    // Raggruppa gli allenamenti per mese-anno di created_at.
+    // Ritorna un array di { key:'YYYY-MM', label:'Giugno 2026', items:[...] }
+    // ordinato dal mese più recente. Allenamenti senza created_at finiscono
+    // in un gruppo "Senza data" in fondo.
+    function groupWorkoutsByMonth(workouts) {
+        const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                        'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+        const map = new Map();
+        workouts.forEach(w => {
+            let key, label;
+            const d = w.created_at ? new Date(w.created_at) : null;
+            if (d && !isNaN(d.getTime())) {
+                key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                label = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+            } else {
+                key = '0000-00';
+                label = 'Senza data';
+            }
+            if (!map.has(key)) map.set(key, { key, label, items: [] });
+            map.get(key).items.push(w);
+        });
+        // Ordina i gruppi per chiave desc (più recente in alto)
+        return Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
+    }
+
+    function monthKeyOf(date) {
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
     }
     
     /**
