@@ -26,7 +26,8 @@
 //   v9 → Icone maskable separate (runner 60% safe-zone, niente tagli)
 //   v10 → Icona "any" finale: runner + scritta VORTEX STRIDE (Opzione B)
 //   v11 → Icona: runner avvicinato alla scritta (meno spazio bianco)
-const CACHE_NAME  = 'didio-v11';
+//   v12 → Icona: gruppo runner+scritta ingrandito per riempire il canvas
+const CACHE_NAME  = 'didio-v12';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
