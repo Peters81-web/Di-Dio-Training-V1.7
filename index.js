@@ -52,6 +52,7 @@ const HTML_MAP = {
   'stats.html':          path.join(HTML_DIR, 'stats.html'),
   'weekly_summary.html': path.join(HTML_DIR, 'weekly_summary.html'),
   'reports.html':        path.join(HTML_DIR, 'reports.html'),
+  'archivio.html':       path.join(HTML_DIR, 'archivio.html'),
 };
 
 function sendHtmlFile(res, filename) {
@@ -143,6 +144,7 @@ app.get('/profile',        (req, res) => sendHtmlFile(res, 'profile.html'));
 app.get('/stats',          (req, res) => sendHtmlFile(res, 'stats.html'));
 app.get('/weekly_summary', (req, res) => sendHtmlFile(res, 'weekly_summary.html'));
 app.get('/reports',        (req, res) => sendHtmlFile(res, 'reports.html'));
+app.get('/archivio',       (req, res) => sendHtmlFile(res, 'archivio.html'));
 
 // ─── API AI Trainer (Groq) ────────────────────────────────────────────────────
 app.post('/api/generate-plan', aiLimiter, async (req, res) => {

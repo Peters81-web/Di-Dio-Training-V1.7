@@ -1,0 +1,415 @@
+/* =============================================================
+ * Archivio Allenamenti — calendario mensile + dettaglio giorno
+ * ============================================================= */
+
+.arc-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 16px 56px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.arc-header { margin-bottom: 20px; }
+.arc-header h1 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.arc-header h1 i { color: #4361ee; }
+.arc-header p { color: #6c757d; font-size: 0.95rem; margin: 0; }
+
+/* ── Riepilogo mese ─────────────────────────────────────── */
+.arc-month-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.arc-kpi {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.arc-kpi-icon {
+  width: 42px; height: 42px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.arc-kpi-icon.blue   { background: #e8eaff; color: #4361ee; }
+.arc-kpi-icon.green  { background: #e6f9f0; color: #28a745; }
+.arc-kpi-icon.orange { background: #fff3e0; color: #f57c00; }
+.arc-kpi-val { font-size: 1.35rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
+.arc-kpi-lbl { font-size: 0.74rem; color: #6c757d; margin-top: 3px; }
+
+/* ── Card calendario ────────────────────────────────────── */
+.arc-calendar-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  position: relative;
+}
+.arc-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 6px;
+}
+.arc-cal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  min-width: 180px;
+  text-align: center;
+  text-transform: capitalize;
+}
+.arc-cal-arrow {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  color: #4361ee;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background .15s, border-color .15s, transform .12s;
+}
+.arc-cal-arrow:hover { background: #eef1ff; border-color: #c7d0ff; }
+.arc-cal-arrow:active { transform: scale(0.94); }
+
+.arc-today-btn {
+  display: block;
+  margin: 0 auto 16px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 20px;
+  background: #eef1ff;
+  color: #4361ee;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.arc-today-btn:hover { background: #dde3ff; }
+
+/* ── Griglia ────────────────────────────────────────────── */
+.arc-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.arc-weekdays span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.arc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.arc-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+  color: #9ca3af;
+}
+.arc-loading i { margin-right: 8px; }
+
+.arc-day {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  border: 1.5px solid #eef0f4;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: default;
+  position: relative;
+  transition: transform .12s, box-shadow .15s, border-color .15s;
+  padding: 2px;
+}
+.arc-day--empty {
+  border: none;
+  background: transparent;
+}
+.arc-day--other {
+  opacity: 0.35;
+}
+.arc-day-num {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+}
+.arc-day--today {
+  border-color: #4361ee;
+  background: #eef1ff;
+}
+.arc-day--today .arc-day-num { color: #4361ee; font-weight: 800; }
+
+/* Giorno con allenamenti → cliccabile */
+.arc-day--done {
+  border-color: #16a34a;
+  background: #dcfce7;
+  cursor: pointer;
+}
+.arc-day--done:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(22,163,74,0.22);
+}
+.arc-day--done.arc-day--today {
+  border-color: #4361ee;
+  background: linear-gradient(135deg, #dcfce7 0%, #eef1ff 100%);
+}
+.arc-day-kcal {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #15803d;
+  line-height: 1;
+}
+.arc-day-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+.arc-day--selected {
+  outline: 3px solid rgba(67,97,238,0.45);
+  outline-offset: 1px;
+}
+
+/* ── Legenda ────────────────────────────────────────────── */
+.arc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f0f0;
+}
+.arc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: #6b7280;
+}
+.arc-dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.arc-dot--done  { background: #dcfce7; border: 1.5px solid #16a34a; }
+.arc-dot--today { background: #eef1ff; border: 1.5px solid #4361ee; }
+
+/* ── Card dettaglio giorno ──────────────────────────────── */
+.arc-detail-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  margin-top: 20px;
+  animation: arcSlide .25s ease-out;
+}
+@keyframes arcSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.arc-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.arc-detail-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+  text-transform: capitalize;
+}
+.arc-detail-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background .15s;
+}
+.arc-detail-close:hover { background: #e5e7eb; }
+
+/* Singolo allenamento nel dettaglio */
+.arc-entry {
+  border: 1.5px solid #eef0f4;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.arc-entry:last-child { margin-bottom: 0; }
+.arc-entry-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.arc-entry-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.arc-entry-name i { color: #4361ee; }
+.arc-entry-time { font-size: 0.78rem; color: #9ca3af; margin-top: 2px; }
+.arc-entry-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.arc-act {
+  width: 32px; height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background .15s, color .15s, transform .12s;
+}
+.arc-act:hover { transform: translateY(-1px); }
+.arc-act--edit:hover   { background: #eef1ff; color: #4361ee; }
+.arc-act--cancel:hover { background: #fee2e2; color: #dc2626; }
+
+.arc-entry-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arc-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #374151;
+}
+.arc-metric i { color: #9ca3af; font-size: 0.78rem; }
+.arc-metric strong { font-weight: 700; color: #1a1a2e; }
+.arc-entry-note {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #78550c;
+  font-style: italic;
+}
+
+/* ── Empty state ────────────────────────────────────────── */
+.arc-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: #9ca3af;
+}
+.arc-empty i { font-size: 2rem; margin-bottom: 10px; display: block; }
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .arc-day-num  { font-size: 0.82rem; }
+  .arc-day-kcal { font-size: 0.55rem; }
+  .arc-cal-title { min-width: 130px; font-size: 1rem; }
+  .arc-entry-top { flex-direction: column; }
+  .arc-entry-actions { align-self: flex-end; }
+}
+
+/* =============================================================
+ * MODAL modifica (.ecm-) — duplicato isolato da stats.html.
+ * TODO futuro: estrarre in completion-actions condiviso.
+ * ============================================================= */
+.ecm-modal {
+  position: fixed; inset: 0; z-index: 1000;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 20px; overflow-y: auto;
+}
+.ecm-modal.is-open { display: flex; animation: ecmFadeIn .18s ease-out; }
+.ecm-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.ecm-dialog {
+  position: relative; width: 100%; max-width: 560px;
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15,23,42,0.35);
+  margin: auto; overflow: hidden;
+  animation: ecmSlideIn .25s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes ecmFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ecmSlideIn { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.ecm-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, #4361ee 0%, #7c3aed 100%);
+  color: #fff;
+}
+.ecm-header-title { display: flex; align-items: center; gap: 12px; }
+.ecm-header-title > i {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ecm-header-sub { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .85; font-weight: 600; }
+.ecm-header h3 { margin: 2px 0 0 0; font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+.ecm-close {
+  background: rgba(255,255,255,0.15); border: none; color: #fff;
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer; transition: background .15s;
+}
+.ecm-close:hover { background: rgba(255,255,255,0.28); }
+.ecm-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.ecm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 540px) { .ecm-form-row { grid-template-columns: 1fr; } }
+.ecm-field { display: flex; flex-direction: column; gap: 6px; }
+.ecm-field label { font-size: .72rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; }
+.ecm-field input {
+  padding: 10px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+  font-size: .92rem; color: #1a1a2e; background: #f9fafb;
+  transition: border-color .15s, background .15s; width: 100%; font-family: inherit;
+}
+.ecm-field input:focus { outline: none; border-color: #4361ee; background: #fff; box-shadow: 0 0 0 3px rgba(67,97,238,0.12); }
+.ecm-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 16px 22px; background: #f9fafb; border-top: 1px solid #e5e7eb;
+}
+.ecm-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px; border-radius: 8px; font-size: .9rem; font-weight: 600;
+  cursor: pointer; border: 1.5px solid transparent;
+  transition: background .15s, border-color .15s, transform .12s; font-family: inherit;
+}
+.ecm-btn:active { transform: scale(0.98); }
+.ecm-btn--secondary { background: #fff; border-color: #e5e7eb; color: #4b5563; }
+.ecm-btn--secondary:hover { background: #f3f4f6; }
+.ecm-btn--primary { background: linear-gradient(135deg, #4361ee, #7c3aed); color: #fff; }
+.ecm-btn--primary:hover { opacity: .92; }
+.ecm-btn--primary:disabled { opacity: .6; cursor: not-allowed; }
