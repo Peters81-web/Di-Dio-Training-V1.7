@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.didiopietro.vortexstride",
+    "sha256_cert_fingerprints": ["D2:78:B5:D7:59:1B:BF:B7:3D:16:DC:E2:E2:0A:D9:AD:BF:80:05:70:2D:9A:1A:2D:2B:9C:DF:E1:90:E9:FC:AA"]
+  }
+}]

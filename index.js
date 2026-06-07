@@ -133,6 +133,15 @@ function sanitizeWorkoutContext(raw) {
   };
 }
 
+// ─── Digital Asset Links (TWA / app Android Vortex Stride) ────────────────────
+// Necessario per far aprire l'app Android a schermo intero (senza barra Chrome).
+// Express di default ignora i file dotfile (.well-known), quindi lo serviamo
+// con una route esplicita e Content-Type corretto.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.type('application/json');
+  res.sendFile(path.join(__dirname, 'public', '.well-known', 'assetlinks.json'));
+});
+
 // ─── Rotte pagine HTML ────────────────────────────────────────────────────────
 app.get('/',               (req, res) => sendHtmlFile(res, 'index.html'));
 app.get('/register',       (req, res) => sendHtmlFile(res, 'register.html'));
