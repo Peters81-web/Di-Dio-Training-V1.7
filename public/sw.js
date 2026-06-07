@@ -24,7 +24,8 @@
 //        "Di Dio Pietro" su ogni pagina (bump per rinfrescare icone+JS)
 //   v8 → Pagina Archivio (calendario mensile + dettaglio giorno)
 //   v9 → Icone maskable separate (runner 60% safe-zone, niente tagli)
-const CACHE_NAME  = 'didio-v9';
+//   v10 → Icona "any" finale: runner + scritta VORTEX STRIDE (Opzione B)
+const CACHE_NAME  = 'didio-v10';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
