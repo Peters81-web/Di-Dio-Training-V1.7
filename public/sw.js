@@ -25,7 +25,8 @@
 //   v8 → Pagina Archivio (calendario mensile + dettaglio giorno)
 //   v9 → Icone maskable separate (runner 60% safe-zone, niente tagli)
 //   v10 → Icona "any" finale: runner + scritta VORTEX STRIDE (Opzione B)
-const CACHE_NAME  = 'didio-v10';
+//   v11 → Icona: runner avvicinato alla scritta (meno spazio bianco)
+const CACHE_NAME  = 'didio-v11';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
