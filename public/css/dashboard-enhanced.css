@@ -190,23 +190,19 @@
   justify-content: center;
 }
 
-/* Corpo collassabile */
+/* Corpo collassabile — metodo max-height (chiusura garantita, niente
+   peek del padding come con grid-template-rows: 0fr) */
 .month-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s ease;
 }
 .month-group.is-open .month-body {
-  grid-template-rows: 1fr;
+  max-height: 4000px; /* abbastanza alto per qualsiasi numero di card */
 }
 .month-body > .card-grid {
-  overflow: hidden;
-  min-height: 0;
-  padding: 0 1.4rem 1.4rem;
-}
-/* gap interno tra le card di un mese (un po' più compatto del grande grid) */
-.month-body > .card-grid {
-  gap: 1.5rem;
+  padding: 0.25rem 1.4rem 1.4rem;
+  gap: 1.5rem; /* un po' più compatto del grande grid */
 }
 
 /* ===== WORKOUT CARDS SPETTACOLARI ===== */
@@ -1193,19 +1189,11 @@
     transform: scale(1.02);
     z-index: 1;
 }
+/* Niente badge/barra in alto sulla card evidenziata: l'etichetta dice
+   già "CALORIE BRUCIATE OGGI". content:none rimuove anche la barra
+   gradiente di .stat-card::before (stesso pseudo-elemento). */
 .stat-card.stat-card--highlight::before {
-    content: 'OGGI';
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    font-size: 0.6rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    color: #f59e0b;
-    background: #fff;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid #fed7aa;
+    content: none;
 }
 .stat-card.stat-card--highlight .stat-icon {
     background: linear-gradient(135deg, #f59e0b, #ea580c) !important;

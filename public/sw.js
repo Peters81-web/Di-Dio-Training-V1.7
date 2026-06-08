@@ -31,7 +31,9 @@
 //   v14 → Dashboard: allenamenti raggruppati per mese (cartelle collassabili)
 //   v15 → Sfondo: rimosso pattern "+", gradiente tenue grigio-azzurro
 //   v16 → Sostituiti alert() nativi con toast eleganti (no dominio in popup)
-const CACHE_NAME  = 'didio-v16';
+//   v17 → Fix: rimossa barra bianca card "Calorie oggi" + cartelle mese
+//         che ora si chiudono del tutto (max-height invece di grid 0fr)
+const CACHE_NAME  = 'didio-v17';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
