@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     currentGeneratedActivityType = activityType;
 
     if (!prompt) {
-      alert('Per favore descrivi il tuo obiettivo di allenamento.');
+      window.showToast('Per favore descrivi il tuo obiettivo di allenamento.', 'warning');
       return;
     }
 
@@ -365,7 +365,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   function showPreview() {
     if (generatedWorkouts.length === 0) {
-      alert('Nessun allenamento da salvare. Genera prima un piano.');
+      window.showToast('Nessun allenamento da salvare. Genera prima un piano.', 'warning');
       return;
     }
 
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   async function saveWorkouts() {
     if (!currentUser || generatedWorkouts.length === 0) {
-      alert('Nessun allenamento da salvare.');
+      window.showToast('Nessun allenamento da salvare.', 'warning');
       return;
     }
 
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       const result = await supabaseClient.from('workout_plans').insert(workoutsWithUserId);
       if (result.error) throw result.error;
 
-      alert('Allenamenti salvati con successo!');
+      window.showToast('Allenamenti salvati con successo!', 'success');
       generatedWorkouts = [];
 
       if (elements.workoutPreviewContainer) elements.workoutPreviewContainer.style.display = 'none';
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       if (elements.aiPrompt) elements.aiPrompt.value = '';
     } catch (error) {
       console.error('Error saving workouts:', error);
-      alert('Errore durante il salvataggio degli allenamenti: ' + error.message);
+      window.showToast('Errore durante il salvataggio: ' + error.message, 'error');
     }
   }
 

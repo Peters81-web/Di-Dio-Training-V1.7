@@ -30,7 +30,8 @@
 //   v13 → Fix mobile: bottone empty-state "Crea primo allenamento" centrato
 //   v14 → Dashboard: allenamenti raggruppati per mese (cartelle collassabili)
 //   v15 → Sfondo: rimosso pattern "+", gradiente tenue grigio-azzurro
-const CACHE_NAME  = 'didio-v15';
+//   v16 → Sostituiti alert() nativi con toast eleganti (no dominio in popup)
+const CACHE_NAME  = 'didio-v16';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

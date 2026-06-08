@@ -346,18 +346,6 @@ function closeModal(modalId) {
     }
 }
 
-// Funzioni di utilità
-function showToast(message, type = 'info') {
-    console.log(`Toast ${type}: ${message}`);
-    // Implementa la logica del toast
-    alert(message); // Placeholder temporaneo
-}
-
-function showLoading() {
-    console.log('Showing loading...');
-    return { id: 'loading' }; // Placeholder
-}
-
-function hideLoading(loading) {
-    console.log('Hiding loading...');
-}
+// Funzioni di utilità: usiamo quelle reali definite in utils.js
+// (window.showToast / showLoading / hideLoading), caricato PRIMA di
+// planner.js. I placeholder precedenti facevano alert() — rimossi.

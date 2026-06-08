@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     const averageHeartRate = parseInt(input.trim(), 10);
     if (Number.isNaN(averageHeartRate) || averageHeartRate < 40 || averageHeartRate > 240) {
-      alert('Inserisci un valore valido tra 40 e 240 BPM.');
+      window.showToast('Inserisci un valore valido tra 40 e 240 BPM.', 'warning');
       return;
     }
 
@@ -80,11 +80,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       if (error) throw error;
 
-      alert('Allenamento completato con successo.');
+      window.showToast('Allenamento completato con successo.', 'success');
       await loadWorkouts();
     } catch (err) {
       console.error('Errore completamento allenamento:', err);
-      alert('Errore durante il completamento: ' + err.message);
+      window.showToast('Errore durante il completamento: ' + err.message, 'error');
     }
   }
 
@@ -98,11 +98,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       if (error) throw error;
 
-      alert('Allenamento riportato a non completato.');
+      window.showToast('Allenamento riportato a non completato.', 'success');
       await loadWorkouts();
     } catch (err) {
       console.error('Errore reset allenamento:', err);
-      alert('Errore durante il reset: ' + err.message);
+      window.showToast('Errore durante il reset: ' + err.message, 'error');
     }
   }
 
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.querySelectorAll('.complete-workout-btn').forEach((btn) => {
       btn.addEventListener('click', async function () {
         const { workoutId, heartRate } = this.dataset;
-        if (!workoutId) { alert('ID allenamento mancante.'); return; }
+        if (!workoutId) { window.showToast('ID allenamento mancante.', 'error'); return; }
         await completeWorkout(workoutId, heartRate || '');
       });
     });

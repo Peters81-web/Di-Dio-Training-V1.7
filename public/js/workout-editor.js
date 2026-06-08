@@ -156,7 +156,7 @@ function validateForm() {
     }
     
     if (!isValid) {
-        alert('Per favore, correggi i seguenti errori:\n' + errorMessage);
+        window.showToast('Correggi gli errori: ' + String(errorMessage).replace(/\n/g, ' · ').trim(), 'error', 5000);
     }
     
     return isValid;
@@ -220,16 +220,16 @@ async function saveNewWorkout() {
             throw error;
         }
         
-        alert('Allenamento salvato con successo!');
-        
+        window.showToast('Allenamento salvato con successo!', 'success');
+
         // Redirect alla dashboard
         setTimeout(() => {
             window.location.href = '/dashboard';
         }, 1000);
-        
+
     } catch (error) {
         console.error('Errore durante il salvataggio:', error);
-        alert('Errore: ' + error.message);
+        window.showToast('Errore: ' + error.message, 'error');
         toggleSubmitButton(true);
     }
 }
@@ -289,16 +289,16 @@ async function saveExistingWorkout(workoutId) {
             throw error;
         }
         
-        alert('Allenamento aggiornato con successo!');
-        
+        window.showToast('Allenamento aggiornato con successo!', 'success');
+
         // Redirect alla dashboard
         setTimeout(() => {
             window.location.href = '/dashboard';
         }, 1000);
-        
+
     } catch (error) {
         console.error('Errore durante l\'aggiornamento:', error);
-        alert('Errore: ' + error.message);
+        window.showToast('Errore: ' + error.message, 'error');
         toggleSubmitButton(true);
     }
 }
