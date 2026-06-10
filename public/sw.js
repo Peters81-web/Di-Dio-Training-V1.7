@@ -34,7 +34,8 @@
 //   v17 → Fix: rimossa barra bianca card "Calorie oggi" + cartelle mese
 //         che ora si chiudono del tutto (max-height invece di grid 0fr)
 //   v18 → confirm() nativi sostituiti con popup elegante window.showConfirm
-const CACHE_NAME  = 'didio-v18';
+//   v19 → Import attività da file TCX (Garmin) su pagina Statistiche
+const CACHE_NAME  = 'didio-v19';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -52,6 +53,7 @@ const PRECACHE = [
   '/js/app-core.js',
   '/js/app-nav.js',
   '/js/archivio.js',
+  '/js/tcx-import.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',

@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Esposto per consentire il refresh dopo un import TCX (tcx-import.js)
+  window.statsRefresh = fetchData;
+
   function fetchData() {
     Promise.all([
       sc.from('workout_plans')

@@ -547,9 +547,14 @@
   <main class="stats-page">
 
     <!-- Header -->
-    <div class="stats-header">
-      <h1><i class="fas fa-chart-line" style="color:#4e54c8;margin-right:8px;"></i>Le tue Statistiche</h1>
-      <p>Monitora i tuoi progressi e l'andamento degli allenamenti</p>
+    <div class="stats-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1><i class="fas fa-chart-line" style="color:#4e54c8;margin-right:8px;"></i>Le tue Statistiche</h1>
+        <p>Monitora i tuoi progressi e l'andamento degli allenamenti</p>
+      </div>
+      <button id="importGarminBtn" class="period-btn" style="display:inline-flex;align-items:center;gap:8px;border-color:#e0524d;color:#e0524d;font-weight:600;">
+        <i class="fas fa-file-import"></i> Importa da Garmin
+      </button>
     </div>
 
     <!-- Filtro periodo -->
@@ -773,8 +778,20 @@
 
   <!-- utils.js per showToast/showConfirm eleganti -->
   <script src="/js/utils.js"></script>
+  <!-- Import attività da file TCX (Garmin) -->
+  <script src="/js/tcx-import.js"></script>
   <!-- stats-fixed.js caricato PER ULTIMO, dopo tutti gli script sopra -->
   <script src="/js/stats-fixed.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var btn = document.getElementById('importGarminBtn');
+      if (btn) btn.addEventListener('click', function () {
+        window.openTcxImport(function () {
+          if (window.statsRefresh) window.statsRefresh();
+        });
+      });
+    });
+  </script>
 
   <!-- ESC chiude il modal -->
   <script>
