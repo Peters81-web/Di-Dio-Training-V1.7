@@ -247,14 +247,18 @@ document.addEventListener('DOMContentLoaded', function () {
     return allCompleted.find(function (c) { return c.id === id; });
   }
 
-  function cancelCompletion(completionId) {
+  async function cancelCompletion(completionId) {
     var c = findCompletion(completionId);
     if (!c) return;
     var plan = c.workout_plans || {};
-    if (!confirm('Eliminare il completamento di "' + (plan.name || 'questo allenamento') + '"?\n\n' +
-                 'I dati di svolgimento verranno cancellati e la scheda tornerà "Da fare". Operazione irreversibile.')) {
-      return;
-    }
+    var ok = await window.showConfirm({
+      title: 'Elimina dall\'archivio',
+      message: 'Eliminare il completamento di "' + (plan.name || 'questo allenamento') + '"?\n' +
+               'I dati di svolgimento verranno cancellati e la scheda tornerà "Da fare". Operazione irreversibile.',
+      confirmText: 'Elimina',
+      danger: true
+    });
+    if (!ok) return;
 
     Promise.all([
       sc.from('completed_workouts').delete().eq('id', completionId),

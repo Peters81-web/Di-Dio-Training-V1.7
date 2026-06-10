@@ -193,9 +193,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Conferma eliminazione programma
     const confirmDeleteProgram = async (programId) => {
-        if (confirm('Sei sicuro di voler eliminare questo programma e tutti i suoi allenamenti associati?')) {
-            await deleteProgram(programId);
-        }
+        const ok = await window.showConfirm({
+            title: 'Elimina programma',
+            message: 'Sei sicuro di voler eliminare questo programma e tutti i suoi allenamenti associati?',
+            confirmText: 'Elimina',
+            danger: true
+        });
+        if (ok) await deleteProgram(programId);
     };
     
     // Elimina programma

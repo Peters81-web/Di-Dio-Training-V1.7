@@ -872,9 +872,13 @@ document.addEventListener('DOMContentLoaded', async function() {
      * Conferma eliminazione allenamento
      */
     window.confirmDeleteWorkout = async function(workoutId) {
-        if (confirm('Sei sicuro di voler eliminare questo allenamento?')) {
-            await deleteWorkout(workoutId);
-        }
+        const ok = await window.showConfirm({
+            title: 'Elimina allenamento',
+            message: 'Sei sicuro di voler eliminare questo allenamento?',
+            confirmText: 'Elimina',
+            danger: true
+        });
+        if (ok) await deleteWorkout(workoutId);
     };
     
     /**
@@ -987,9 +991,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             displayWorkouts(workouts);
             await loadWeeklyStats();
 
-            if (confirm('Vuoi vedere le statistiche dei tuoi allenamenti?')) {
-                window.location.href = '/stats';
-            }
+            const goStats = await window.showConfirm({
+                title: 'Allenamento completato! 💪',
+                message: 'Vuoi vedere le statistiche dei tuoi allenamenti?',
+                confirmText: 'Vedi statistiche',
+                cancelText: 'Resta qui'
+            });
+            if (goStats) window.location.href = '/stats';
             
         } catch (error) {
             console.error('Errore completamento allenamento:', error);

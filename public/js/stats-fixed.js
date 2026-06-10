@@ -325,15 +325,19 @@ document.addEventListener('DOMContentLoaded', function () {
   //    average_heart_rate=null
   // 3) Ricarica dati e ridisegna tutto
   // Su mobile la scheda riapparirà nella dashboard come "Da fare".
-  function cancelCompletion(workoutId) {
+  async function cancelCompletion(workoutId) {
     if (!workoutId) return;
     var w = allWorkouts.find(function (x) { return x.id === workoutId; });
     var name = w ? (w.name || 'questo allenamento') : 'questo allenamento';
-    if (!confirm('Annullare il completamento di "' + name + '"?\n\n' +
-                 'Verranno cancellati i dati di svolgimento (data, calorie, durata effettiva, FC) ' +
-                 'e la scheda tornerà tra quelle "Da fare". Operazione irreversibile.')) {
-      return;
-    }
+    var ok = await window.showConfirm({
+      title: 'Annulla completamento',
+      message: 'Annullare il completamento di "' + name + '"?\n' +
+               'Verranno cancellati i dati di svolgimento (data, calorie, durata, FC) e la scheda tornerà tra quelle "Da fare". Operazione irreversibile.',
+      confirmText: 'Annulla completamento',
+      cancelText: 'Indietro',
+      danger: true
+    });
+    if (!ok) return;
 
     var completion = findCompletionFor(workoutId);
 
@@ -362,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
   window.statsCancelCompletion = cancelCompletion;
 
   // ── MODIFICA completamento (apre modal pre-compilato) ────────────
-  function editCompletion(workoutId) {
+  async function editCompletion(workoutId) {
     if (!workoutId) return;
     var w = allWorkouts.find(function (x) { return x.id === workoutId; });
     var c = findCompletionFor(workoutId);
@@ -370,10 +374,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!c) {
       // Caso edge: workout_plans.completed=true ma nessuna riga
       // completed_workouts (incoerenza pregressa). Suggerisci Annulla.
-      if (!confirm('Non trovo i dati di svolgimento di questa scheda (potrebbe essere stata completata con una versione precedente dell\'app). ' +
-                   'Vuoi annullare il completamento per poterla rifare con valori corretti?')) {
-        return;
-      }
+      var ok = await window.showConfirm({
+        title: 'Dati non trovati',
+        message: 'Non trovo i dati di svolgimento di questa scheda (forse completata con una versione precedente). Vuoi annullare il completamento per poterla rifare con valori corretti?',
+        confirmText: 'Annulla completamento',
+        cancelText: 'Indietro',
+        danger: true
+      });
+      if (!ok) return;
       cancelCompletion(workoutId);
       return;
     }

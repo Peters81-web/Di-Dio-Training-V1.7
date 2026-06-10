@@ -136,6 +136,79 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
+// ─── Popup di conferma elegante (sostituto del confirm() nativo) ────────────
+// Ritorna una Promise<boolean>. Uso:
+//   if (await window.showConfirm({ message: '...', danger: true })) { ... }
+function ensureConfirmStyles() {
+    if (document.getElementById('app-confirm-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'app-confirm-styles';
+    style.textContent = `
+.app-confirm-overlay{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .2s ease}
+.app-confirm-overlay.is-open{opacity:1}
+.app-confirm{background:#fff;border-radius:18px;max-width:380px;width:100%;padding:26px 24px 20px;text-align:center;box-shadow:0 24px 60px rgba(15,23,42,.35);transform:translateY(12px) scale(.97);transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.app-confirm-overlay.is-open .app-confirm{transform:translateY(0) scale(1)}
+.app-confirm-icon{width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:#eef2ff;color:#4361ee}
+.app-confirm-icon.danger{background:#fee2e2;color:#dc2626}
+.app-confirm-title{font-size:1.15rem;font-weight:700;color:#1a1a2e;margin:0 0 6px}
+.app-confirm-msg{font-size:.92rem;color:#6b7280;line-height:1.5;margin:0 0 20px}
+.app-confirm-actions{display:flex;gap:10px}
+.app-confirm-btn{flex:1;padding:11px 16px;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit;transition:background .15s,transform .1s}
+.app-confirm-btn:active{transform:scale(.97)}
+.app-confirm-cancel{background:#f3f4f6;color:#4b5563}
+.app-confirm-cancel:hover{background:#e5e7eb}
+.app-confirm-ok{background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff}
+.app-confirm-ok:hover{opacity:.92}
+.app-confirm-ok.danger{background:linear-gradient(135deg,#ef4444,#dc2626)}`;
+    document.head.appendChild(style);
+}
+
+function showConfirm(opts) {
+    opts = opts || {};
+    const title       = opts.title       || 'Conferma';
+    const message     = opts.message     || '';
+    const confirmText = opts.confirmText || 'Conferma';
+    const cancelText  = opts.cancelText  || 'Annulla';
+    const danger      = !!opts.danger;
+
+    ensureConfirmStyles();
+
+    return new Promise(function (resolve) {
+        const overlay = document.createElement('div');
+        overlay.className = 'app-confirm-overlay';
+        const safeMsg = escapeHtml(message).replace(/\n/g, '<br>');
+        const icon = danger ? 'fa-exclamation-triangle' : 'fa-question-circle';
+        overlay.innerHTML =
+            '<div class="app-confirm" role="dialog" aria-modal="true">' +
+                '<div class="app-confirm-icon ' + (danger ? 'danger' : '') + '"><i class="fas ' + icon + '"></i></div>' +
+                '<h3 class="app-confirm-title">' + escapeHtml(title) + '</h3>' +
+                '<p class="app-confirm-msg">' + safeMsg + '</p>' +
+                '<div class="app-confirm-actions">' +
+                    '<button class="app-confirm-btn app-confirm-cancel">' + escapeHtml(cancelText) + '</button>' +
+                    '<button class="app-confirm-btn app-confirm-ok ' + (danger ? 'danger' : '') + '">' + escapeHtml(confirmText) + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('is-open'); });
+
+        function cleanup(result) {
+            overlay.classList.remove('is-open');
+            document.removeEventListener('keydown', onKey);
+            setTimeout(function () { if (overlay.parentNode) overlay.remove(); }, 200);
+            resolve(result);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') cleanup(false);
+            else if (e.key === 'Enter') cleanup(true);
+        }
+        overlay.querySelector('.app-confirm-cancel').addEventListener('click', function () { cleanup(false); });
+        overlay.querySelector('.app-confirm-ok').addEventListener('click', function () { cleanup(true); });
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) cleanup(false); });
+        document.addEventListener('keydown', onKey);
+        setTimeout(function () { const b = overlay.querySelector('.app-confirm-ok'); if (b) b.focus(); }, 50);
+    });
+}
+
 // Genera un ID univoco
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -180,6 +253,7 @@ window.hideLoading = hideLoading;
 window.formatDate = formatDate;
 window.formatDuration = formatDuration;
 window.escapeHtml = escapeHtml;
+window.showConfirm = showConfirm;
 window.generateUniqueId = generateUniqueId;
 window.getBaseUrl = getBaseUrl;
 window.checkUserAuthentication = checkUserAuthentication;

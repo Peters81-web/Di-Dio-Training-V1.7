@@ -33,7 +33,8 @@
 //   v16 → Sostituiti alert() nativi con toast eleganti (no dominio in popup)
 //   v17 → Fix: rimossa barra bianca card "Calorie oggi" + cartelle mese
 //         che ora si chiudono del tutto (max-height invece di grid 0fr)
-const CACHE_NAME  = 'didio-v17';
+//   v18 → confirm() nativi sostituiti con popup elegante window.showConfirm
+const CACHE_NAME  = 'didio-v18';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

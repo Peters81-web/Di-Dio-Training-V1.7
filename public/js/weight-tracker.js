@@ -212,8 +212,14 @@
     }
 
     // ── Elimina una misurazione ──────────────────────────────────
-    function deleteEntry(id) {
-        if (!confirm('Eliminare questa misurazione?')) return;
+    async function deleteEntry(id) {
+        const ok = await window.showConfirm({
+            title: 'Elimina misurazione',
+            message: 'Eliminare questa misurazione?',
+            confirmText: 'Elimina',
+            danger: true
+        });
+        if (!ok) return;
         var client = window.supabaseClient;
         if (!client) return;
 
