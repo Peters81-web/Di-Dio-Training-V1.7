@@ -12,6 +12,19 @@
   "lang": "it",
   "dir": "ltr",
   "categories": ["health", "fitness", "sports"],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "file",
+          "accept": ["application/gpx+xml", "application/vnd.garmin.tcx+xml", ".gpx", ".tcx", "text/xml", "application/xml"]
+        }
+      ]
+    }
+  },
   "icons": [
     {
       "src": "/images/icon-192.png",

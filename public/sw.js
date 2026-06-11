@@ -35,7 +35,8 @@
 //         che ora si chiudono del tutto (max-height invece di grid 0fr)
 //   v18 → confirm() nativi sostituiti con popup elegante window.showConfirm
 //   v19 → Import attività da file TCX (Garmin) su pagina Statistiche
-const CACHE_NAME  = 'didio-v19';
+//   v20 → Import GPX + Share Target Android (condividi attività → app)
+const CACHE_NAME  = 'didio-v20';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -84,6 +85,25 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // ── Share Target (Android): ricezione file condiviso da Garmin ──
+  // Android invia un POST multipart a /share-target. Salviamo il file
+  // in cache 'shared-file' e reindirizziamo a /stats?shared=1, dove la
+  // pagina lo legge e apre l'anteprima di import (tcx-import.js).
+  if (request.method === 'POST' && url.pathname === '/share-target') {
+    event.respondWith((async () => {
+      try {
+        const formData = await request.formData();
+        const file = formData.get('file');
+        if (file) {
+          const cache = await caches.open('shared-file');
+          await cache.put('/__shared_activity', new Response(file));
+        }
+      } catch (e) { /* ignora: reindirizza comunque */ }
+      return Response.redirect('/stats?shared=1', 303);
+    })());
+    return;
+  }
 
   // Skip non-GET and cross-origin
   if (request.method !== 'GET' || url.origin !== location.origin) return;

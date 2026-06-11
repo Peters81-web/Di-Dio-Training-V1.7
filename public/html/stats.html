@@ -790,6 +790,17 @@
           if (window.statsRefresh) window.statsRefresh();
         });
       });
+
+      // Arrivo da condivisione Android (Share Target): apri l'import
+      // con il file già ricevuto dal service worker.
+      if (new URLSearchParams(location.search).get('shared') === '1') {
+        history.replaceState({}, '', '/stats'); // pulisci l'URL
+        if (window.openTcxImportFromShare) {
+          window.openTcxImportFromShare(function () {
+            if (window.statsRefresh) window.statsRefresh();
+          });
+        }
+      }
     });
   </script>
 

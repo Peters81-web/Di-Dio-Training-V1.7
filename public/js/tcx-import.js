@@ -74,6 +74,68 @@
     };
   }
 
+  // ── Parsing GPX ───────────────────────────────────────────────
+  // GPX non ha calorie né un campo distanza: la distanza si calcola
+  // dai punti GPS (Haversine), la durata dai timestamp, la FC dalle
+  // estensioni gpxtpx:hr.
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000, toRad = function (x) { return x * Math.PI / 180; };
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(a)); // metri
+  }
+
+  function parseGpx(xmlText) {
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) {
+      throw new Error('Il file non è un GPX valido.');
+    }
+    const pts = doc.getElementsByTagNameNS('*', 'trkpt');
+    if (!pts.length) throw new Error('Nessun punto traccia trovato nel GPX.');
+
+    let sport = 'Other';
+    const typeEl = doc.getElementsByTagNameNS('*', 'type')[0];
+    if (typeEl && typeEl.textContent) sport = typeEl.textContent.trim();
+
+    let dist = 0, hrSum = 0, hrCount = 0;
+    let firstTime = null, lastTime = null, prevLat = null, prevLon = null;
+
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const lat = parseFloat(p.getAttribute('lat'));
+      const lon = parseFloat(p.getAttribute('lon'));
+      if (!isNaN(lat) && !isNaN(lon)) {
+        if (prevLat !== null) dist += haversine(prevLat, prevLon, lat, lon);
+        prevLat = lat; prevLon = lon;
+      }
+      const tEl = p.getElementsByTagNameNS('*', 'time')[0];
+      if (tEl) { const tt = new Date(tEl.textContent.trim()); if (!isNaN(tt.getTime())) { if (!firstTime) firstTime = tt; lastTime = tt; } }
+      const hrEl = p.getElementsByTagNameNS('*', 'hr')[0];
+      if (hrEl) { const hv = parseFloat(hrEl.textContent) || 0; if (hv > 0) { hrSum += hv; hrCount++; } }
+    }
+
+    const durationMin = (firstTime && lastTime)
+      ? Math.max(1, Math.round((lastTime.getTime() - firstTime.getTime()) / 60000))
+      : 1;
+    const m = mapSport(sport);
+    return {
+      activityType: m.type,
+      activityLabel: m.label,
+      startIso: firstTime ? firstTime.toISOString() : new Date().toISOString(),
+      durationMin: durationMin,
+      distanceKm: dist ? Math.round(dist / 100) / 10 : null,
+      calories: null, // il GPX non contiene calorie
+      avgHr: hrCount ? Math.round(hrSum / hrCount) : null,
+      maxHr: null
+    };
+  }
+
+  // Rileva il formato dal contenuto e usa il parser giusto
+  function parseActivity(text) {
+    return /<gpx[\s>]/i.test(text) ? parseGpx(text) : parseTcx(text);
+  }
+
   // ── Salvataggio su Supabase ───────────────────────────────────
   async function saveImport(data, userId, sc) {
     const dateLabel = new Date(data.startIso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -171,7 +233,9 @@
 
   // ── Entry point ───────────────────────────────────────────────
   // onDone: callback chiamato dopo un import riuscito (per refresh)
-  window.openTcxImport = function (onDone) {
+  // preloadedText: contenuto file già disponibile (es. condivisione Android) →
+  //                salta la drop-zone e mostra subito l'anteprima.
+  window.openTcxImport = function (onDone, preloadedText) {
     ensureStyles();
     const sc = window.supabaseClient;
     if (!sc) { if (window.showToast) window.showToast('Supabase non disponibile.', 'error'); return; }
@@ -187,9 +251,9 @@
         '<div class="tcx-body">' +
           '<div class="tcx-drop" id="tcxDrop">' +
             '<i class="fas fa-cloud-arrow-up"></i>' +
-            '<div><b>Scegli un file .TCX</b><br>esportato da Garmin Connect</div>' +
+            '<div><b>Scegli un file .TCX o .GPX</b><br>esportato da Garmin Connect</div>' +
           '</div>' +
-          '<input type="file" id="tcxFile" accept=".tcx,application/xml,text/xml" style="display:none">' +
+          '<input type="file" id="tcxFile" accept=".tcx,.gpx,application/xml,text/xml,application/gpx+xml" style="display:none">' +
           '<div class="tcx-preview" id="tcxPreview"></div>' +
         '</div>' +
         '<div class="tcx-foot">' +
@@ -212,41 +276,45 @@
     ov.querySelector('#tcxCancel').addEventListener('click', close);
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
 
+    async function processText(text) {
+      try {
+        parsed = parseActivity(text);
+      } catch (err) {
+        if (window.showToast) window.showToast(err.message || 'File non valido.', 'error');
+        return;
+      }
+      const sess = await sc.auth.getSession();
+      userId = sess.data && sess.data.session ? sess.data.session.user.id : null;
+      if (!userId) { if (window.showToast) window.showToast('Sessione scaduta, rifai login.', 'error'); return; }
+
+      const dup = await isDuplicate(parsed.startIso, userId, sc);
+      const dateStr = new Date(parsed.startIso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      preview.innerHTML =
+        '<div class="tcx-pv-title"><i class="fas fa-check-circle"></i>' + parsed.activityLabel + ' — ' + dateStr + '</div>' +
+        '<div class="tcx-metrics">' +
+          metric('Durata', parsed.durationMin + ' min') +
+          metric('Distanza', parsed.distanceKm != null ? parsed.distanceKm + ' km' : '—') +
+          metric('Calorie', parsed.calories != null ? parsed.calories + ' kcal' : '—') +
+          metric('FC media', parsed.avgHr != null ? parsed.avgHr + ' bpm' : '—') +
+        '</div>' +
+        (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '');
+      preview.classList.add('show');
+      drop.style.display = 'none';
+      saveBtn.disabled = false;
+    }
+
     drop.addEventListener('click', function () { fileInput.click(); });
     fileInput.addEventListener('change', function () {
       const f = fileInput.files && fileInput.files[0];
       if (!f) return;
       const reader = new FileReader();
-      reader.onload = async function () {
-        try {
-          parsed = parseTcx(String(reader.result));
-        } catch (err) {
-          if (window.showToast) window.showToast(err.message || 'File non valido.', 'error');
-          return;
-        }
-        // utente
-        const sess = await sc.auth.getSession();
-        userId = sess.data && sess.data.session ? sess.data.session.user.id : null;
-        if (!userId) { if (window.showToast) window.showToast('Sessione scaduta, rifai login.', 'error'); return; }
-
-        const dup = await isDuplicate(parsed.startIso, userId, sc);
-        const dateStr = new Date(parsed.startIso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-        preview.innerHTML =
-          '<div class="tcx-pv-title"><i class="fas fa-check-circle"></i>' + parsed.activityLabel + ' — ' + dateStr + '</div>' +
-          '<div class="tcx-metrics">' +
-            metric('Durata', parsed.durationMin + ' min') +
-            metric('Distanza', parsed.distanceKm != null ? parsed.distanceKm + ' km' : '—') +
-            metric('Calorie', parsed.calories != null ? parsed.calories + ' kcal' : '—') +
-            metric('FC media', parsed.avgHr != null ? parsed.avgHr + ' bpm' : '—') +
-          '</div>' +
-          (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '');
-        preview.classList.add('show');
-        drop.style.display = 'none';
-        saveBtn.disabled = false;
-      };
+      reader.onload = function () { processText(String(reader.result)); };
       reader.readAsText(f);
     });
+
+    // Se arriva un file già pronto (condivisione Android), parsalo subito
+    if (preloadedText) processText(preloadedText);
 
     saveBtn.addEventListener('click', async function () {
       if (!parsed || !userId) return;
@@ -264,5 +332,22 @@
         saveBtn.textContent = 'Importa';
       }
     });
+  };
+
+  // Apre l'import a partire dal file condiviso (Android Share Target).
+  // Il service worker salva il file in cache 'shared-file' → qui lo leggiamo.
+  window.openTcxImportFromShare = async function (onDone) {
+    try {
+      const cache = await caches.open('shared-file');
+      const res = await cache.match('/__shared_activity');
+      if (!res) return false;
+      const text = await res.text();
+      await cache.delete('/__shared_activity'); // consuma il file
+      window.openTcxImport(onDone, text);
+      return true;
+    } catch (e) {
+      console.warn('Share import error:', e);
+      return false;
+    }
   };
 })();
