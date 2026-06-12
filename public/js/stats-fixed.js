@@ -253,7 +253,10 @@ document.addEventListener('DOMContentLoaded', function () {
       type: 'bar',
       data: { labels: lb, datasets: [{ label: 'Completati',
         data: sk.map(function (k) { return weekMap[k]; }),
-        backgroundColor: 'rgba(78,84,200,0.75)', borderRadius: 6, borderSkipped: false }] },
+        backgroundColor: 'rgba(78,84,200,0.78)',
+        hoverBackgroundColor: 'rgba(78,84,200,1)',
+        borderRadius: 8, borderSkipped: false,
+        maxBarThickness: 56, categoryPercentage: 0.6, barPercentage: 0.85 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
@@ -575,15 +578,42 @@ document.addEventListener('DOMContentLoaded', function () {
         calChart = new Chart(ctx2.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: calKeys.map(function (k) { return fmtDate(k); }),
+            labels: calKeys.map(function (k) { return 'Sett. ' + fmtDate(k); }),
             datasets: [{
               label: 'Calorie', data: calKeys.map(function (k) { return weekCal[k]; }),
-              backgroundColor: 'rgba(255,107,53,0.75)', borderRadius: 6
+              backgroundColor: 'rgba(255,107,53,0.78)',
+              hoverBackgroundColor: 'rgba(255,107,53,1)',
+              borderRadius: 8,
+              // Larghezza barra limitata: con una sola settimana non riempie
+              // tutto il grafico (prima sembrava un blocco costante)
+              maxBarThickness: 56,
+              categoryPercentage: 0.6,
+              barPercentage: 0.85
             }]
           },
-          options: { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: function (it) { return it[0].label; },
+                  label: function (it) { return ' ' + it.raw + ' kcal in quella settimana'; }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'kcal', font: { size: 11 } },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                ticks: { font: { size: 11 } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { font: { size: 11 }, color: '#6b7280', maxRotation: 0, autoSkip: true }
+              }
+            }
           }
         });
       }

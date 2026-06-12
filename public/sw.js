@@ -36,7 +36,9 @@
 //   v18 → confirm() nativi sostituiti con popup elegante window.showConfirm
 //   v19 → Import attività da file TCX (Garmin) su pagina Statistiche
 //   v20 → Import GPX + Share Target Android (condividi attività → app)
-const CACHE_NAME  = 'didio-v20';
+//   v21 → Grafici barre /stats più leggibili (larghezza max, etichette,
+//         tooltip) — una sola settimana non sembra più un blocco
+const CACHE_NAME  = 'didio-v21';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
