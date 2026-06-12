@@ -38,7 +38,8 @@
 //   v20 → Import GPX + Share Target Android (condividi attività → app)
 //   v21 → Grafici barre /stats più leggibili (larghezza max, etichette,
 //         tooltip) — una sola settimana non sembra più un blocco
-const CACHE_NAME  = 'didio-v21';
+//   v22 → Trend durata: barra con 1 sola settimana + asse da 0 (no zoom)
+const CACHE_NAME  = 'didio-v22';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

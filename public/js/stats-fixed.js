@@ -539,19 +539,38 @@ document.addEventListener('DOMContentLoaded', function () {
     if (durationChart) { durationChart.destroy(); durationChart = null; }
     var ctx1 = document.getElementById('durationTrendChart');
     if (ctx1) {
+      // Con un solo dato un grafico a linea mostra un puntino isolato e
+      // poco chiaro: se c'è una sola settimana usiamo una barra; con più
+      // settimane la linea di trend.
+      var singlePoint = durData.length < 2;
       durationChart = new Chart(ctx1.getContext('2d'), {
-        type: 'line',
+        type: singlePoint ? 'bar' : 'line',
         data: {
-          labels: durKeys.map(function (k) { return fmtDate(k); }),
+          labels: durKeys.map(function (k) { return 'Sett. ' + fmtDate(k); }),
           datasets: [{
             label: 'Durata media (min)', data: durData,
-            borderColor: '#4e54c8', backgroundColor: 'rgba(78,84,200,0.08)',
-            borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.35
+            borderColor: '#4e54c8', backgroundColor: singlePoint ? 'rgba(78,84,200,0.78)' : 'rgba(78,84,200,0.10)',
+            hoverBackgroundColor: 'rgba(78,84,200,1)',
+            borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#4e54c8',
+            fill: !singlePoint, tension: 0.35,
+            borderRadius: 8, maxBarThickness: 56, categoryPercentage: 0.6, barPercentage: 0.85
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: false } }
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function (it) { return ' ' + it.raw + ' min di media'; } } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'minuti', font: { size: 11 } },
+              grid: { color: 'rgba(0,0,0,0.05)' },
+              ticks: { font: { size: 11 }, precision: 0 }
+            },
+            x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#6b7280', maxRotation: 0 } }
+          }
         }
       });
     }
