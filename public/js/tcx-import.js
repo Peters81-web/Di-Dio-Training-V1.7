@@ -28,6 +28,14 @@
     return { type: 'gym', label: 'Altro' };
   }
 
+  // Momento della giornata dall'ora locale (utile per chi si allena 2x/giorno)
+  function periodOfDay(hour) {
+    if (hour < 6)  return 'notte';
+    if (hour < 12) return 'mattina';
+    if (hour < 18) return 'pomeriggio';
+    return 'sera';
+  }
+
   function parseTcx(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) {
@@ -138,8 +146,11 @@
 
   // ── Salvataggio su Supabase ───────────────────────────────────
   async function saveImport(data, userId, sc) {
-    const dateLabel = new Date(data.startIso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-    const name = data.activityLabel + ' — ' + dateLabel;
+    const d = new Date(data.startIso);
+    const dateLabel = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeLabel = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    // Nome con orario + momento giornata: distingue 2 allenamenti nello stesso giorno
+    const name = data.activityLabel + ' — ' + dateLabel + ' · ' + timeLabel + ' (' + periodOfDay(d.getHours()) + ')';
     const summaryParts = [];
     if (data.distanceKm) summaryParts.push(data.distanceKm + ' km');
     summaryParts.push(data.durationMin + ' min');

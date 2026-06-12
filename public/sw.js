@@ -40,7 +40,8 @@
 //         tooltip) — una sola settimana non sembra più un blocco
 //   v22 → Trend durata: barra con 1 sola settimana + asse da 0 (no zoom)
 //   v23 → Grafici settimanali: etichette con intervallo "8 giu – 14 giu"
-const CACHE_NAME  = 'didio-v23';
+//   v24 → Import: nome con orario + momento giornata (mattina/sera)
+const CACHE_NAME  = 'didio-v24';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
