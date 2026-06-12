@@ -39,7 +39,8 @@
 //   v21 → Grafici barre /stats più leggibili (larghezza max, etichette,
 //         tooltip) — una sola settimana non sembra più un blocco
 //   v22 → Trend durata: barra con 1 sola settimana + asse da 0 (no zoom)
-const CACHE_NAME  = 'didio-v22';
+//   v23 → Grafici settimanali: etichette con intervallo "8 giu – 14 giu"
+const CACHE_NAME  = 'didio-v23';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

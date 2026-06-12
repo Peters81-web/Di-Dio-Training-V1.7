@@ -238,15 +238,8 @@ document.addEventListener('DOMContentLoaded', function () {
       weekMap[key] = (weekMap[key] || 0) + 1;
     });
     var sk = Object.keys(weekMap).sort();
-    // Label: mostra intervallo settimana "11–17 mag" per chiarezza
-    var lb = sk.map(function (k) {
-      var mon = new Date(k + 'T12:00:00');
-      var sun = new Date(mon);
-      sun.setDate(mon.getDate() + 6);
-      var fmtMon = mon.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
-      var fmtSun = sun.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
-      return fmtMon + '–' + fmtSun;
-    });
+    // Label: intervallo settimana "8 giu – 14 giu" (helper condiviso)
+    var lb = sk.map(function (k) { return weekRange(k); });
     if (weekChart) { weekChart.destroy(); weekChart = null; }
     var ctx = document.getElementById('weeklyChart').getContext('2d');
     weekChart = new Chart(ctx, {
@@ -546,7 +539,7 @@ document.addEventListener('DOMContentLoaded', function () {
       durationChart = new Chart(ctx1.getContext('2d'), {
         type: singlePoint ? 'bar' : 'line',
         data: {
-          labels: durKeys.map(function (k) { return 'Sett. ' + fmtDate(k); }),
+          labels: durKeys.map(function (k) { return weekRange(k); }),
           datasets: [{
             label: 'Durata media (min)', data: durData,
             borderColor: '#4e54c8', backgroundColor: singlePoint ? 'rgba(78,84,200,0.78)' : 'rgba(78,84,200,0.10)',
@@ -597,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function () {
         calChart = new Chart(ctx2.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: calKeys.map(function (k) { return 'Sett. ' + fmtDate(k); }),
+            labels: calKeys.map(function (k) { return weekRange(k); }),
             datasets: [{
               label: 'Calorie', data: calKeys.map(function (k) { return weekCal[k]; }),
               backgroundColor: 'rgba(255,107,53,0.78)',
@@ -689,6 +682,17 @@ document.addEventListener('DOMContentLoaded', function () {
   function fmtDate(ds) {
     if (!ds) return '-';
     return new Date(ds).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // Etichetta intervallo settimana da una chiave lunedì 'YYYY-MM-DD'.
+  // Es: "8 giu – 14 giu"  (o "29 giu – 5 lug" a cavallo di mese)
+  function weekRange(mondayKey) {
+    var mon = new Date(mondayKey + 'T12:00:00');
+    if (isNaN(mon.getTime())) return mondayKey;
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var fMon = mon.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    var fSun = sun.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    return fMon + ' – ' + fSun;
   }
 
   function esc(text) {
