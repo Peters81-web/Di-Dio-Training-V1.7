@@ -122,6 +122,9 @@ document.addEventListener('DOMContentLoaded', function () {
   function renderAll() {
     var w = getFiltered();
     renderKPI(w); renderBpm(w); renderActivity(w); renderWeekly(w); renderTable(w);
+    // Zone cardio (hr-zones.js): riceve la stessa lista già filtrata per
+    // periodo, così rispetta il selettore Ultima settimana / Mese / Tutto.
+    if (window.hrZonesRender) window.hrZonesRender(w);
   }
 
   // Filtra allCompleted per lo stesso periodo selezionato (activePeriod).
