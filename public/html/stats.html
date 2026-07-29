@@ -638,6 +638,16 @@
 
     </div>
 
+    <!-- Zone cardio -->
+    <div class="charts-grid">
+      <div class="chart-card full-width">
+        <div class="chart-title">
+          <i class="fas fa-heart-pulse"></i> Zone Cardio
+        </div>
+        <div id="hrZonesBody"></div>
+      </div>
+    </div>
+
     <!-- Grafici riga 2 -->
     <div class="charts-grid">
       <div class="chart-card full-width">
@@ -781,6 +791,10 @@
   <script src="/js/utils.js"></script>
   <!-- Import attività da file TCX (Garmin) -->
   <script src="/js/tcx-import.js"></script>
+  <!-- hr-zones.js prima di stats-fixed.js: deve registrare window.hrZonesRender
+       prima che renderAll() provi a chiamarla -->
+  <script src="/js/hr-zones.js"></script>
+
   <!-- stats-fixed.js caricato PER ULTIMO, dopo tutti gli script sopra -->
   <script src="/js/stats-fixed.js"></script>
   <script>

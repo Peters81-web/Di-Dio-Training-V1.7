@@ -46,7 +46,8 @@
 //   v26 → Accessibilità (skip link, focus visibile, aria-live sui toast,
 //         etichette sui bottoni icona) + dark mode rotta rimossa +
 //         2653 righe di codice morto eliminate + shortcuts nel manifest
-const CACHE_NAME  = 'didio-v26';
+//   v27 → Zone cardio su /stats (FCmax da birthdate, nessuna colonna nuova)
+const CACHE_NAME  = 'didio-v27';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
