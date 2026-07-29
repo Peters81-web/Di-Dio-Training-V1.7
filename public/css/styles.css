@@ -1870,10 +1870,13 @@ textarea:focus {
   }
 }
 
-/* Support for dark mode if the user prefers it */
-@media (prefers-color-scheme: dark) {
-  /* Questo codice sarà aggiunto in futuro se desideri supportare la modalità scura */
-}
+/* Dark mode: non implementata.
+ *
+ * Qui c'era un blocco @media vuoto. Quando arriverà, il punto di partenza è
+ * ridefinire i token del :root in cima a questo file (--background-color,
+ * --card-bg, --text-primary, --border-color...) dentro il media query, NON
+ * riscrivere i colori nei singoli componenti: e' esattamente l'errore che
+ * rendeva illeggibile weekly_summary.html in tema scuro. */
 
 /* Rating star system */
 .rating-container {
@@ -2264,4 +2267,33 @@ textarea:focus {
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0;          /* ✅ Non si comprime mai */
   justify-content: flex-end;
+}
+
+/* =============================================
+   ACCESSIBILITÀ — focus visibile
+   Duplicato volutamente da app-nav.css: le pagine di login/registrazione
+   non caricano app-nav.css (non hanno navbar), quindi senza questo blocco
+   resterebbero senza indicatore di focus. Regole identiche, nessun conflitto.
+   ============================================= */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[contenteditable="true"]:focus-visible {
+    outline: 3px solid var(--primary-color, #4361ee);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

@@ -14,6 +14,7 @@
     <script src="/js/app-nav.js" defer></script>
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Salta al contenuto principale</a>
     <nav class="app-nav">
         <div class="app-nav-inner">
             <a href="/dashboard" class="app-nav-brand">
@@ -35,7 +36,7 @@
         </div>
     </nav>
 
-    <main class="container" style="padding-top: 1rem; padding-bottom: 2rem;">
+    <main id="mainContent" class="container" style="padding-top: 1rem; padding-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
             <h2 style="font-size: 1.5rem; font-weight: 700;">I Tuoi Programmi</h2>
             <button id="newProgramBtn" class="btn btn-primary">
@@ -53,8 +54,8 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Crea Nuovo Programma</h2>
-            <button type="button" class="modal-close" onclick="closeModal('programModal')">
-                <i class="fas fa-times"></i>
+            <button type="button" class="modal-close" onclick="closeModal('programModal')" aria-label="Chiudi">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
         <form id="programForm">

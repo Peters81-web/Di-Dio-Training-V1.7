@@ -18,6 +18,7 @@
     <meta name="theme-color" content="#4361ee">
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Salta al contenuto principale</a>
 
 <nav class="app-nav">
     <div class="app-nav-inner">
@@ -41,7 +42,7 @@
     </div>
 </nav>
 
-<main class="container profile-container">
+<main id="mainContent" class="container profile-container">
 
     <!-- ── HERO HEADER ─────────────────────────────────────────────── -->
     <div class="profile-hero">
@@ -321,7 +322,7 @@
     <div class="modal-content modal-large">
         <div class="modal-header">
             <h2><i class="fas fa-edit" style="color:var(--primary-color);margin-right:.5rem;"></i>Modifica Profilo</h2>
-            <button class="modal-close" id="closeEditModal"><i class="fas fa-times"></i></button>
+            <button class="modal-close" id="closeEditModal" aria-label="Chiudi"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
         <form id="editProfileForm">
             <div class="modal-body">
@@ -441,7 +442,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2><i class="fas fa-key" style="color:var(--primary-color);margin-right:.5rem;"></i>Cambia Password</h2>
-            <button class="modal-close" id="closePasswordModal"><i class="fas fa-times"></i></button>
+            <button class="modal-close" id="closePasswordModal" aria-label="Chiudi"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
         <form id="changePasswordForm">
             <div class="modal-body">

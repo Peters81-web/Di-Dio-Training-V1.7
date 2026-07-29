@@ -14,6 +14,7 @@
     <script src="/js/app-nav.js" defer></script>
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Salta al contenuto principale</a>
 <nav class="app-nav">
     <div class="app-nav-inner">
         <a href="/dashboard" class="app-nav-brand">
@@ -34,7 +35,7 @@
     </div>
 </nav>
 
-    <main class="container reports-container">
+    <main id="mainContent" class="container reports-container">
         <div class="reports-header">
             <h2>I Tuoi Report Personalizzati</h2>
             <p>Crea e visualizza report dettagliati sui tuoi progressi</p>
@@ -211,8 +212,8 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Esporta Report</h2>
-                <button class="modal-close" onclick="closeModal('exportModal')">
-                    <i class="fas fa-times"></i>
+                <button class="modal-close" onclick="closeModal('exportModal')" aria-label="Chiudi">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="modal-body">

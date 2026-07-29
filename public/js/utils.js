@@ -12,7 +12,20 @@ function showToast(message, type = 'info', duration = 3000) {
     // Crea il toast
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
+
+    // Accessibilità: senza questi attributi il toast è puramente visivo e chi
+    // usa uno screen reader non riceve MAI il messaggio (conferme di
+    // salvataggio, errori...). Gli errori interrompono la lettura in corso
+    // (assertive), il resto viene annunciato alla prima pausa (polite).
+    if (type === 'error') {
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+    } else {
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+    }
+    toast.setAttribute('aria-atomic', 'true');
+
     // Scegli l'icona appropriata
     let icon = '';
     switch (type) {
@@ -31,11 +44,13 @@ function showToast(message, type = 'info', duration = 3000) {
             break;
     }
     
-    // Costruisci il contenuto
+    // Costruisci il contenuto.
+    // message va escapato: spesso contiene testo che non controlliamo
+    // (error.message dal server, nomi di allenamenti inseriti dall'utente).
     toast.innerHTML = `
-        <div class="toast-icon">${icon}</div>
-        <div class="toast-message">${message}</div>
-        <button class="toast-close" aria-label="Chiudi">&times;</button>
+        <div class="toast-icon" aria-hidden="true">${icon}</div>
+        <div class="toast-message">${escapeHtml(String(message ?? ''))}</div>
+        <button class="toast-close" aria-label="Chiudi notifica">&times;</button>
     `;
     
     // Aggiungi il toast al DOM

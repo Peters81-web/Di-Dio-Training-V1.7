@@ -362,9 +362,19 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
 });
 
 // ─── Catch-all ────────────────────────────────────────────────────────────────
+// Serve index.html per le rotte sconosciute (comportamento SPA), MA non per i
+// file statici: un .js mancante che risponde "200 + HTML" fa fallire il parse
+// nel browser con "Unexpected token '<'", un errore che fa sembrare il file
+// presente e rende la diagnosi molto più lunga di quanto dovrebbe. Meglio un
+// 404 onesto.
+const ASSET_EXT_REGEX = /\.(js|mjs|css|map|json|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf|eot|txt|xml|webmanifest)$/i;
+
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: `Endpoint non trovato: ${req.method} ${req.path}` });
+  }
+  if (ASSET_EXT_REGEX.test(req.path)) {
+    return res.status(404).type('text/plain').send('File non trovato');
   }
   sendHtmlFile(res, 'index.html');
 });

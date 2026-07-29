@@ -25,6 +25,29 @@
       ]
     }
   },
+  "shortcuts": [
+    {
+      "name": "Nuovo allenamento",
+      "short_name": "Nuovo",
+      "description": "Crea subito una nuova scheda di allenamento",
+      "url": "/workout",
+      "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Personal AI",
+      "short_name": "AI",
+      "description": "Genera un piano su misura con l'AI",
+      "url": "/ai-trainer",
+      "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Statistiche",
+      "short_name": "Stats",
+      "description": "Andamento, calorie e grafici",
+      "url": "/stats",
+      "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "/images/icon-192.png",
