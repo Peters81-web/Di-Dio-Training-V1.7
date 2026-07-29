@@ -11,7 +11,14 @@
     <script src="/js/app-nav.js" defer></script>
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- marked: versione PINNATA. Senza il pin si prende sempre l'ultima
+         release, esponendo l'app sia a breaking change silenziosi sia a una
+         eventuale compromissione del pacchetto. -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <!-- DOMPurify: marked NON sanitizza il suo output. Il testo arriva dall'AI
+         ed è pilotabile dal prompt dell'utente, quindi va ripulito prima di
+         finire in innerHTML. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 </head>
 <body class="ai-page">
 
