@@ -3,6 +3,24 @@
  */
 document.addEventListener('DOMContentLoaded', async function () {
   const supabaseClient = window.supabaseClient || createSupabaseClient();
+
+  // ── Difesa XSS ───────────────────────────────────────────────────────────
+  // Il testo del piano arriva dall'AI, quindi è influenzabile dal prompt
+  // dell'utente, e finisce sia in innerHTML sia salvato nel database (dove
+  // viene ri-renderizzato da dashboard e archivio).
+  //
+  // sanitizeHtml: per l'HTML prodotto da marked, dove i tag servono davvero.
+  // esc:          per i singoli campi, dove nessun tag è mai legittimo.
+  function sanitizeHtml(html) {
+    if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+    // Se DOMPurify non ha caricato, meglio testo inerte che HTML non filtrato.
+    return window.escapeHtml ? window.escapeHtml(html) : '';
+  }
+
+  function esc(value) {
+    if (value === null || value === undefined) return '';
+    return window.escapeHtml ? window.escapeHtml(String(value)) : '';
+  }
   let currentUser = null;
   let generatedWorkouts = [];
   let currentGeneratedActivityType = 'running';
@@ -272,12 +290,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     generatedWorkouts = [];
 
     try {
+      // Il server ora richiede un token valido: senza, l'endpoint AI sarebbe
+      // aperto a chiunque e la quota Groq bruciabile dall'esterno.
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        throw new Error('Sessione scaduta. Effettua di nuovo il login.');
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 55000);
 
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer ' + session.access_token
+        },
         body: JSON.stringify({ prompt, planType, fitnessLevel, activityType, workoutContext }),
         signal: controller.signal
       });
@@ -291,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       const data = await response.json();
 
       if (elements.aiResponse && data.text) {
-        elements.aiResponse.innerHTML = marked.parse(data.text);
+        elements.aiResponse.innerHTML = sanitizeHtml(marked.parse(data.text));
         elements.aiResponseContainer.style.display = 'block';
         generatedWorkouts = parseAIResponse(data.text);
         console.log('Allenamenti parsati:', generatedWorkouts.length, generatedWorkouts);
@@ -302,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? 'La generazione ha impiegato troppo tempo. Riprova con un obiettivo più breve.'
         : 'Errore: ' + error.message;
       if (elements.aiResponse) {
-        elements.aiResponse.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${msg}</div>`;
+        elements.aiResponse.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${esc(msg)}</div>`;
         elements.aiResponseContainer.style.display = 'block';
       }
     } finally {
@@ -375,15 +403,15 @@ document.addEventListener('DOMContentLoaded', async function () {
           <div class="preview-item">
             <div class="preview-item-header">
               <span class="preview-item-number">${i + 1}</span>
-              <h4>${w.name}</h4>
+              <h4>${esc(w.name)}</h4>
             </div>
             <div class="preview-item-details">
-              <p><strong>Tipo:</strong> ${w.activity_type || 'gym'}</p>
-              <p><strong>Data:</strong> ${new Date(w.scheduled_date + 'T12:00:00').toLocaleDateString('it-IT')}</p>
-              ${w.warmup ? `<p><strong>Riscaldamento:</strong> ${w.warmup}</p>` : ''}
-              ${w.main_phase ? `<p><strong>Fase Principale:</strong> ${w.main_phase}</p>` : ''}
-              ${w.cooldown ? `<p><strong>Defaticamento:</strong> ${w.cooldown}</p>` : ''}
-              ${w.notes ? `<p><strong>Note:</strong> ${w.notes}</p>` : ''}
+              <p><strong>Tipo:</strong> ${esc(w.activity_type || 'gym')}</p>
+              <p><strong>Data:</strong> ${esc(new Date(w.scheduled_date + 'T12:00:00').toLocaleDateString('it-IT'))}</p>
+              ${w.warmup ? `<p><strong>Riscaldamento:</strong> ${esc(w.warmup)}</p>` : ''}
+              ${w.main_phase ? `<p><strong>Fase Principale:</strong> ${esc(w.main_phase)}</p>` : ''}
+              ${w.cooldown ? `<p><strong>Defaticamento:</strong> ${esc(w.cooldown)}</p>` : ''}
+              ${w.notes ? `<p><strong>Note:</strong> ${esc(w.notes)}</p>` : ''}
             </div>
           </div>
         `;

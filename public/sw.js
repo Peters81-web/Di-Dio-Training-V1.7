@@ -41,7 +41,9 @@
 //   v22 → Trend durata: barra con 1 sola settimana + asse da 0 (no zoom)
 //   v23 → Grafici settimanali: etichette con intervallo "8 giu – 14 giu"
 //   v24 → Import: nome con orario + momento giornata (mattina/sera)
-const CACHE_NAME  = 'didio-v24';
+//   v25 → Sicurezza: auth sull'endpoint AI, sanitizzazione XSS AI Trainer,
+//         CDN pinnati, rimossa pagina di test
+const CACHE_NAME  = 'didio-v25';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

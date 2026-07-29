@@ -4,6 +4,11 @@ const cors    = require('cors');
 
 const app = express();
 
+// Dietro il proxy di Vercel: senza questo req.ip è SEMPRE l'IP del proxy,
+// quindi il rate limiter metterebbe tutti gli utenti nello stesso secchiello
+// (5 richieste/minuto per l'intera app invece che per utente).
+app.set('trust proxy', 1);
+
 // ─── Logger condizionale (niente noise in produzione) ────────────────────────
 const IS_DEV = process.env.NODE_ENV !== 'production';
 const log     = IS_DEV ? (...a) => console.log(...a)   : () => {};
@@ -63,15 +68,69 @@ function sendHtmlFile(res, filename) {
   return res.sendFile(filePath);
 }
 
+// ─── Autenticazione (verifica del JWT Supabase) ───────────────────────────────
+// Senza questo middleware /api/generate-plan è un endpoint pubblico: chiunque
+// può chiamarlo con curl e bruciare la quota Groq. Il CORS non basta, perché
+// protegge solo dal browser di terzi, non da richieste server-to-server.
+//
+// La verifica avviene chiedendo a Supabase chi è il portatore del token
+// (GET /auth/v1/user). Costa un round-trip (~100-300ms) ma non richiede né
+// dipendenze nuove né il JWT secret fra le variabili d'ambiente.
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://szybzycjdqlhpgdlcoou.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
+const AUTH_TIMEOUT_MS = 4000;
+
+async function requireAuth(req, res, next) {
+  req.startedAt = Date.now(); // serve a calcolare il budget residuo per Groq
+  const header = req.get('authorization') || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+
+  if (!token) {
+    return res.status(401).json({ error: 'Autenticazione richiesta. Effettua il login.' });
+  }
+
+  const controller = new AbortController();
+  const timeout    = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+  try {
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'apikey':        SUPABASE_ANON_KEY
+      },
+      signal: controller.signal
+    });
+
+    if (!authRes.ok) {
+      return res.status(401).json({ error: 'Sessione non valida o scaduta. Effettua di nuovo il login.' });
+    }
+
+    const user = await authRes.json();
+    if (!user || !user.id) {
+      return res.status(401).json({ error: 'Sessione non valida. Effettua di nuovo il login.' });
+    }
+
+    req.userId = user.id; // usato dal rate limiter per il conteggio per-utente
+    return next();
+
+  } catch (err) {
+    logErr('Verifica auth fallita:', err.name === 'AbortError' ? 'timeout' : err);
+    return res.status(503).json({ error: 'Verifica dell\'identità non riuscita. Riprova.' });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Rate limiter per endpoint AI (evita abusi e costi esplosivi) ─────────────
-// NOTA: installa il pacchetto con: npm install express-rate-limit
-// poi decommentare le righe qui sotto e rimuovere il middleware placeholder
+// Conta per utente autenticato, non per IP: dietro il proxy di Vercel gli IP
+// sono poco affidabili e più utenti possono condividere lo stesso indirizzo.
 let aiLimiter;
 try {
   const rateLimit = require('express-rate-limit');
   aiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minuto
-    max: 5,              // max 5 richieste per IP al minuto
+    max: 5,              // max 5 generazioni per utente al minuto
+    keyGenerator: (req) => req.userId || req.ip,
     message: { error: 'Troppe richieste. Attendi un minuto prima di rigenerare il piano.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -156,7 +215,9 @@ app.get('/reports',        (req, res) => sendHtmlFile(res, 'reports.html'));
 app.get('/archivio',       (req, res) => sendHtmlFile(res, 'archivio.html'));
 
 // ─── API AI Trainer (Groq) ────────────────────────────────────────────────────
-app.post('/api/generate-plan', aiLimiter, async (req, res) => {
+// requireAuth PRIMA di aiLimiter: il limiter conta per req.userId, che viene
+// popolato dalla verifica del token.
+app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
   const { prompt, planType, fitnessLevel, activityType, workoutContext: rawWorkoutContext } = req.body || {};
 
   // Sanitizza workoutContext lato server (anche se il client lo costruisce
@@ -247,8 +308,15 @@ Per i giorni di riposo usa:
 Sii specifico, concreto e adatto al livello ${levelText}.`;
 
   try {
+    // Budget totale della funzione su Vercel Hobby: 10s. La verifica del token
+    // ha già consumato parte del tempo, quindi a Groq diamo ciò che resta
+    // (meno un margine per serializzare la risposta), non 9s fissi.
+    const HARD_BUDGET_MS = 9500;
+    const elapsed        = Date.now() - req.startedAt;
+    const groqBudget     = Math.max(3000, HARD_BUDGET_MS - elapsed);
+
     const groqController = new AbortController();
-    const groqTimeout = setTimeout(() => groqController.abort(), 9000);
+    const groqTimeout = setTimeout(() => groqController.abort(), groqBudget);
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
