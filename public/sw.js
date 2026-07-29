@@ -43,7 +43,10 @@
 //   v24 → Import: nome con orario + momento giornata (mattina/sera)
 //   v25 → Sicurezza: auth sull'endpoint AI, sanitizzazione XSS AI Trainer,
 //         CDN pinnati, rimossa pagina di test
-const CACHE_NAME  = 'didio-v25';
+//   v26 → Accessibilità (skip link, focus visibile, aria-live sui toast,
+//         etichette sui bottoni icona) + dark mode rotta rimossa +
+//         2653 righe di codice morto eliminate + shortcuts nel manifest
+const CACHE_NAME  = 'didio-v26';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

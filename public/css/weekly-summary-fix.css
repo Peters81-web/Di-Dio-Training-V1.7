@@ -610,43 +610,16 @@
 }
 
 /* Dark mode support migliorato */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --text-primary: #f7fafc;
-        --text-secondary: #e2e8f0;
-        --text-muted: #a0aec0;
-        --background-white: #2d3748;
-        --background-light: #4a5568;
-        --background-lighter: #1a202c;
-        --border-color: #4a5568;
-        --border-color-focus: #63b3ed;
-    }
-    
-    .period-selector-card,
-    .weekly-schedule-card,
-    .weekday-card {
-        background: var(--background-white);
-        color: var(--text-primary);
-        border-color: var(--border-color);
-    }
-    
-    .selector-group select,
-    .activity-selector select,
-    .workout-description {
-        background: var(--background-white);
-        border-color: var(--border-color);
-        color: var(--text-primary);
-    }
-    
-    .selector-group select:hover,
-    .activity-selector select:hover,
-    .workout-description:hover {
-        background: var(--background-light);
-    }
-    
-    .selector-group select option,
-    .activity-selector select option {
-        background: var(--background-white);
-        color: var(--text-primary);
-    }
-}
+/* NOTA — dark mode rimossa di proposito.
+ *
+ * Qui c'era un blocco @media (prefers-color-scheme: dark) che riscriveva
+ * --text-primary a #f7fafc (quasi bianco) ma scuriva gli sfondi usando
+ * --background-white / --background-light, nomi che styles.css non
+ * definisce. I token reali (--background-color, --card-bg) restavano
+ * chiari: risultato, testo bianco su card bianche = illeggibile per
+ * chiunque avesse il telefono in tema scuro.
+ *
+ * Era anche l'unica pagina su 12 con regole dark, quindi il tema scuro
+ * non era comunque coerente. Una dark mode vera va fatta sui token in
+ * styles.css e verificata su tutte le pagine: e' un lavoro a se'.
+ */

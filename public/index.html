@@ -16,7 +16,7 @@
 </head>
 <body class="auth-page">
     <div class="auth-container">
-        <div class="auth-card">
+        <div class="auth-card" role="main" id="mainContent">
             <h1 class="auth-title">Accedi</h1>
             <form id="loginForm" class="auth-form">
                 <div class="form-group">
@@ -44,8 +44,8 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Recupero Password</h2>
-                <button class="modal-close" onclick="closeModal('passwordResetModal')">
-                    <i class="fas fa-times"></i>
+                <button class="modal-close" onclick="closeModal('passwordResetModal')" aria-label="Chiudi">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <p style="margin-bottom: 1rem;">Inserisci la tua email per ricevere il link di reset della password.</p>

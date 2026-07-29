@@ -496,3 +496,58 @@ nav.app-nav .app-nav-toggle-line {
 nav.app-nav.app-nav--dark .app-nav-toggle-line {
   background: var(--nav-fg-on-dark) !important;
 }
+
+/* =============================================
+   ACCESSIBILITÀ — skip link + focus visibile
+   ============================================= */
+
+/* Skip link: primo elemento focusabile della pagina. Chi naviga da tastiera
+   altrimenti deve attraversare tutta la navbar a ogni cambio pagina.
+   Invisibile finché non riceve il focus. */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 8px;
+    z-index: 10000;
+    padding: .7rem 1.1rem;
+    background: #4361ee;
+    color: #fff;
+    font-weight: 600;
+    font-size: .9rem;
+    border-radius: 0 0 8px 8px;
+    text-decoration: none;
+    transition: top .15s ease-in-out;
+}
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid #fff;
+    outline-offset: -3px;
+}
+
+/* Focus visibile e coerente su tutto ciò che è interattivo.
+   :focus-visible mostra l'anello a chi naviga da tastiera senza farlo
+   comparire al clic del mouse. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[contenteditable="true"]:focus-visible {
+    outline: 3px solid #4361ee;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* Rispetta chi ha chiesto meno animazioni a livello di sistema
+   (vestibolopatie, emicrania, chinetosi). */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

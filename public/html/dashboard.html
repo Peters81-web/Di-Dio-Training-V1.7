@@ -27,6 +27,7 @@
 
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Salta al contenuto principale</a>
 <nav class="app-nav">
     <div class="app-nav-inner">
         <a href="/dashboard" class="app-nav-brand">
@@ -49,7 +50,7 @@
     </div>
 </nav>
 
-    <main class="container">
+    <main id="mainContent" class="container">
 
         <!-- ── 1. STREAK & MOTIVAZIONE ──────────────────── -->
         <div id="streakBanner" class="streak-banner" style="display:none;">
@@ -139,15 +140,15 @@
     </main>
 
     <!-- Timer FAB -->
-    <button id="timerFab" class="timer-fab" title="Timer Allenamento">
-        <i class="fas fa-stopwatch"></i>
+    <button id="timerFab" class="timer-fab" title="Timer Allenamento" aria-label="Timer Allenamento">
+        <i class="fas fa-stopwatch" aria-hidden="true"></i>
     </button>
 
     <!-- Timer Panel -->
     <div id="timerPanel" class="timer-panel" style="display:none;">
         <div class="timer-panel-header">
             <span class="timer-panel-title"><i class="fas fa-stopwatch"></i> Timer Allenamento</span>
-            <button id="timerClose" class="timer-panel-close"><i class="fas fa-times"></i></button>
+            <button id="timerClose" class="timer-panel-close" aria-label="Chiudi"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="timer-phases" id="timerPhases">
             <button class="timer-phase active" data-phase="warmup">
@@ -192,8 +193,8 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2>Personalizza Dashboard</h2>
-      <button class="modal-close" onclick="closeModal('dashboardConfigModal')">
-        <i class="fas fa-times"></i>
+      <button class="modal-close" onclick="closeModal('dashboardConfigModal')" aria-label="Chiudi">
+        <i class="fas fa-times" aria-hidden="true"></i>
       </button>
     </div>
     
@@ -330,11 +331,11 @@
             </div>
             <div class="edit-container" style="display:none;">
                 <div class="rich-text-toolbar">
-                    <button type="button" onclick="formatText('bold')"><i class="fas fa-bold"></i></button>
-                    <button type="button" onclick="formatText('italic')"><i class="fas fa-italic"></i></button>
-                    <button type="button" onclick="formatText('underline')"><i class="fas fa-underline"></i></button>
-                    <button type="button" onclick="formatText('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
-                    <button type="button" onclick="formatText('insertOrderedList')"><i class="fas fa-list-ol"></i></button>
+                    <button type="button" onclick="formatText('bold')" aria-label="Grassetto"><i class="fas fa-bold" aria-hidden="true"></i></button>
+                    <button type="button" onclick="formatText('italic')" aria-label="Corsivo"><i class="fas fa-italic" aria-hidden="true"></i></button>
+                    <button type="button" onclick="formatText('underline')" aria-label="Sottolineato"><i class="fas fa-underline" aria-hidden="true"></i></button>
+                    <button type="button" onclick="formatText('insertUnorderedList')" aria-label="Elenco puntato"><i class="fas fa-list-ul" aria-hidden="true"></i></button>
+                    <button type="button" onclick="formatText('insertOrderedList')" aria-label="Elenco numerato"><i class="fas fa-list-ol" aria-hidden="true"></i></button>
                 </div>
                 <div class="rich-text-editor" contenteditable="true"></div>
                 <div class="edit-actions">
@@ -371,8 +372,8 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Registra Allenamento Completato</h2>
-            <button class="modal-close" onclick="closeModal('completeWorkoutModal')">
-                <i class="fas fa-times"></i>
+            <button class="modal-close" onclick="closeModal('completeWorkoutModal')" aria-label="Chiudi">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
         

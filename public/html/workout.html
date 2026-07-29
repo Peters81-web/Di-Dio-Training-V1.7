@@ -14,6 +14,7 @@
     <script src="/js/app-nav.js" defer></script>
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Salta al contenuto principale</a>
 <nav class="app-nav">
     <div class="app-nav-inner">
         <a href="/dashboard" class="app-nav-brand">
@@ -31,7 +32,7 @@
     </div>
 </nav>
 
-    <main class="container" style="padding-top: 1.5rem; padding-bottom: 2rem;">
+    <main id="mainContent" class="container" style="padding-top: 1.5rem; padding-bottom: 2rem;">
         <div class="card">
             <form id="workoutForm" style="display: grid; gap: 1.5rem;">
                 <!-- Sezione Info Base -->
@@ -109,20 +110,20 @@
                             <h4>Riscaldamento</h4>
                             <div class="rich-text-container">
                                 <div class="rich-text-toolbar">
-                                    <button type="button" onclick="formatText('bold')" title="Grassetto">
-                                        <i class="fas fa-bold"></i>
+                                    <button type="button" onclick="formatText('bold')" title="Grassetto" aria-label="Grassetto">
+                                        <i class="fas fa-bold" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('italic')" title="Corsivo">
-                                        <i class="fas fa-italic"></i>
+                                    <button type="button" onclick="formatText('italic')" title="Corsivo" aria-label="Corsivo">
+                                        <i class="fas fa-italic" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('underline')" title="Sottolineato">
-                                        <i class="fas fa-underline"></i>
+                                    <button type="button" onclick="formatText('underline')" title="Sottolineato" aria-label="Sottolineato">
+                                        <i class="fas fa-underline" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato">
-                                        <i class="fas fa-list-ul"></i>
+                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato" aria-label="Elenco puntato">
+                                        <i class="fas fa-list-ul" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato">
-                                        <i class="fas fa-list-ol"></i>
+                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato" aria-label="Elenco numerato">
+                                        <i class="fas fa-list-ol" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <div id="warmup" class="rich-text-editor" contenteditable="true" data-placeholder="Descrivi gli esercizi di riscaldamento..."></div>
@@ -133,20 +134,20 @@
                             <h4>Fase Principale</h4>
                             <div class="rich-text-container">
                                 <div class="rich-text-toolbar">
-                                    <button type="button" onclick="formatText('bold')" title="Grassetto">
-                                        <i class="fas fa-bold"></i>
+                                    <button type="button" onclick="formatText('bold')" title="Grassetto" aria-label="Grassetto">
+                                        <i class="fas fa-bold" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('italic')" title="Corsivo">
-                                        <i class="fas fa-italic"></i>
+                                    <button type="button" onclick="formatText('italic')" title="Corsivo" aria-label="Corsivo">
+                                        <i class="fas fa-italic" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('underline')" title="Sottolineato">
-                                        <i class="fas fa-underline"></i>
+                                    <button type="button" onclick="formatText('underline')" title="Sottolineato" aria-label="Sottolineato">
+                                        <i class="fas fa-underline" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato">
-                                        <i class="fas fa-list-ul"></i>
+                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato" aria-label="Elenco puntato">
+                                        <i class="fas fa-list-ul" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato">
-                                        <i class="fas fa-list-ol"></i>
+                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato" aria-label="Elenco numerato">
+                                        <i class="fas fa-list-ol" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <div id="mainPhase" class="rich-text-editor" contenteditable="true" data-placeholder="Descrivi gli esercizi principali..."></div>
@@ -157,20 +158,20 @@
                             <h4>Defaticamento</h4>
                             <div class="rich-text-container">
                                 <div class="rich-text-toolbar">
-                                    <button type="button" onclick="formatText('bold')" title="Grassetto">
-                                        <i class="fas fa-bold"></i>
+                                    <button type="button" onclick="formatText('bold')" title="Grassetto" aria-label="Grassetto">
+                                        <i class="fas fa-bold" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('italic')" title="Corsivo">
-                                        <i class="fas fa-italic"></i>
+                                    <button type="button" onclick="formatText('italic')" title="Corsivo" aria-label="Corsivo">
+                                        <i class="fas fa-italic" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('underline')" title="Sottolineato">
-                                        <i class="fas fa-underline"></i>
+                                    <button type="button" onclick="formatText('underline')" title="Sottolineato" aria-label="Sottolineato">
+                                        <i class="fas fa-underline" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato">
-                                        <i class="fas fa-list-ul"></i>
+                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato" aria-label="Elenco puntato">
+                                        <i class="fas fa-list-ul" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato">
-                                        <i class="fas fa-list-ol"></i>
+                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato" aria-label="Elenco numerato">
+                                        <i class="fas fa-list-ol" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <div id="cooldown" class="rich-text-editor" contenteditable="true" data-placeholder="Descrivi gli esercizi di defaticamento..."></div>
@@ -181,20 +182,20 @@
                             <h4>Note Aggiuntive</h4>
                             <div class="rich-text-container">
                                 <div class="rich-text-toolbar">
-                                    <button type="button" onclick="formatText('bold')" title="Grassetto">
-                                        <i class="fas fa-bold"></i>
+                                    <button type="button" onclick="formatText('bold')" title="Grassetto" aria-label="Grassetto">
+                                        <i class="fas fa-bold" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('italic')" title="Corsivo">
-                                        <i class="fas fa-italic"></i>
+                                    <button type="button" onclick="formatText('italic')" title="Corsivo" aria-label="Corsivo">
+                                        <i class="fas fa-italic" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('underline')" title="Sottolineato">
-                                        <i class="fas fa-underline"></i>
+                                    <button type="button" onclick="formatText('underline')" title="Sottolineato" aria-label="Sottolineato">
+                                        <i class="fas fa-underline" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato">
-                                        <i class="fas fa-list-ul"></i>
+                                    <button type="button" onclick="formatText('insertUnorderedList')" title="Elenco puntato" aria-label="Elenco puntato">
+                                        <i class="fas fa-list-ul" aria-hidden="true"></i>
                                     </button>
-                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato">
-                                        <i class="fas fa-list-ol"></i>
+                                    <button type="button" onclick="formatText('insertOrderedList')" title="Elenco numerato" aria-label="Elenco numerato">
+                                        <i class="fas fa-list-ol" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <div id="notes" class="rich-text-editor" contenteditable="true" data-placeholder="Aggiungi eventuali note o raccomandazioni..."></div>
