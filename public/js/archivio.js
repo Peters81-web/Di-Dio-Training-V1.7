@@ -362,6 +362,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('ecmDistance').value  = c.distance || '';
     document.getElementById('ecmHeartRate').value = c.heart_rate_avg || '';
     document.getElementById('ecmNotes').value     = c.notes || '';
+    // Temperatura e meteo vivono su workout_plans (denormalizzate), non
+    // su completed_workouts: qui arrivano dalla join.
+    var tEl = document.getElementById('ecmTemperature');
+    var wEl = document.getElementById('ecmWeather');
+    if (tEl) tEl.value = (plan.temperature !== null && plan.temperature !== undefined) ? plan.temperature : '';
+    if (wEl) wEl.value = plan.weather || '';
 
     modal.dataset.completionId = c.id;
     modal.dataset.workoutId = c.workout_id || '';
@@ -387,6 +393,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var distance  = parseFloat(document.getElementById('ecmDistance').value);
     var heartRate = parseInt(document.getElementById('ecmHeartRate').value, 10);
     var notes     = document.getElementById('ecmNotes').value.trim();
+    // 0 gradi e' legittimo: campo vuoto -> null, non 0
+    var tRaw      = (document.getElementById('ecmTemperature') || {}).value;
+    var temperature = (tRaw === undefined || String(tRaw).trim() === '') ? null : parseFloat(tRaw);
+    if (temperature !== null && isNaN(temperature)) temperature = null;
+    var weather   = (document.getElementById('ecmWeather') || {}).value || null;
 
     if (!dateInput) { toast('Inserisci la data di svolgimento.', 'error'); return; }
     if (isNaN(duration) || duration <= 0) { toast('Inserisci una durata valida (> 0).', 'error'); return; }
@@ -407,8 +418,7 @@ document.addEventListener('DOMContentLoaded', function () {
     Promise.all([
       sc.from('completed_workouts').update(payload).eq('id', completionId),
       workoutId
-        ? sc.from('workout_plans').update({ completed_at: completedAtIso, average_heart_rate: payload.heart_rate_avg })
-            .eq('id', workoutId).eq('user_id', currentUser.id)
+        ? updatePlan(workoutId, completedAtIso, payload.heart_rate_avg, temperature, weather)
         : Promise.resolve({ error: null })
     ]).then(function (results) {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Salva modifiche'; }
@@ -419,6 +429,23 @@ document.addEventListener('DOMContentLoaded', function () {
       fetchData();
     });
   }
+  // temperature e weather richiedono migrations/003-weather.sql: se manca,
+  // l'update fallirebbe in blocco perdendo anche data e FC. Al primo errore
+  // riproviamo senza, come già facciamo altrove.
+  function updatePlan(workoutId, completedAtIso, hr, temperature, weather) {
+    var base = { completed_at: completedAtIso, average_heart_rate: hr };
+    return sc.from('workout_plans')
+      .update(Object.assign({}, base, { temperature: temperature, weather: weather }))
+      .eq('id', workoutId).eq('user_id', currentUser.id)
+      .then(function (res) {
+        if (!res.error) return res;
+        console.warn('Archivio: colonne meteo non disponibili, eseguire ' +
+                     'migrations/003-weather.sql. Salvo senza.', res.error);
+        return sc.from('workout_plans').update(base)
+          .eq('id', workoutId).eq('user_id', currentUser.id);
+      });
+  }
+
   window.arcSaveEditCompletion = saveEditCompletion;
 
   // ── Utilità ───────────────────────────────────────────────────

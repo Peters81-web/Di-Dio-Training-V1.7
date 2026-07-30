@@ -321,16 +321,28 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (error) throw error;
             
             workouts = data || [];
-            displayWorkouts(workouts);
-            renderToday(workouts);
-            loadProgressionHints(workouts);
-            
+            // renderToday PRIMA di displayWorkouts: se quest'ultima
+            // sollevasse un errore, il riquadro "Oggi" resterebbe bloccato
+            // sullo spinner per sempre. Ogni render è isolato dagli altri.
+            safe(function () { renderToday(workouts); });
+            safe(function () { displayWorkouts(workouts); });
+            safe(function () { loadProgressionHints(workouts); });
+
         } catch (error) {
             console.error('Errore caricamento allenamenti:', error);
             showToast('Errore nel caricamento degli allenamenti', 'error');
             workouts = [];
-            displayWorkouts([]);
+            // Anche in errore il riquadro "Oggi" va chiuso: uno spinner
+            // eterno non dice niente all'utente.
+            safe(function () { renderToday([]); });
+            safe(function () { displayWorkouts([]); });
         }
+    }
+
+    // Esegue fn isolando gli errori: un render rotto non deve impedire
+    // agli altri di completare.
+    function safe(fn) {
+        try { fn(); } catch (e) { console.error('Dashboard render:', e); }
     }
     
     // ===== SEZIONE "OGGI" =====
