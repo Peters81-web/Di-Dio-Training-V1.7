@@ -187,6 +187,70 @@
     return /<gpx[\s>]/i.test(text) ? parseGpx(text) : parseTcx(text);
   }
 
+  // ── Stima calorie ─────────────────────────────────────────────
+  // Il TCX porta le calorie calcolate dall'orologio; il GPX non ha alcun
+  // campo calorie, quindi per quei file l'unica strada è stimarle.
+  //
+  // Con la frequenza cardiaca usiamo la formula di Keytel (2005), che
+  // lega il dispendio proprio alla FC ed è la piu attendibile fra quelle
+  // applicabili a questi dati. Senza FC ripieghiamo sui MET, che tengono
+  // conto solo del tipo di attività e della durata.
+  //
+  // Restano stime: vengono marcate come tali nel riepilogo.
+  var MET = {
+    running: 9.8, cycling: 7.5, nuoto: 7.0, walking: 3.5,
+    gym: 5.0, yoga: 2.5, mobility: 2.5
+  };
+
+  function estimateCalories(data, profile) {
+    var weight = profile && profile.weight  > 0 ? profile.weight : null;
+    var age    = profile && profile.age     > 0 ? profile.age    : null;
+    var min    = data.durationMin || 0;
+    if (!weight || min <= 0) return null;
+
+    var kcalMin;
+    if (data.avgHr > 0 && age) {
+      var female = String(profile.gender || '').toLowerCase().indexOf('femmin') === 0;
+      kcalMin = female
+        ? (-20.4022 + 0.4472 * data.avgHr - 0.1263 * weight + 0.0740 * age) / 4.184
+        : (-55.0969 + 0.6309 * data.avgHr + 0.1988 * weight + 0.2017 * age) / 4.184;
+    } else {
+      var met = MET[data.activityType] || 5.0;
+      kcalMin = met * 3.5 * weight / 200;
+    }
+
+    if (!(kcalMin > 0)) return null;
+    return Math.round(kcalMin * min);
+  }
+
+  // Dati del profilo necessari alla stima. Se qualcosa manca torniamo
+  // null: la stima viene semplicemente saltata, l'import prosegue.
+  async function loadProfileForCalories(userId, sc) {
+    try {
+      var res = await Promise.all([
+        sc.from('profiles').select('birthdate, gender').eq('id', userId).single(),
+        sc.from('body_measurements').select('weight').eq('user_id', userId)
+          .not('weight', 'is', null).order('date', { ascending: false }).limit(1)
+      ]);
+      var p = res[0].error ? {} : (res[0].data || {});
+      var w = res[1].error ? null : ((res[1].data || [])[0] || {}).weight;
+
+      var age = null;
+      if (p.birthdate) {
+        var bd = new Date(String(p.birthdate).slice(0, 10));
+        if (!isNaN(bd.getTime())) {
+          var t = new Date();
+          age = t.getFullYear() - bd.getFullYear();
+          var m = t.getMonth() - bd.getMonth();
+          if (m < 0 || (m === 0 && t.getDate() < bd.getDate())) age--;
+        }
+      }
+      return { weight: w, age: age, gender: p.gender };
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ── Salvataggio su Supabase ───────────────────────────────────
   async function saveImport(data, userId, sc) {
     const d = new Date(data.startIso);
@@ -194,12 +258,22 @@
     const timeLabel = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     // Nome con orario + momento giornata: distingue 2 allenamenti nello stesso giorno
     const name = data.activityLabel + ' — ' + dateLabel + ' · ' + timeLabel + ' (' + periodOfDay(d.getHours()) + ')';
+    // Calorie: se il file non le contiene (sempre, nel caso del GPX) le
+    // stimiamo dal profilo. Vengono etichettate come stimate, per non
+    // farle passare per un dato misurato.
+    let caloriesEstimated = false;
+    if (!data.calories) {
+      const profile = await loadProfileForCalories(userId, sc);
+      const est = estimateCalories(data, profile);
+      if (est) { data.calories = est; caloriesEstimated = true; }
+    }
+
     const summaryParts = [];
     if (data.distanceKm) summaryParts.push(data.distanceKm + ' km');
     summaryParts.push(data.durationMin + ' min');
-    if (data.calories) summaryParts.push(data.calories + ' kcal');
+    if (data.calories) summaryParts.push(data.calories + ' kcal' + (caloriesEstimated ? ' (stimate)' : ''));
     if (data.avgHr) summaryParts.push('FC ' + data.avgHr + ' bpm');
-    const summary = 'Importato da Garmin (TCX): ' + summaryParts.join(' · ');
+    const summary = 'Importato da Garmin: ' + summaryParts.join(' · ');
     const dateOnly = data.startIso.slice(0, 10);
 
     // 1) crea scheda completata

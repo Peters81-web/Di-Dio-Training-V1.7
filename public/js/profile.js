@@ -22,12 +22,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ─── Load ─────────────────────────────────────────────────────────────
+    // Legge un campo numerico del form: stringa vuota o valore non valido
+    // diventano null, così non finiscono nel DB come 0 o NaN.
+    function intOrNull(id) {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        const v = parseInt(el.value, 10);
+        return Number.isNaN(v) ? null : v;
+    }
+
     async function loadProfile() {
         try {
             const [profileRes, measureRes] = await Promise.all([
                 supabaseClient
                     .from('profiles')
-                    .select('full_name, birthdate, gender, avatar_url, fitness_goals')
+                    .select('full_name, birthdate, gender, avatar_url, fitness_goals, max_heart_rate, resting_heart_rate')
                     .eq('id', currentUser.id)
                     .single(),
                 supabaseClient
@@ -106,6 +115,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         setValue('editGender',       currentProfile.gender);
         setValue('editHeight',       latestMeasurement.height);
         setValue('editWeight',       latestMeasurement.weight);
+        setValue('editMaxHr',        currentProfile.max_heart_rate);
+        setValue('editRestHr',       currentProfile.resting_heart_rate);
         setValue('editGoal',         goals.primary_goal);
         setValue('editLevel',        goals.level);
         setValue('editFrequency',    goals.frequency);
@@ -142,6 +153,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 full_name:    fullName,
                 birthdate:    document.getElementById('editBirthDate').value || null,
                 gender:       document.getElementById('editGender').value,
+                // Richiedono migrations/002-hr-settings.sql
+                max_heart_rate:     intOrNull('editMaxHr'),
+                resting_heart_rate: intOrNull('editRestHr'),
                 fitness_goals,
                 updated_at:   new Date().toISOString()
             });

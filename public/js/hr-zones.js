@@ -30,10 +30,33 @@
     { n: 5, lo: 0.90, hi: 1.01, name: 'Massimale', desc: 'Massimo sforzo, breve durata',     color: '#ef4444' }
   ];
 
-  var maxHr = null;   // FC massima stimata
-  var age   = null;
+  var maxHr  = null;   // FC massima: misurata se disponibile, altrimenti stimata
+  var restHr = null;   // FC a riposo: abilita il metodo Karvonen
+  var age    = null;
+  var maxIsMeasured = false;
   var profileLoaded = false;
   var lastWorkouts  = null; // per ri-renderizzare quando arriva il profilo
+
+  // Confine inferiore di una zona, in bpm.
+  //
+  // Con la FC a riposo usiamo Karvonen (percentuale della RISERVA
+  // cardiaca): è il metodo di Garmin, e tiene conto di quanto si è
+  // allenati. Senza, ripieghiamo sulla percentuale della massima, che
+  // colloca le zone sensibilmente più in basso.
+  //
+  // Differenza reale misurata su un utente con riposo 59 e massima 179:
+  //   Karvonen  ->  119 131 143 155 167   (Garmin: 115 130 142 155 167)
+  //   % massima ->   89 106 124 142 159   (fuori di 20-25 bpm)
+  function hrAt(pct) {
+    if (restHr && maxHr > restHr) {
+      return Math.round(restHr + pct * (maxHr - restHr));
+    }
+    return Math.round(pct * maxHr);
+  }
+
+  function usingKarvonen() {
+    return !!(restHr && maxHr > restHr);
+  }
 
   // ── Età dalla data di nascita ────────────────────────────────────────────
   function ageFromBirthdate(birthdate) {
@@ -62,17 +85,39 @@
       var session = res.data && res.data.session;
       if (!session) return;
 
+      // max_heart_rate e resting_heart_rate esistono solo dopo
+      // migrations/002-hr-settings.sql: se manca, la query fallirebbe in
+      // blocco e le zone sparirebbero. Al primo errore ripieghiamo sulla
+      // sola data di nascita.
+      var uid = session.user.id;
+
+      function apply(row) {
+        profileLoaded = true;
+        row = row || {};
+        if (row.birthdate) age = ageFromBirthdate(row.birthdate);
+
+        if (row.max_heart_rate > 0) {
+          maxHr = row.max_heart_rate;
+          maxIsMeasured = true;
+        } else if (age) {
+          maxHr = estimateMaxHr(age);
+          maxIsMeasured = false;
+        }
+
+        if (row.resting_heart_rate > 0) restHr = row.resting_heart_rate;
+
+        if (lastWorkouts) render(lastWorkouts); // ridisegna ora che sappiamo i parametri
+      }
+
       sc.from('profiles')
-        .select('birthdate')
-        .eq('id', session.user.id)
-        .single()
+        .select('birthdate, max_heart_rate, resting_heart_rate')
+        .eq('id', uid).single()
         .then(function (r) {
-          profileLoaded = true;
-          if (!r.error && r.data && r.data.birthdate) {
-            age = ageFromBirthdate(r.data.birthdate);
-            if (age) maxHr = estimateMaxHr(age);
-          }
-          if (lastWorkouts) render(lastWorkouts); // ridisegna ora che sappiamo la FCmax
+          if (!r.error) return apply(r.data);
+          console.warn('Zone cardio: colonne FC non disponibili, eseguire ' +
+                       'migrations/002-hr-settings.sql. Ripiego sulla stima dall\'età.', r.error);
+          sc.from('profiles').select('birthdate').eq('id', uid).single()
+            .then(function (r2) { apply(r2.error ? null : r2.data); });
         });
     });
   }
@@ -112,13 +157,19 @@
     }
 
     // Accumula minuti e sessioni per zona
+    // Confini in bpm, calcolati una volta sola con il metodo attivo
+    // (Karvonen se abbiamo la FC a riposo, altrimenti % della massima).
+    var bounds = ZONES.map(function (z) {
+      return { lo: hrAt(z.lo), hi: hrAt(z.hi) };
+    });
+
     var acc = ZONES.map(function (z) { return { z: z, min: 0, count: 0 }; });
     withHr.forEach(function (w) {
-      var pct = w.average_heart_rate / maxHr;
+      var bpm = w.average_heart_rate;
       var idx = 0;
       for (var i = 0; i < ZONES.length; i++) {
         // sotto Z1 viene assorbito in Z1: è comunque lavoro rigenerante
-        if (pct < ZONES[i].hi) { idx = i; break; }
+        if (bpm < bounds[i].hi) { idx = i; break; }
         idx = ZONES.length - 1;
       }
       acc[idx].min   += (w.total_duration || 0);
@@ -133,9 +184,9 @@
       return (b.min - a.min) || (b.count - a.count);
     })[0];
 
-    var rows = acc.map(function (a) {
-      var loBpm = Math.round(a.z.lo * maxHr);
-      var hiBpm = Math.round(a.z.hi * maxHr);
+    var rows = acc.map(function (a, i) {
+      var loBpm = bounds[i].lo;
+      var hiBpm = bounds[i].hi;
       var share = totMin > 0 ? (a.min / totMin * 100) : 0;
       return '' +
         '<div class="hrz-row">' +
@@ -169,11 +220,27 @@
       '<div class="hrz-rows">' + rows + '</div>' +
       '<p class="hrz-note">' +
         '<i class="fas fa-circle-info" aria-hidden="true"></i> ' +
-        'FC massima stimata con la formula di Tanaka (208 − 0,7 × ' + age + ' anni). ' +
+        methodNote() + ' ' +
         'Ogni sessione viene attribuita per intero alla zona della sua <em>media</em>: ' +
         'un intervallato che alterna Z2 e Z5 risulterà tutto in Z3. ' +
         'Serve a leggere l\'orientamento degli allenamenti, non il tempo reale in ciascuna zona.' +
       '</p>';
+  }
+
+  // Spiega da dove escono i confini, e se manca qualcosa dice come
+  // ottenere le stesse zone di Garmin.
+  function methodNote() {
+    var src = maxIsMeasured
+      ? 'FC massima ' + maxHr + ' bpm (inserita da te).'
+      : 'FC massima ' + maxHr + ' bpm, stimata dall\'età con la formula di Tanaka (208 − 0,7 × ' + age + ').';
+
+    if (usingKarvonen()) {
+      return src + ' Zone calcolate sulla riserva cardiaca (Karvonen, riposo ' +
+             restHr + ' bpm): lo stesso metodo di Garmin.';
+    }
+    return src + ' Zone calcolate come percentuale della massima. ' +
+           '<strong>Garmin usa invece la riserva cardiaca</strong>, quindi lì i valori risultano più alti: ' +
+           'aggiungi la tua FC a riposo nel <a href="/profile">profilo</a> per far coincidere le zone.';
   }
 
   function msgBox(icon, text, extra) {
