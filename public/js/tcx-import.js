@@ -108,6 +108,19 @@
       if (!isNaN(la) && !isNaN(lo)) coords.push([la, lo]);
     }
 
+    // Temperatura: il TCX non ha un campo standard (a differenza del GPX,
+    // dove Garmin usa <gpxtpx:atemp>). Alcuni dispositivi la scrivono
+    // comunque in un'estensione: la cerchiamo per nome, e se non c'è
+    // resta null — si può sempre inserire a mano.
+    let tSum = 0, tCount = 0;
+    ['atemp', 'Temperature', 'temp'].forEach(function (tag) {
+      const els = activity.getElementsByTagNameNS('*', tag);
+      for (let i = 0; i < els.length; i++) {
+        const v = parseFloat(els[i].textContent);
+        if (!isNaN(v) && v > -60 && v < 60) { tSum += v; tCount++; }
+      }
+    });
+
     const m = mapSport(sport);
     return {
       activityType: m.type,
@@ -118,6 +131,7 @@
       calories: totalCal ? Math.round(totalCal) : null,
       avgHr: hrTime ? Math.round(hrWeighted / hrTime) : null,
       maxHr: maxHr || null,
+      temperature: tCount ? Math.round((tSum / tCount) * 10) / 10 : null,
       track: buildTrack(coords)
     };
   }
@@ -146,7 +160,7 @@
     const typeEl = doc.getElementsByTagNameNS('*', 'type')[0];
     if (typeEl && typeEl.textContent) sport = typeEl.textContent.trim();
 
-    let dist = 0, hrSum = 0, hrCount = 0;
+    let dist = 0, hrSum = 0, hrCount = 0, tempSum = 0, tempCount = 0;
     let firstTime = null, lastTime = null, prevLat = null, prevLon = null;
     const coords = []; // le stesse coordinate usate per la distanza, ora conservate
 
@@ -163,6 +177,16 @@
       if (tEl) { const tt = new Date(tEl.textContent.trim()); if (!isNaN(tt.getTime())) { if (!firstTime) firstTime = tt; lastTime = tt; } }
       const hrEl = p.getElementsByTagNameNS('*', 'hr')[0];
       if (hrEl) { const hv = parseFloat(hrEl.textContent) || 0; if (hv > 0) { hrSum += hv; hrCount++; } }
+
+      // Temperatura: Garmin la scrive come <gpxtpx:atemp> dentro
+      // TrackPointExtension, accanto a <gpxtpx:hr>. Stessa lettura
+      // indipendente dal namespace usata sopra per la frequenza cardiaca.
+      const tempEl = p.getElementsByTagNameNS('*', 'atemp')[0];
+      if (tempEl) {
+        const tv = parseFloat(tempEl.textContent);
+        // 0 è una temperatura legittima: si filtra solo su NaN e valori assurdi
+        if (!isNaN(tv) && tv > -60 && tv < 60) { tempSum += tv; tempCount++; }
+      }
     }
 
     const durationMin = (firstTime && lastTime)
@@ -178,6 +202,7 @@
       calories: null, // il GPX non contiene calorie
       avgHr: hrCount ? Math.round(hrSum / hrCount) : null,
       maxHr: null,
+      temperature: tempCount ? Math.round((tempSum / tempCount) * 10) / 10 : null,
       track: buildTrack(coords)
     };
   }
@@ -273,6 +298,9 @@
     summaryParts.push(data.durationMin + ' min');
     if (data.calories) summaryParts.push(data.calories + ' kcal' + (caloriesEstimated ? ' (stimate)' : ''));
     if (data.avgHr) summaryParts.push('FC ' + data.avgHr + ' bpm');
+    if (data.temperature !== null && data.temperature !== undefined) {
+      summaryParts.push(data.temperature + ' °C');
+    }
     const summary = 'Importato da Garmin: ' + summaryParts.join(' · ');
     const dateOnly = data.startIso.slice(0, 10);
 
@@ -291,20 +319,22 @@
       average_heart_rate: data.avgHr
     };
 
-    // max_heart_rate e gps_track esistono solo dopo
-    // migrations/001-gps-track.sql. Se la migrazione non è stata eseguita
-    // l'INSERT fallirebbe in blocco, quindi al primo errore riproviamo
-    // senza: meglio importare l'attività senza mappa che non importarla.
+    // max_heart_rate e gps_track vengono dalla migrazione 001, temperature
+    // dalla 003. Se una delle due non è stata eseguita l'INSERT fallirebbe
+    // in blocco, quindi al primo errore riproviamo senza: meglio importare
+    // l'attività senza questi extra che non importarla affatto.
     let planRes = await sc.from('workout_plans')
       .insert(Object.assign({}, basePlan, {
         max_heart_rate: data.maxHr,
-        gps_track: data.track
+        gps_track: data.track,
+        temperature: data.temperature
       }))
       .select('id').single();
 
     if (planRes.error) {
-      console.warn('Import: colonne mappa non disponibili, eseguire ' +
-                   'migrations/001-gps-track.sql. Importo senza traccia GPS.', planRes.error);
+      console.warn('Import: colonne opzionali non disponibili, eseguire le ' +
+                   'migrazioni in migrations/. Importo senza traccia GPS né temperatura.',
+                   planRes.error);
       planRes = await sc.from('workout_plans').insert(basePlan).select('id').single();
     }
 

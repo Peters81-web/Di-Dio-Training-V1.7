@@ -51,7 +51,7 @@
 //         dall'import Garmin) + FC massima. Richiede migrations/001.
 //   v29 → Zone cardio con Karvonen (come Garmin) + FC max/riposo nel
 //         profilo + calorie stimate per i GPX. Richiede migrations/002.
-const CACHE_NAME  = 'didio-v33';
+const CACHE_NAME  = 'didio-v34';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
