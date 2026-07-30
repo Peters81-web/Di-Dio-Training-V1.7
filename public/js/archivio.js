@@ -67,22 +67,45 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ── Fetch completamenti ───────────────────────────────────────
+  // gps_track e max_heart_rate esistono solo dopo migrations/001-gps-track.sql.
+  // Se la migrazione non è ancora stata eseguita, Postgres fa fallire l'INTERA
+  // query e l'archivio resterebbe vuoto. Quindi al primo errore riproviamo
+  // senza quelle due colonne: si perde la mappa, non l'intera pagina.
+  var BASE_COLS = 'id,workout_id,completed_at,actual_duration,calories_burned,' +
+                  'distance,heart_rate_avg,perceived_difficulty,rating,notes';
+  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate)';
+  var COLS_LEGACY   = BASE_COLS + ',workout_plans(name,activity_type)';
+
   function fetchData() {
+    query(COLS_WITH_MAP, function (res) {
+      if (res.error) {
+        console.warn('Archivio: colonne mappa non disponibili, ' +
+                     'eseguire migrations/001-gps-track.sql. Ripiego senza mappa.', res.error);
+        query(COLS_LEGACY, handle);
+        return;
+      }
+      handle(res);
+    });
+  }
+
+  function query(cols, cb) {
     sc.from('completed_workouts')
-      .select('id,workout_id,completed_at,actual_duration,calories_burned,distance,heart_rate_avg,perceived_difficulty,rating,notes,workout_plans(name,activity_type)')
+      .select(cols)
       .eq('user_id', currentUser.id)
       .order('completed_at', { ascending: false })
-      .then(function (res) {
-        if (res.error) {
-          console.error('Archivio: errore caricamento', res.error);
-          document.getElementById('arcGrid').innerHTML =
-            '<div class="arc-loading" style="color:#dc2626;">Errore nel caricamento. Riprova.</div>';
-          return;
-        }
-        allCompleted = res.data || [];
-        indexByDay();
-        render();
-      });
+      .then(cb);
+  }
+
+  function handle(res) {
+    if (res.error) {
+      console.error('Archivio: errore caricamento', res.error);
+      document.getElementById('arcGrid').innerHTML =
+        '<div class="arc-loading" style="color:#dc2626;">Errore nel caricamento. Riprova.</div>';
+      return;
+    }
+    allCompleted = res.data || [];
+    indexByDay();
+    render();
   }
 
   function indexByDay() {
@@ -194,6 +217,10 @@ document.addEventListener('DOMContentLoaded', function () {
       body.innerHTML = '<div class="arc-empty"><i class="fas fa-inbox"></i><p>Nessun allenamento questo giorno</p></div>';
     } else {
       body.innerHTML = entries.map(renderEntry).join('');
+      // Le mappe si disegnano ORA che i contenitori sono nel DOM e hanno
+      // dimensioni reali: Leaflet non sa calcolare lo zoom su un elemento
+      // di altezza zero.
+      if (window.routeMapRenderAll) window.routeMapRenderAll(body);
     }
 
     card.style.display = 'block';
@@ -220,7 +247,25 @@ document.addEventListener('DOMContentLoaded', function () {
     if (c.calories_burned) metrics.push(metric('fa-fire', c.calories_burned + ' kcal', 'calorie'));
     if (c.distance)        metrics.push(metric('fa-route', c.distance + ' km', 'distanza'));
     if (c.heart_rate_avg)  metrics.push(metric('fa-heart-pulse', c.heart_rate_avg + ' bpm', 'FC media'));
+    if (plan.max_heart_rate) metrics.push(metric('fa-arrow-up', plan.max_heart_rate + ' bpm', 'FC max'));
     if (c.rating)          metrics.push(metric('fa-star', c.rating + '/5', 'voto'));
+
+    // Mappa del percorso: solo se l'attività ha una traccia GPS registrata
+    // (le attività indoor non ne hanno). Il contenitore viene riempito da
+    // route-map.js dopo l'inserimento nel DOM: Leaflet ha bisogno che
+    // l'elemento sia già misurabile per calcolare lo zoom.
+    // jsonb normalmente arriva già come array da supabase-js, ma non do per
+    // scontato il tipo: se fosse una stringa la interpretiamo lo stesso.
+    var track = plan.gps_track;
+    if (typeof track === 'string') {
+      try { track = JSON.parse(track); } catch (e) { track = null; }
+    }
+    var mapHtml = '';
+    if (Array.isArray(track) && track.length > 1) {
+      var mapId = 'arcMap_' + String(c.id).replace(/[^a-zA-Z0-9]/g, '');
+      mapHtml = '<div class="arc-map" id="' + mapId + '" data-track="' +
+                esc(JSON.stringify(track)) + '"></div>';
+    }
 
     return '<div class="arc-entry">' +
       '<div class="arc-entry-top">' +
@@ -234,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '</div>' +
       '</div>' +
       (metrics.length ? '<div class="arc-entry-metrics">' + metrics.join('') + '</div>' : '') +
+      mapHtml +
       (c.notes ? '<div class="arc-entry-note">' + esc(c.notes) + '</div>' : '') +
       '</div>';
   }

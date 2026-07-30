@@ -47,7 +47,9 @@
 //         etichette sui bottoni icona) + dark mode rotta rimossa +
 //         2653 righe di codice morto eliminate + shortcuts nel manifest
 //   v27 → Zone cardio su /stats (FCmax da birthdate, nessuna colonna nuova)
-const CACHE_NAME  = 'didio-v27';
+//   v28 → Mappa dei percorsi nell'Archivio (traccia GPS salvata
+//         dall'import Garmin) + FC massima. Richiede migrations/001.
+const CACHE_NAME  = 'didio-v28';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

@@ -36,6 +36,34 @@
     return 'sera';
   }
 
+  // ── Traccia GPS ───────────────────────────────────────────────
+  // Un'ora di registrazione a 1 punto/secondo fa 3600 coppie: ~70 KB per
+  // riga, sprecati perché su una mappa larga qualche centinaio di pixel
+  // quei punti finiscono comunque sovrapposti. Sottocampioniamo a 500
+  // punti tenendo sempre il primo e l'ultimo (partenza e arrivo devono
+  // restare esatti) e arrotondiamo a 5 decimali, cioè circa un metro.
+  var MAX_TRACK_POINTS = 500;
+
+  function buildTrack(coords) {
+    if (!coords || coords.length === 0) return null;
+    var round = function (v) { return Math.round(v * 1e5) / 1e5; };
+
+    if (coords.length <= MAX_TRACK_POINTS) {
+      return coords.map(function (c) { return [round(c[0]), round(c[1])]; });
+    }
+
+    var step = (coords.length - 1) / (MAX_TRACK_POINTS - 1);
+    var out  = [];
+    for (var i = 0; i < MAX_TRACK_POINTS; i++) {
+      var c = coords[Math.round(i * step)];
+      out.push([round(c[0]), round(c[1])]);
+    }
+    // l'ultimo campionato può non essere l'ultimo reale: forziamolo
+    var last = coords[coords.length - 1];
+    out[out.length - 1] = [round(last[0]), round(last[1])];
+    return out;
+  }
+
   function parseTcx(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) {
@@ -69,6 +97,17 @@
       if (maxEl) { const mv = parseFloat(getText(maxEl, 'Value')) || 0; if (mv > maxHr) maxHr = mv; }
     }
 
+    // Coordinate dei trackpoint. Il TCX le espone come
+    // <Position><LatitudeDegrees>/<LongitudeDegrees>; le attività indoor
+    // (palestra, tapis roulant) semplicemente non hanno Position.
+    const positions = activity.getElementsByTagName('Position');
+    const coords = [];
+    for (let i = 0; i < positions.length; i++) {
+      const la = parseFloat(getText(positions[i], 'LatitudeDegrees'));
+      const lo = parseFloat(getText(positions[i], 'LongitudeDegrees'));
+      if (!isNaN(la) && !isNaN(lo)) coords.push([la, lo]);
+    }
+
     const m = mapSport(sport);
     return {
       activityType: m.type,
@@ -78,7 +117,8 @@
       distanceKm: totalMeters ? Math.round(totalMeters / 100) / 10 : null, // 1 decimale
       calories: totalCal ? Math.round(totalCal) : null,
       avgHr: hrTime ? Math.round(hrWeighted / hrTime) : null,
-      maxHr: maxHr || null
+      maxHr: maxHr || null,
+      track: buildTrack(coords)
     };
   }
 
@@ -108,6 +148,7 @@
 
     let dist = 0, hrSum = 0, hrCount = 0;
     let firstTime = null, lastTime = null, prevLat = null, prevLon = null;
+    const coords = []; // le stesse coordinate usate per la distanza, ora conservate
 
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
@@ -116,6 +157,7 @@
       if (!isNaN(lat) && !isNaN(lon)) {
         if (prevLat !== null) dist += haversine(prevLat, prevLon, lat, lon);
         prevLat = lat; prevLon = lon;
+        coords.push([lat, lon]);
       }
       const tEl = p.getElementsByTagNameNS('*', 'time')[0];
       if (tEl) { const tt = new Date(tEl.textContent.trim()); if (!isNaN(tt.getTime())) { if (!firstTime) firstTime = tt; lastTime = tt; } }
@@ -135,7 +177,8 @@
       distanceKm: dist ? Math.round(dist / 100) / 10 : null,
       calories: null, // il GPX non contiene calorie
       avgHr: hrCount ? Math.round(hrSum / hrCount) : null,
-      maxHr: null
+      maxHr: null,
+      track: buildTrack(coords)
     };
   }
 
@@ -160,7 +203,7 @@
     const dateOnly = data.startIso.slice(0, 10);
 
     // 1) crea scheda completata
-    const planRes = await sc.from('workout_plans').insert({
+    const basePlan = {
       user_id: userId,
       name: name,
       objective: 'Attività importata da Garmin',
@@ -172,7 +215,24 @@
       completed_at: data.startIso,
       scheduled_date: dateOnly,
       average_heart_rate: data.avgHr
-    }).select('id').single();
+    };
+
+    // max_heart_rate e gps_track esistono solo dopo
+    // migrations/001-gps-track.sql. Se la migrazione non è stata eseguita
+    // l'INSERT fallirebbe in blocco, quindi al primo errore riproviamo
+    // senza: meglio importare l'attività senza mappa che non importarla.
+    let planRes = await sc.from('workout_plans')
+      .insert(Object.assign({}, basePlan, {
+        max_heart_rate: data.maxHr,
+        gps_track: data.track
+      }))
+      .select('id').single();
+
+    if (planRes.error) {
+      console.warn('Import: colonne mappa non disponibili, eseguire ' +
+                   'migrations/001-gps-track.sql. Importo senza traccia GPS.', planRes.error);
+      planRes = await sc.from('workout_plans').insert(basePlan).select('id').single();
+    }
 
     if (planRes.error) throw planRes.error;
 
