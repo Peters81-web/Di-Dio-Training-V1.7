@@ -1264,3 +1264,174 @@
     transform: translateY(-5px);
   }
 }
+/* =============================================
+   SEZIONE "OGGI" — risponde a "cosa faccio adesso"
+   Prima la dashboard apriva con banner motivazionale e bilancio
+   calorico, e gli allenamenti finivano sotto la piega.
+   ============================================= */
+.today-hero {
+    background: linear-gradient(135deg, #4361ee 0%, #7c3aed 100%);
+    border-radius: var(--border-radius-lg, 12px);
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(67,97,238,.22);
+}
+
+.today-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+}
+
+.today-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .15rem;
+    line-height: 1.2;
+}
+
+.today-date {
+    font-size: .85rem;
+    color: rgba(255,255,255,.82);
+    margin: 0;
+}
+
+/* Striscia: da banner a tutta larghezza a indicatore compatto */
+.today-streak {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 999px;
+    padding: .4rem .8rem;
+    font-weight: 700;
+    font-size: .95rem;
+    flex-shrink: 0;
+    backdrop-filter: blur(6px);
+}
+.today-streak i { color: rgba(255,255,255,.55); }
+.today-streak.is-active i { color: #fdba74; }
+.today-streak-badge { font-size: 1rem; margin-left: .1rem; }
+
+/* Allenamenti di oggi */
+.today-item {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    background: rgba(255,255,255,.14);
+    border-radius: 10px;
+    padding: .75rem .9rem;
+    margin-bottom: .55rem;
+}
+.today-item:last-child { margin-bottom: 0; }
+.today-item.is-done { opacity: .72; }
+
+.today-item-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.today-item-info { flex: 1; min-width: 0; }
+.today-item-name {
+    font-weight: 600;
+    font-size: .95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.today-item-meta { font-size: .76rem; color: rgba(255,255,255,.78); }
+
+.today-item-done {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #bbf7d0;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    flex-shrink: 0;
+}
+
+.today-empty-msg {
+    font-size: .92rem;
+    color: rgba(255,255,255,.9);
+    margin: 0 0 .85rem;
+}
+.today-empty-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.today-empty-actions .btn-outline {
+    background: rgba(255,255,255,.14) !important;
+    border: 1.5px solid rgba(255,255,255,.45) !important;
+    color: #fff !important;
+}
+
+@media (max-width: 560px) {
+    .today-hero { padding: 1.15rem 1.1rem; }
+    .today-title { font-size: 1.25rem; }
+    .today-empty-actions .btn { flex: 1; justify-content: center; }
+}
+
+/* =============================================
+   BILANCIO CALORICO COMPATTO
+   Il dettaglio BMR/TDEE occupava mezzo schermo sopra la piega per
+   un'informazione che si consulta: ora si apre al tocco.
+   ============================================= */
+.cb-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.cb-compact-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-primary, #1e293b);
+    line-height: 1.1;
+}
+.cb-compact-value span { font-size: .95rem; font-weight: 600; color: #94a3b8; }
+
+.cb-compact-label {
+    font-size: .74rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-top: .15rem;
+}
+
+.cb-compact-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: .88rem;
+}
+.cb-compact-chip.is-deficit { background: #dcfce7; color: #15803d; }
+.cb-compact-chip.is-surplus { background: #fef3c7; color: #b45309; }
+
+.cb-details { margin-top: 1rem; border-top: 1px solid var(--border-light, #f1f5f9); padding-top: .5rem; }
+.cb-details-toggle {
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #64748b;
+    list-style: none;
+    padding: .4rem 0;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+}
+.cb-details-toggle::-webkit-details-marker { display: none; }
+.cb-details-toggle i { transition: transform .18s; font-size: .7rem; }
+.cb-details[open] .cb-details-toggle i { transform: rotate(90deg); }
+.cb-details-toggle:hover { color: var(--primary-color, #4361ee); }
