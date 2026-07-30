@@ -69,32 +69,36 @@ function streakBadge(streak) {
     return '';
 }
 
+// La striscia non è più un banner a tutta larghezza in cima: occupava spazio
+// prezioso sopra la piega per dire "Inizia oggi!" a chi non si è ancora
+// allenato. Ora è un indicatore compatto nell'intestazione "Oggi".
 function renderStreak(streak) {
-    const banner = document.getElementById('streakBanner');
-    const count  = document.getElementById('streakCount');
-    const title  = document.getElementById('streakTitle');
-    const sub    = document.getElementById('streakSub');
-    const badge  = document.getElementById('streakBadge');
-
-    if (!banner) return;
+    const chip  = document.getElementById('todayStreak');
+    const count = document.getElementById('streakCount');
+    if (!chip || !count) return;
 
     count.textContent = streak;
 
-    if (streak === 0) {
-        title.textContent = 'Inizia oggi!';
-        sub.textContent   = 'Completa un allenamento per avviare la tua striscia';
-    } else if (streak === 1) {
-        title.textContent = 'Primo giorno — ottimo inizio!';
-        sub.textContent   = 'Continua domani per costruire la tua striscia';
-    } else {
-        title.textContent = `${streak} giorni consecutivi!`;
-        sub.textContent   = streak >= 7
-            ? 'Sei inarrestabile — continua così!'
-            : 'Stai costruendo una grande abitudine!';
-    }
+    const badge = streakBadge(streak);
+    chip.classList.toggle('is-active', streak > 0);
+    chip.setAttribute('title',
+        streak === 0 ? 'Nessuna striscia attiva — completa un allenamento per avviarla'
+      : streak === 1 ? 'Primo giorno di striscia'
+      : streak + ' giorni consecutivi di allenamento'
+    );
 
-    badge.textContent = streakBadge(streak);
-    banner.style.display = 'flex';
+    // Il badge compare solo quando c'è un traguardo, così non è rumore
+    let badgeEl = chip.querySelector('.today-streak-badge');
+    if (badge) {
+        if (!badgeEl) {
+            badgeEl = document.createElement('span');
+            badgeEl.className = 'today-streak-badge';
+            chip.appendChild(badgeEl);
+        }
+        badgeEl.textContent = badge;
+    } else if (badgeEl) {
+        badgeEl.remove();
+    }
 }
 
 // ─── WEEKLY CALENDAR ──────────────────────────────────────────────────────────

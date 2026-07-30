@@ -54,28 +54,26 @@
 
     <main id="mainContent" class="container">
 
-        <!-- ── 1. STREAK & MOTIVAZIONE ──────────────────── -->
-        <div id="streakBanner" class="streak-banner" style="display:none;">
-            <div class="streak-flame">
-                <i class="fas fa-fire"></i>
-                <span id="streakCount">0</span>
+        <!-- ── 1. OGGI ──────────────────────────────────────
+             Risponde alla domanda che si ha aprendo l'app: "cosa devo fare
+             oggi?". Prima stava sotto banner motivazionale e bilancio
+             calorico, cioè sotto la piega. -->
+        <section class="today-hero" id="todayHero">
+            <div class="today-top">
+                <div class="today-greet">
+                    <h1 class="today-title" id="todayGreeting">Ciao!</h1>
+                    <p class="today-date" id="todayDate"></p>
+                </div>
+                <!-- Striscia in linea, non più a banner su tutta la larghezza -->
+                <div class="today-streak" id="todayStreak" title="Giorni consecutivi di allenamento">
+                    <i class="fas fa-fire" aria-hidden="true"></i>
+                    <span id="streakCount">0</span>
+                </div>
             </div>
-            <div class="streak-info">
-                <div class="streak-title" id="streakTitle">Inizia oggi!</div>
-                <div class="streak-sub"  id="streakSub">Completa un allenamento per avviare la tua striscia</div>
-            </div>
-            <div class="streak-badge" id="streakBadge"></div>
-        </div>
-
-        <!-- ── 1B. BILANCIO CALORICO STIMATO ──────────────── -->
-        <section class="dashboard-section" id="caloricBalanceSection" style="display:none;">
-            <div class="section-header">
-                <h2><i class="fas fa-balance-scale" style="color:#f59e0b;margin-right:.4rem;"></i>Bilancio Calorico Stimato</h2>
-            </div>
-            <div class="card caloric-balance-card" id="caloricBalanceCard">
+            <div class="today-body" id="todayBody">
                 <div class="loading-indicator">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <span>Calcolo stima...</span>
+                    <span>Controllo la giornata...</span>
                 </div>
             </div>
         </section>
@@ -85,10 +83,13 @@
             <div class="section-header">
                 <h2>I Tuoi Allenamenti</h2>
                 <div class="section-actions">
-                    <button id="resetDataBtn" class="btn btn-danger">
-                        <i class="fas fa-trash-alt"></i>
-                        <span>Cancella Dati</span>
-                    </button>
+                    <!-- Qui c'era "Cancella Dati": l'azione più distruttiva
+                         dell'app occupava il posto di quella principale.
+                         Spostata nel Profilo, sezione Zona Pericolosa. -->
+                    <a href="/workout" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        <span>Nuovo Allenamento</span>
+                    </a>
                 </div>
             </div>
             <div class="card-grid" id="workout-list">
@@ -99,10 +100,43 @@
             </div>
         </section>
 
-        <!-- ── 3. RECUPERO + RIEPILOGO (2 colonne) ──────── -->
+        <!-- ── 3. QUESTA SETTIMANA ───────────────────────── -->
+        <section class="dashboard-section">
+            <div class="section-header">
+                <h2>Questa Settimana</h2>
+                <a href="/archivio" class="btn btn-outline">
+                    <i class="fas fa-calendar-days"></i>
+                    <span>Archivio</span>
+                </a>
+            </div>
+            <div class="card">
+                <div id="weekly-stats">
+                    <div class="loading-indicator">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Caricamento statistiche...</span>
+                    </div>
+                </div>
+                <div id="weekly-calendar" class="weekly-calendar" style="margin-top:1.25rem;"></div>
+            </div>
+        </section>
+
+        <!-- ── 4. BILANCIO CALORICO + RECUPERO (2 colonne) ──
+             Informazione di contorno: si consulta, non guida la giornata.
+             Il bilancio è compatto, il dettaglio BMR/TDEE si apre al tocco. -->
         <div class="dashboard-2col">
 
-            <!-- Recupero Muscolare -->
+            <section class="dashboard-section" id="caloricBalanceSection" style="display:none;margin-bottom:0;">
+                <div class="section-header">
+                    <h2><i class="fas fa-balance-scale" style="color:#f59e0b;margin-right:.4rem;"></i>Bilancio Calorico</h2>
+                </div>
+                <div class="card caloric-balance-card" id="caloricBalanceCard">
+                    <div class="loading-indicator">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Calcolo stima...</span>
+                    </div>
+                </div>
+            </section>
+
             <section class="dashboard-section recovery-section" style="margin-bottom:0;">
                 <div class="section-header">
                     <h2><i class="fas fa-heartbeat" style="color:#dc2626;margin-right:.4rem;"></i>Recupero Muscolare</h2>
@@ -114,26 +148,6 @@
                             <span>Analisi recupero...</span>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- Riepilogo Settimanale -->
-            <section class="dashboard-section" style="margin-bottom:0;">
-                <div class="section-header">
-                    <h2>Riepilogo Settimanale</h2>
-                    <a href="/archivio" class="btn btn-outline">
-                        <i class="fas fa-calendar-days"></i>
-                        <span>Archivio</span>
-                    </a>
-                </div>
-                <div class="card">
-                    <div id="weekly-stats">
-                        <div class="loading-indicator">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <span>Caricamento statistiche...</span>
-                        </div>
-                    </div>
-                    <div id="weekly-calendar" class="weekly-calendar" style="margin-top:1.25rem;"></div>
                 </div>
             </section>
 
@@ -277,33 +291,8 @@
   </div>
 </div>
 
-    <!-- Modal per conferma eliminazione dati -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Conferma Eliminazione</h2>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Sei sicuro di voler eliminare tutti i tuoi dati di allenamento?</p>
-                <p>Questa azione è irreversibile e cancellerà:</p>
-                <ul>
-                    <li>Tutti gli allenamenti salvati</li>
-                    <li>Tutte le statistiche e i progressi</li>
-                    <li>Tutti i programmi personalizzati</li>
-                </ul>
-                <div class="form-group" style="margin-top:1.25rem;">
-                    <label for="confirmDeleteInput">Scrivi <strong>ELIMINA</strong> per confermare:</label>
-                    <input type="text" id="confirmDeleteInput" class="form-control"
-                           placeholder="ELIMINA" autocomplete="off" style="margin-top:0.5rem;">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelDeleteBtn" class="btn btn-secondary">Annulla</button>
-                <button id="confirmDeleteBtn" class="btn btn-danger" disabled>Elimina Tutto</button>
-            </div>
-        </div>
-    </div>
+    <!-- Il modal di conferma eliminazione è stato spostato in
+         /js/danger-zone.js, usato dalla pagina Profilo. -->
 
     <!-- Template per le card degli allenamenti -->
     <template id="workout-card-template">

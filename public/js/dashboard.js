@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const elements = {
         workoutList: document.getElementById('workout-list'),
         weeklyStats: document.getElementById('weekly-stats'),
-        resetDataBtn: document.getElementById('resetDataBtn'),
         logoutBtn: document.getElementById('logoutBtn'),
         configureDashboardBtn: document.getElementById('configureDashboardBtn'),
         completeWorkoutForm: document.getElementById('completeWorkoutForm')
@@ -220,8 +219,29 @@ document.addEventListener('DOMContentLoaded', async function() {
             ? `<div class="cb-warn"><i class="fas fa-info-circle"></i> ${escapeHtml(r.reliability.message)}</div>`
             : '';
 
+        // Vista compatta: il numero che conta (spesa stimata oggi) e lo stato
+        // del bilancio. Il dettaglio BMR/TDEE occupava mezzo schermo sopra la
+        // piega per un'informazione che si consulta, non che guida la
+        // giornata: ora si apre al tocco.
+        //
+        // <details>/<summary> nativi: accessibili da tastiera e da screen
+        // reader senza una riga di JavaScript.
         card.innerHTML = `
-            <div class="cb-grid">
+            <div class="cb-compact">
+                <div class="cb-compact-main">
+                    <div class="cb-compact-value">${r.totalExpenditure} <span>kcal</span></div>
+                    <div class="cb-compact-label">Spesa stimata oggi</div>
+                </div>
+                <div class="cb-compact-chip ${inDeficit ? 'is-deficit' : 'is-surplus'}">
+                    <i class="fas ${inDeficit ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up'}" aria-hidden="true"></i>
+                    <span>${inDeficit ? '−' + deficitAbs + ' kcal' : 'Pareggio'}</span>
+                </div>
+            </div>
+
+            <details class="cb-details">
+                <summary class="cb-details-toggle">
+                    <i class="fas fa-chevron-right" aria-hidden="true"></i> Come è calcolato
+                </summary>
                 <div class="cb-breakdown">
                     <div class="cb-row">
                         <div class="cb-row-label"><i class="fas fa-bed"></i> Fabbisogno base (BMR)</div>
@@ -236,37 +256,26 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <div class="cb-row-value">+ ${r.workoutKcal} <span>kcal</span></div>
                     </div>
                     <div class="cb-row cb-row-total">
-                        <div class="cb-row-label"><i class="fas fa-fire"></i> Spesa totale stimata oggi</div>
+                        <div class="cb-row-label"><i class="fas fa-fire"></i> Spesa totale stimata</div>
                         <div class="cb-row-value">${r.totalExpenditure} <span>kcal</span></div>
                     </div>
                 </div>
-                <div class="cb-balance ${inDeficit ? 'cb-balance--deficit' : 'cb-balance--surplus'}">
-                    <div class="cb-balance-icon">
-                        ${inDeficit ? '<i class="fas fa-arrow-trend-down"></i>' : '<i class="fas fa-arrow-trend-up"></i>'}
-                    </div>
-                    <div class="cb-balance-label">
-                        ${inDeficit ? 'Deficit potenziale oggi' : 'Pareggio / surplus'}
-                    </div>
-                    <div class="cb-balance-value">
-                        ${inDeficit ? '−' : ''}${deficitAbs} <span>kcal</span>
-                    </div>
-                    <div class="cb-balance-note">
-                        ${inDeficit
-                            ? 'Se mantieni la dieta abituale, sei in deficit di queste calorie grazie agli allenamenti di oggi.'
-                            : 'Oggi non hai ancora generato deficit con gli allenamenti. Aggiungi una sessione per crearne uno.'
-                        }
-                    </div>
+                <p class="cb-balance-note">
+                    ${inDeficit
+                        ? 'Se mantieni la dieta abituale, sei in deficit di queste calorie grazie agli allenamenti di oggi.'
+                        : 'Oggi non hai ancora generato deficit con gli allenamenti. Aggiungi una sessione per crearne uno.'
+                    }
+                </p>
+                ${reliabilityMsg}
+                <div class="cb-disclaimer">
+                    <i class="fas fa-info-circle"></i>
+                    <span>
+                        <strong>Stima indicativa</strong> basata su formula Mifflin-St Jeor (BMR) e moltiplicatore attività ${r.activityFactor}.
+                        Variazione individuale ±10-15%. Per un piano nutrizionale personalizzato consulta un dietista certificato.
+                        Non include cosa mangi (intake calorico) — il "deficit potenziale" assume che tu mangi al tuo TDEE base abituale.
+                    </span>
                 </div>
-            </div>
-            ${reliabilityMsg}
-            <div class="cb-disclaimer">
-                <i class="fas fa-info-circle"></i>
-                <span>
-                    <strong>Stima indicativa</strong> basata su formula Mifflin-St Jeor (BMR) e moltiplicatore attività ${r.activityFactor}.
-                    Variazione individuale ±10-15%. Per un piano nutrizionale personalizzato consulta un dietista certificato.
-                    Non include cosa mangi (intake calorico) — il "deficit potenziale" assume che tu mangi al tuo TDEE base abituale.
-                </span>
-            </div>
+            </details>
         `;
     }
     
@@ -277,8 +286,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Se mancassero, Postgres farebbe fallire l'INTERA query e la dashboard
     // resterebbe senza allenamenti: qui è la pagina principale, quindi vale
     // la pena tenere un ripiego invece di rischiare di svuotarla.
+    // scheduled_date e completed servono alla sezione "Oggi": senza non si
+    // può sapere cosa è in programma per la giornata.
     const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
-                              'difficulty, objective, warmup, main_phase, cooldown, notes, created_at';
+                              'difficulty, objective, warmup, main_phase, cooldown, notes, created_at, ' +
+                              'scheduled_date, completed';
     const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate';
 
     function isMissingColumnError(err) {
@@ -310,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             workouts = data || [];
             displayWorkouts(workouts);
+            renderToday(workouts);
             loadProgressionHints(workouts);
             
         } catch (error) {
@@ -320,6 +333,84 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
+    // ===== SEZIONE "OGGI" =====
+
+    /**
+     * Risponde a "cosa devo fare oggi?" sopra la piega.
+     * Gli allenamenti sono raggruppati per mese in cartelle collassabili:
+     * senza questa sezione, per sapere cosa c'è oggi bisognava aprire la
+     * cartella del mese e cercare la data a mano.
+     */
+    function renderToday(list) {
+        const greetEl = document.getElementById('todayGreeting');
+        const dateEl  = document.getElementById('todayDate');
+        const bodyEl  = document.getElementById('todayBody');
+        if (!bodyEl) return;
+
+        if (dateEl) {
+            const d = new Date();
+            const s = d.toLocaleDateString('it-IT', {
+                weekday: 'long', day: 'numeric', month: 'long'
+            });
+            dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+        }
+        if (greetEl) greetEl.textContent = greeting();
+
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const todays = (list || []).filter(w =>
+            (w.scheduled_date || '').slice(0, 10) === todayKey
+        );
+
+        if (todays.length === 0) {
+            bodyEl.innerHTML = `
+                <div class="today-empty">
+                    <p class="today-empty-msg">Nessun allenamento in programma per oggi.</p>
+                    <div class="today-empty-actions">
+                        <a href="/workout" class="btn btn-primary">
+                            <i class="fas fa-plus" aria-hidden="true"></i> Crea allenamento
+                        </a>
+                        <a href="/ai-trainer" class="btn btn-outline">
+                            <i class="fas fa-robot" aria-hidden="true"></i> Chiedi all'AI
+                        </a>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        bodyEl.innerHTML = todays.map(w => {
+            const icon = window.AppCore
+                ? window.AppCore.getActivityIcon(w.activity_id, w.activity_type)
+                : 'fa-dumbbell';
+            const done = !!w.completed;
+            return `
+                <div class="today-item${done ? ' is-done' : ''}">
+                    <div class="today-item-icon"><i class="fas ${icon}" aria-hidden="true"></i></div>
+                    <div class="today-item-info">
+                        <div class="today-item-name">${escapeHtml(w.name || 'Allenamento')}</div>
+                        <div class="today-item-meta">
+                            ${w.total_duration ? escapeHtml(String(w.total_duration)) + ' min' : ''}
+                            ${w.objective ? ' · ' + escapeHtml(w.objective) : ''}
+                        </div>
+                    </div>
+                    ${done
+                        ? '<span class="today-item-done"><i class="fas fa-check" aria-hidden="true"></i> Fatto</span>'
+                        : `<button class="btn btn-success btn-sm" onclick="completeWorkout('${escapeHtml(w.id)}')">
+                             <i class="fas fa-check" aria-hidden="true"></i> Completa
+                           </button>`}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function greeting() {
+        const h = new Date().getHours();
+        if (h < 6)  return 'Buonanotte!';
+        if (h < 12) return 'Buongiorno!';
+        if (h < 18) return 'Buon pomeriggio!';
+        return 'Buonasera!';
+    }
+
     /**
      * Carica le statistiche settimanali
      */
@@ -1086,70 +1177,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // ===== GESTIONE RESET DATI =====
     
-    /**
-     * Reset completo dei dati utente
-     */
-    async function resetUserData() {
-        const input = document.getElementById('confirmDeleteInput');
-        if (!input || input.value !== 'ELIMINA') return;
+    // L'eliminazione totale dei dati vive ora in /js/danger-zone.js, sulla
+    // pagina Profilo: non deve stare fra le azioni quotidiane.
 
-        try {
-            showLoading();
-
-            // Elimina tutti i dati dell'utente
-            // NOTA: Supabase NON lancia eccezioni su query error (ritorna {error}),
-            // quindi Promise.all maschererebbe i fallimenti parziali. Usiamo
-            // allSettled + ispezione esplicita di result.error per ogni tabella.
-            const targets = [
-                { table: 'workout_plans',      label: 'piani allenamento' },
-                { table: 'completed_workouts', label: 'allenamenti completati' },
-                { table: 'weekly_summaries',   label: 'riepiloghi settimanali' },
-                { table: 'body_measurements',  label: 'misure corporee' },
-                { table: 'user_preferences',   label: 'preferenze utente' }
-            ];
-
-            const results = await Promise.allSettled(
-                targets.map(t =>
-                    supabaseClient.from(t.table).delete().eq('user_id', currentUser.id)
-                )
-            );
-
-            // Raccoglie tabelle che hanno fallito (rete OR errore Supabase)
-            const failures = [];
-            results.forEach((r, i) => {
-                const label = targets[i].label;
-                if (r.status === 'rejected') {
-                    failures.push(`${label} (rete: ${r.reason?.message || 'errore sconosciuto'})`);
-                } else if (r.value?.error) {
-                    failures.push(`${label} (${r.value.error.message})`);
-                }
-            });
-
-            // Reset variabili locali (lo facciamo comunque: se rimangono dati
-            // l'utente li rivedrà al prossimo reload)
-            workouts = [];
-            displayWorkouts([]);
-            displayWeeklyStats([]);
-
-            if (failures.length === 0) {
-                showToast('Tutti i dati sono stati eliminati con successo', 'success');
-            } else if (failures.length < targets.length) {
-                console.warn('Reset parziale, fallimenti:', failures);
-                showToast(`Reset parziale — fallita eliminazione di: ${failures.join('; ')}`, 'warning', 8000);
-            } else {
-                console.error('Reset completamente fallito:', failures);
-                showToast(`Errore: impossibile eliminare i dati (${failures[0]})`, 'error', 8000);
-            }
-
-        } catch (error) {
-            console.error('Errore inatteso durante l\'eliminazione dei dati:', error);
-            showToast('Errore inatteso durante l\'eliminazione dei dati', 'error');
-        } finally {
-            hideLoading();
-            closeModal('confirmModal');
-        }
-    }
-    
     // ===== EVENT LISTENERS =====
     
     /**
@@ -1158,40 +1188,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     function setupEventListeners() {
         // Menu mobile
         setupMobileMenu();
-        
-        // Pulsante reset dati — resetta input e disabilita bottone ad ogni apertura
-        if (elements.resetDataBtn) {
-            elements.resetDataBtn.addEventListener('click', () => {
-                const input = document.getElementById('confirmDeleteInput');
-                const btn = document.getElementById('confirmDeleteBtn');
-                if (input) input.value = '';
-                if (btn) btn.disabled = true;
-                openModal('confirmModal');
-            });
-        }
-        
-        // Conferma reset
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        const confirmDeleteInput = document.getElementById('confirmDeleteInput');
 
-        if (confirmDeleteInput && confirmDeleteBtn) {
-            confirmDeleteInput.addEventListener('input', () => {
-                confirmDeleteBtn.disabled = confirmDeleteInput.value !== 'ELIMINA';
-            });
-        }
+        // I listener dell'eliminazione totale (apertura modal, conferma,
+        // annulla) vivono ora in /js/danger-zone.js, sulla pagina Profilo.
 
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', resetUserData);
-        }
-
-        // Annulla reset
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        if (cancelDeleteBtn) {
-            cancelDeleteBtn.addEventListener('click', () => {
-                closeModal('confirmModal');
-            });
-        }
-        
         // Form completamento allenamento
         if (elements.completeWorkoutForm) {
             elements.completeWorkoutForm.addEventListener('submit', handleCompleteWorkoutSubmit);
