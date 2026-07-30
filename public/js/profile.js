@@ -22,6 +22,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ─── Load ─────────────────────────────────────────────────────────────
+    // Riconosce l'errore "colonna inesistente" di PostgREST, che arriva sia
+    // come codice PGRST204 sia come messaggio "Could not find the 'x' column
+    // ... in the schema cache". Serve a distinguerlo da errori veri (rete,
+    // permessi, vincoli violati), che non vanno mascherati con un ritentativo.
+    function isMissingColumnError(err) {
+        if (!err) return false;
+        if (err.code === 'PGRST204' || err.code === '42703') return true;
+        const m = String(err.message || '').toLowerCase();
+        return m.includes('could not find') && m.includes('column');
+    }
+
     // Legge un campo numerico del form: stringa vuota o valore non valido
     // diventano null, così non finiscono nel DB come 0 o NaN.
     function intOrNull(id) {
@@ -31,14 +42,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Number.isNaN(v) ? null : v;
     }
 
+    // Colonne del profilo. Quelle FC esistono solo dopo
+    // migrations/002-hr-settings.sql: senza, la select fallisce in blocco e
+    // il profilo si mostrerebbe VUOTO (nome, data di nascita, obiettivi
+    // compresi). Quindi teniamo pronta una versione ridotta.
+    const PROFILE_COLS_FULL   = 'full_name, birthdate, gender, avatar_url, fitness_goals, max_heart_rate, resting_heart_rate';
+    const PROFILE_COLS_LEGACY = 'full_name, birthdate, gender, avatar_url, fitness_goals';
+
     async function loadProfile() {
         try {
             const [profileRes, measureRes] = await Promise.all([
-                supabaseClient
-                    .from('profiles')
-                    .select('full_name, birthdate, gender, avatar_url, fitness_goals, max_heart_rate, resting_heart_rate')
-                    .eq('id', currentUser.id)
-                    .single(),
+                fetchProfileRow(),
                 supabaseClient
                     .from('body_measurements')
                     .select('height, weight')
@@ -53,6 +67,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('Errore caricamento profilo:', err);
         }
+    }
+
+    async function fetchProfileRow() {
+        const res = await supabaseClient
+            .from('profiles').select(PROFILE_COLS_FULL)
+            .eq('id', currentUser.id).single();
+
+        if (!res.error || !isMissingColumnError(res.error)) return res;
+
+        console.warn('Profilo: colonne FC non disponibili, eseguire ' +
+                     'migrations/002-hr-settings.sql. Carico senza.', res.error);
+        return supabaseClient
+            .from('profiles').select(PROFILE_COLS_LEGACY)
+            .eq('id', currentUser.id).single();
     }
 
     // ─── Display ──────────────────────────────────────────────────────────
@@ -145,20 +173,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             equipment:     document.getElementById('editEquipment').value,
         };
 
-        const { error: profileErr } = await supabaseClient
+        const baseProfile = {
+            id:           currentUser.id,
+            user_id:      currentUser.id,
+            full_name:    fullName,
+            birthdate:    document.getElementById('editBirthDate').value || null,
+            gender:       document.getElementById('editGender').value,
+            fitness_goals,
+            updated_at:   new Date().toISOString()
+        };
+
+        // max_heart_rate e resting_heart_rate esistono solo dopo
+        // migrations/002-hr-settings.sql. Senza, l'upsert fallisce in blocco
+        // e va perso TUTTO il salvataggio (nome, data di nascita, obiettivi),
+        // non solo i due campi nuovi. Quindi al primo errore riproviamo senza:
+        // meglio salvare il profilo perdendo i dati FC che non salvare nulla.
+        const hrFields = {
+            max_heart_rate:     intOrNull('editMaxHr'),
+            resting_heart_rate: intOrNull('editRestHr')
+        };
+
+        let { error: profileErr } = await supabaseClient
             .from('profiles')
-            .upsert({
-                id:           currentUser.id,
-                user_id:      currentUser.id,
-                full_name:    fullName,
-                birthdate:    document.getElementById('editBirthDate').value || null,
-                gender:       document.getElementById('editGender').value,
-                // Richiedono migrations/002-hr-settings.sql
-                max_heart_rate:     intOrNull('editMaxHr'),
-                resting_heart_rate: intOrNull('editRestHr'),
-                fitness_goals,
-                updated_at:   new Date().toISOString()
-            });
+            .upsert(Object.assign({}, baseProfile, hrFields));
+
+        let hrSkipped = false;
+        if (profileErr && isMissingColumnError(profileErr)) {
+            console.warn('Profilo: colonne FC non disponibili, eseguire ' +
+                         'migrations/002-hr-settings.sql. Salvo senza.', profileErr);
+            ({ error: profileErr } = await supabaseClient
+                .from('profiles').upsert(baseProfile));
+            hrSkipped = !profileErr && (hrFields.max_heart_rate !== null ||
+                                        hrFields.resting_heart_rate !== null);
+        }
 
         if (profileErr) {
             showToast('Errore nel salvataggio: ' + profileErr.message, 'error');
@@ -175,7 +222,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         closeModal('editProfileModal');
-        showToast('Profilo aggiornato con successo!', 'success');
+        // Se i campi FC sono stati saltati va detto, altrimenti l'utente
+        // crede di averli salvati e non capisce perché le zone non cambiano.
+        if (hrSkipped) {
+            showToast('Profilo salvato, ma i dati di frequenza cardiaca non sono ' +
+                      'ancora supportati dal database (migrazione 002 da eseguire).', 'warning');
+        } else {
+            showToast('Profilo aggiornato con successo!', 'success');
+        }
         await loadProfile();
     }
 
