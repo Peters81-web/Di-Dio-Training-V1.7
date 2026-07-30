@@ -273,14 +273,39 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Carica gli allenamenti dell'utente
      */
+    // gps_track e max_heart_rate arrivano da migrations/001-gps-track.sql.
+    // Se mancassero, Postgres farebbe fallire l'INTERA query e la dashboard
+    // resterebbe senza allenamenti: qui è la pagina principale, quindi vale
+    // la pena tenere un ripiego invece di rischiare di svuotarla.
+    const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
+                              'difficulty, objective, warmup, main_phase, cooldown, notes, created_at';
+    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate';
+
+    function isMissingColumnError(err) {
+        if (!err) return false;
+        if (err.code === 'PGRST204' || err.code === '42703') return true;
+        const m = String(err.message || '').toLowerCase();
+        return m.includes('could not find') && m.includes('column');
+    }
+
     async function loadWorkouts() {
         try {
-            const { data, error } = await supabaseClient
+            let { data, error } = await supabaseClient
                 .from('workout_plans')
-                .select('id, name, activity_id, activity_type, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
+                .select(WORKOUT_COLS_FULL)
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
-                
+
+            if (error && isMissingColumnError(error)) {
+                console.warn('Dashboard: colonne mappa non disponibili, eseguire ' +
+                             'migrations/001-gps-track.sql. Carico senza.', error);
+                ({ data, error } = await supabaseClient
+                    .from('workout_plans')
+                    .select(WORKOUT_COLS_BASE)
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false }));
+            }
+
             if (error) throw error;
             
             workouts = data || [];
@@ -671,7 +696,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Setup event listeners per la chiusura
         setupModalCloseListeners(modal);
-        
+
+        // La mappa si disegna ORA che il modal è nel DOM ed è visibile:
+        // su un contenitore di altezza zero Leaflet non calcola lo zoom.
+        if (window.routeMapRenderAll) window.routeMapRenderAll(modal);
+
         console.log('Modal dettagli allenamento aperto');
     };
     
@@ -750,8 +779,29 @@ document.addEventListener('DOMContentLoaded', async function() {
         `;
         
         const phases = createWorkoutPhasesContent(workout);
-        
-        return detailsGrid + phases;
+
+        return detailsGrid + createRouteMapContent(workout) + phases;
+    }
+
+    /**
+     * Contenitore per la mappa del percorso, se l'attività ha una traccia GPS.
+     * Viene riempito da route-map.js dopo che il modal è visibile.
+     */
+    function createRouteMapContent(workout) {
+        let track = workout.gps_track;
+        if (typeof track === 'string') {
+            try { track = JSON.parse(track); } catch (e) { track = null; }
+        }
+        if (!Array.isArray(track) || track.length < 2) return '';
+
+        return `
+            <div class="detail-section">
+                <h4 class="detail-section-title">
+                    <i class="fas fa-map-location-dot"></i> Percorso
+                </h4>
+                <div class="arc-map" data-track="${escapeHtml(JSON.stringify(track))}"></div>
+            </div>
+        `;
     }
     
     /**
