@@ -52,6 +52,22 @@
       return;
     }
 
+    // Se il contenitore non è ancora misurabile (antenato display:none,
+    // layout non ancora calcolato) Leaflet inizializzerebbe su 0x0 e la
+    // mappa resterebbe vuota. Aspettiamo che abbia dimensioni reali
+    // invece di dare per scontato il momento della chiamata.
+    if (el.clientHeight === 0 || el.clientWidth === 0) {
+      var attempts = el.__rmWait || 0;
+      if (attempts < 40) {           // ~40 frame, poco più di mezzo secondo
+        el.__rmWait = attempts + 1;
+        requestAnimationFrame(function () { renderOne(el); });
+        return;
+      }
+      fallback(el, 'Mappa non visualizzabile in questo contesto.');
+      return;
+    }
+    delete el.__rmWait;
+
     rendered.add(el);
 
     try {
@@ -85,13 +101,18 @@
 
       map.fitBounds(line.getBounds(), { padding: [18, 18] });
 
-      // Il contenitore può essere stato creato mentre era ancora nascosto
-      // (il dettaglio giorno parte con display:none): a quel punto Leaflet
-      // ha misurato zero. invalidateSize lo forza a rimisurare.
+      // Rete di sicurezza: se il contenitore cambia dimensione subito dopo
+      // (animazioni di apertura, scrollIntoView, rotazione del telefono)
+      // Leaflet va rimisurato, altrimenti restano tile grigi ai bordi.
       setTimeout(function () {
         map.invalidateSize();
         map.fitBounds(line.getBounds(), { padding: [18, 18] });
-      }, 120);
+      }, 150);
+
+      if (typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(function () { map.invalidateSize(); });
+        ro.observe(el);
+      }
 
     } catch (err) {
       rendered.delete(el);
