@@ -130,6 +130,29 @@
                     <input type="text" id="ecmNotes" placeholder="Es. ottima forma">
                 </div>
             </div>
+            <!-- Meteo: unico punto in cui si possono aggiungere a un'attività
+                 GIÀ importata. I campi nel modal "Completa allenamento" non
+                 servono, perché un import è già completato e quel modal non
+                 lo si apre mai. -->
+            <div class="ecm-form-row">
+                <div class="ecm-field">
+                    <label for="ecmTemperature">Temperatura (°C)</label>
+                    <input type="number" id="ecmTemperature" min="-60" max="60" step="0.1" placeholder="Es. 18">
+                </div>
+                <div class="ecm-field">
+                    <label for="ecmWeather">Condizioni</label>
+                    <select id="ecmWeather">
+                        <option value="">Non indicate</option>
+                        <option value="sereno">Sereno</option>
+                        <option value="nuvoloso">Nuvoloso</option>
+                        <option value="pioggia">Pioggia</option>
+                        <option value="vento">Vento</option>
+                        <option value="neve">Neve</option>
+                        <option value="afoso">Afoso</option>
+                        <option value="indoor">Al chiuso</option>
+                    </select>
+                </div>
+            </div>
         </div>
         <div class="ecm-footer">
             <button class="ecm-btn ecm-btn--secondary" onclick="arcCloseEditModal()">Annulla</button>

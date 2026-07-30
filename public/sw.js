@@ -1,9 +1,10 @@
 /* ================================================
-   Di Dio Training — Service Worker  v1.0
-   Strategy:
-   - Static assets (CSS, JS, fonts, images) → Cache-First
-   - HTML pages → Network-First with cache fallback
-   - API calls → Network-Only (never cache)
+   Di Dio Training — Service Worker
+   Strategie:
+   - Font e immagini  → Cache-First   (non cambiano a parità di nome)
+   - CSS e JS         → Network-First (devono restare allineati all'HTML)
+   - Pagine HTML      → Network-First con fallback offline
+   - Chiamate /api/   → Network-Only  (mai in cache)
    ================================================ */
 
 // IMPORTANTE: bumpare questa versione ad ogni deploy che modifica CSS/JS,
@@ -51,7 +52,15 @@
 //         dall'import Garmin) + FC massima. Richiede migrations/001.
 //   v29 → Zone cardio con Karvonen (come Garmin) + FC max/riposo nel
 //         profilo + calorie stimate per i GPX. Richiede migrations/002.
-const CACHE_NAME  = 'didio-v34';
+//   v30 → Fix mappa: veniva disegnata su un contenitore ancora nascosto
+//   v31 → Fix profilo: il salvataggio falliva senza migrations/002
+//   v32 → Mappa anche nel dettaglio allenamento della dashboard
+//   v33 → Dashboard riordinata (sezione Oggi) + Cancella Dati nel Profilo
+//   v34 → Temperatura dagli import + meteo manuale. Richiede migrations/003.
+//   v35 → CSS/JS passano a network-first: cache-first serviva codice
+//         vecchio con HTML nuovo dopo ogni deploy, e il riquadro "Oggi"
+//         restava in caricamento finché non si ricaricava la pagina.
+const CACHE_NAME  = 'didio-v35';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -126,9 +135,16 @@ self.addEventListener('fetch', event => {
   // API calls → Network-Only
   if (url.pathname.startsWith('/api/')) return;
 
-  // Static assets (CSS, JS, fonts, images) → Cache-First
-  if (isStaticAsset(url.pathname)) {
+  // Font e immagini → Cache-First (non cambiano mai a parità di nome)
+  if (isImmutableAsset(url.pathname)) {
     event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // CSS e JS → Network-First: devono restare allineati all'HTML,
+  // che è già servito network-first. Cache solo come fallback offline.
+  if (isCodeAsset(url.pathname)) {
+    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -142,8 +158,24 @@ self.addEventListener('fetch', event => {
   event.respondWith(networkFirst(request));
 });
 
-function isStaticAsset(pathname) {
-  return /\.(css|js|woff2?|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(pathname);
+// Font e immagini: il contenuto non cambia mai a parità di nome, quindi
+// cache-first è sicuro e velocissimo.
+function isImmutableAsset(pathname) {
+  return /\.(woff2?|ttf|otf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(pathname);
+}
+
+// CSS e JS: cache-first era la causa di un intero filone di bug. Il codice
+// cambia a ogni deploy MANTENENDO lo stesso nome, e cache-first non
+// rivalida mai: al primo caricamento dopo un aggiornamento la pagina
+// riceveva HTML nuovo (servito network-first) e JavaScript vecchio, con
+// risultati incoerenti — riquadri che restavano in caricamento, funzioni
+// assenti — che sparivano "magicamente" ricaricando.
+//
+// Ora vanno in network-first: si paga qualche centinaio di millisecondi
+// sulla prima richiesta, ma il codice è sempre allineato all'HTML. La
+// cache resta come fallback offline.
+function isCodeAsset(pathname) {
+  return /\.(css|js)$/i.test(pathname);
 }
 
 async function cacheFirst(request) {
