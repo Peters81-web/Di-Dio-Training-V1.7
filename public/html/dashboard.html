@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="/css/fase1-features.css">
     <link rel="stylesheet" href="/css/fase3-features.css">
     <link rel="stylesheet" href="/css/app-nav.css">
+    <!-- Leaflet per la mappa del percorso nel dettaglio allenamento -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <script src="/js/app-nav.js" defer></script>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#4361ee">
@@ -358,6 +360,10 @@
             crossorigin="anonymous"></script>
     <script src="/js/utils.js"></script>
     <script src="/js/supabase-config.js"></script>
+    <!-- Leaflet e route-map.js PRIMA di dashboard.js, che chiama
+         window.routeMapRenderAll all'apertura del dettaglio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="/js/route-map.js"></script>
     <script src="/js/dashboard.js"></script>
    
    <script>
