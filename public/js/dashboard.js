@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
                               'difficulty, objective, warmup, main_phase, cooldown, notes, created_at, ' +
                               'scheduled_date, completed';
-    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate';
+    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate, temperature, weather';
 
     function isMissingColumnError(err) {
         if (!err) return false;
@@ -866,12 +866,66 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </div>
                     <div class="detail-value">${escapeHtml(workout.objective || 'Non specificato')}</div>
                 </div>
+                ${weatherDetailItems(workout)}
             </div>
         `;
         
         const phases = createWorkoutPhasesContent(workout);
 
         return detailsGrid + createRouteMapContent(workout) + phases;
+    }
+
+    // Icona ed etichetta per ciascuna condizione meteo
+    const WEATHER = {
+        sereno:   { icon: 'fa-sun',           label: 'Sereno'    },
+        nuvoloso: { icon: 'fa-cloud',         label: 'Nuvoloso'  },
+        pioggia:  { icon: 'fa-cloud-rain',    label: 'Pioggia'   },
+        vento:    { icon: 'fa-wind',          label: 'Vento'     },
+        neve:     { icon: 'fa-snowflake',     label: 'Neve'      },
+        afoso:    { icon: 'fa-temperature-high', label: 'Afoso'  },
+        indoor:   { icon: 'fa-house',         label: 'Al chiuso' }
+    };
+
+    /**
+     * Riquadri temperatura e condizioni, mostrati solo se valorizzati.
+     *
+     * Sulla temperatura importata da Garmin il titolo dice "registrata
+     * dall'orologio": il sensore sta al polso e legge anche il calore
+     * corporeo, quindi segna tipicamente qualche grado più dell'aria.
+     * Chiamarla "temperatura ambiente" renderebbe fuorvianti i confronti
+     * fra un'uscita e l'altra.
+     */
+    function weatherDetailItems(workout) {
+        let html = '';
+
+        if (workout.temperature !== null && workout.temperature !== undefined) {
+            html += `
+                <div class="detail-item">
+                    <div class="detail-header">
+                        <i class="fas fa-temperature-half"></i>
+                        <span>Temperatura</span>
+                    </div>
+                    <div class="detail-value" title="Registrata dal sensore dell'orologio: tende a segnare qualche grado più dell'aria">
+                        ${escapeHtml(String(workout.temperature))} °C
+                    </div>
+                </div>
+            `;
+        }
+
+        const w = WEATHER[workout.weather];
+        if (w) {
+            html += `
+                <div class="detail-item">
+                    <div class="detail-header">
+                        <i class="fas ${w.icon}"></i>
+                        <span>Condizioni</span>
+                    </div>
+                    <div class="detail-value">${w.label}</div>
+                </div>
+            `;
+        }
+
+        return html;
     }
 
     /**
@@ -1111,15 +1165,33 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (error) throw error;
 
             // 2. Aggiornamento denormalizzato (non critico — completed_workouts è la fonte di verità)
-            const { error: updateError } = await supabaseClient
+            const planUpdate = {
+                completed: true,
+                completed_at: completedWorkoutData.completed_at,
+                average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
+            };
+
+            // temperature e weather richiedono migrations/003-weather.sql:
+            // li aggiungiamo solo se valorizzati, così un profilo senza
+            // migrazione non fa fallire il completamento dell'allenamento.
+            let { error: updateError } = await supabaseClient
                 .from('workout_plans')
-                .update({
-                    completed: true,
-                    completed_at: completedWorkoutData.completed_at,
-                    average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
-                })
+                .update(Object.assign({}, planUpdate, {
+                    temperature: formData.temperature,
+                    weather: formData.weather
+                }))
                 .eq('id', formData.workoutId)
                 .eq('user_id', currentUser.id);
+
+            if (updateError && isMissingColumnError(updateError)) {
+                console.warn('Completamento: colonne meteo non disponibili, eseguire ' +
+                             'migrations/003-weather.sql. Salvo senza.', updateError);
+                ({ error: updateError } = await supabaseClient
+                    .from('workout_plans')
+                    .update(planUpdate)
+                    .eq('id', formData.workoutId)
+                    .eq('user_id', currentUser.id));
+            }
 
             if (updateError) {
                 console.warn('Errore aggiornamento piano (non bloccante):', updateError.message);
@@ -1160,9 +1232,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             distance: parseFloat(document.getElementById('distance').value || 0),
             caloriesBurned: parseInt(document.getElementById('caloriesBurned').value || 0),
             heartRateAvg: parseInt(document.getElementById('heartRateAvg').value || 0),
+            // 0 °C è un valore legittimo: non si può usare "|| 0" come
+            // fallback, servirebbe a nascondere il dato invece che a
+            // segnalarne l'assenza. Campo vuoto -> null.
+            temperature: numOrNull('workoutTemperature'),
+            weather: document.getElementById('workoutWeather')?.value || null,
             notes: document.getElementById('workoutNotes').value.trim(),
             rating: parseInt(document.querySelector('input[name="rating"]:checked')?.value || 3)
         };
+    }
+
+    function numOrNull(id) {
+        const el = document.getElementById(id);
+        if (!el || el.value.trim() === '') return null;
+        const v = parseFloat(el.value);
+        return Number.isNaN(v) ? null : v;
     }
     
     /**

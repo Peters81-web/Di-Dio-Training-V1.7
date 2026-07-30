@@ -20,6 +20,16 @@ document.addEventListener('DOMContentLoaded', function () {
   var MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                 'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
+  var WEATHER = {
+    sereno:   { icon: 'fa-sun',              label: 'Sereno'    },
+    nuvoloso: { icon: 'fa-cloud',            label: 'Nuvoloso'  },
+    pioggia:  { icon: 'fa-cloud-rain',       label: 'Pioggia'   },
+    vento:    { icon: 'fa-wind',             label: 'Vento'     },
+    neve:     { icon: 'fa-snowflake',        label: 'Neve'      },
+    afoso:    { icon: 'fa-temperature-high', label: 'Afoso'     },
+    indoor:   { icon: 'fa-house',            label: 'Al chiuso' }
+  };
+
   var ACT = {
     running:  { label: 'Corsa',     icon: 'fa-person-running' },
     gym:      { label: 'Palestra',  icon: 'fa-dumbbell' },
@@ -73,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // senza quelle due colonne: si perde la mappa, non l'intera pagina.
   var BASE_COLS = 'id,workout_id,completed_at,actual_duration,calories_burned,' +
                   'distance,heart_rate_avg,perceived_difficulty,rating,notes';
-  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate)';
+  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate,temperature,weather)';
   var COLS_LEGACY   = BASE_COLS + ',workout_plans(name,activity_type)';
 
   function fetchData() {
@@ -253,6 +263,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (c.heart_rate_avg)  metrics.push(metric('fa-heart-pulse', c.heart_rate_avg + ' bpm', 'FC media'));
     if (plan.max_heart_rate) metrics.push(metric('fa-arrow-up', plan.max_heart_rate + ' bpm', 'FC max'));
     if (c.rating)          metrics.push(metric('fa-star', c.rating + '/5', 'voto'));
+    // Temperatura: dagli import Garmin viene dal sensore al polso, che
+    // legge anche il calore corporeo e segna qualche grado in più.
+    if (plan.temperature !== null && plan.temperature !== undefined) {
+      metrics.push(metric('fa-temperature-half', plan.temperature + ' °C', 'temperatura'));
+    }
+    var wx = WEATHER[plan.weather];
+    if (wx) metrics.push(metric(wx.icon, wx.label, 'condizioni'));
 
     // Mappa del percorso: solo se l'attività ha una traccia GPS registrata
     // (le attività indoor non ne hanno). Il contenitore viene riempito da
