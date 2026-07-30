@@ -49,7 +49,9 @@
 //   v27 → Zone cardio su /stats (FCmax da birthdate, nessuna colonna nuova)
 //   v28 → Mappa dei percorsi nell'Archivio (traccia GPS salvata
 //         dall'import Garmin) + FC massima. Richiede migrations/001.
-const CACHE_NAME  = 'didio-v28';
+//   v29 → Zone cardio con Karvonen (come Garmin) + FC max/riposo nel
+//         profilo + calorie stimate per i GPX. Richiede migrations/002.
+const CACHE_NAME  = 'didio-v29';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
