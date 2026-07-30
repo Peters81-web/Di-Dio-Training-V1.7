@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/app-nav.css">
     <link rel="stylesheet" href="/css/archivio.css">
+    <!-- Leaflet per la mappa dei percorsi. Versione pinnata; cdnjs è già
+         consentito dalla CSP, e i tile OpenStreetMap passano da img-src https: -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <script src="/js/app-nav.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/js/supabase-config.js"></script>
@@ -138,6 +141,10 @@
 </div>
 
 <script src="/js/utils.js"></script>
+<!-- Leaflet e route-map.js PRIMA di archivio.js: quest'ultimo chiama
+     window.routeMapRenderAll appena disegna il dettaglio del giorno -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/js/route-map.js"></script>
 <script src="/js/archivio.js"></script>
 
 </body>
