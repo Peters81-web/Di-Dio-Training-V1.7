@@ -217,13 +217,17 @@ document.addEventListener('DOMContentLoaded', function () {
       body.innerHTML = '<div class="arc-empty"><i class="fas fa-inbox"></i><p>Nessun allenamento questo giorno</p></div>';
     } else {
       body.innerHTML = entries.map(renderEntry).join('');
-      // Le mappe si disegnano ORA che i contenitori sono nel DOM e hanno
-      // dimensioni reali: Leaflet non sa calcolare lo zoom su un elemento
-      // di altezza zero.
-      if (window.routeMapRenderAll) window.routeMapRenderAll(body);
     }
 
     card.style.display = 'block';
+
+    // Le mappe si disegnano DOPO aver reso visibile la card: finché era
+    // display:none i contenitori misuravano 0x0 e Leaflet non poteva
+    // calcolare lo zoom, quindi la mappa restava vuota.
+    if (entries.length && window.routeMapRenderAll) {
+      window.routeMapRenderAll(body);
+    }
+
     // evidenzia la cella
     renderGrid();
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
