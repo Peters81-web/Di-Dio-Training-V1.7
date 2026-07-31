@@ -13,6 +13,15 @@
 (function () {
   'use strict';
 
+  // Riconosce l'errore "colonna inesistente" di PostgREST, per distinguerlo
+  // da errori veri (rete, permessi, vincoli) che NON vanno mascherati.
+  function isMissingColumnError(err) {
+    if (!err) return false;
+    if (err.code === 'PGRST204' || err.code === '42703') return true;
+    const m = String(err.message || '').toLowerCase();
+    return m.includes('could not find') && m.includes('column');
+  }
+
   // ── Parsing TCX ───────────────────────────────────────────────
   function getText(parent, tag) {
     const el = parent.getElementsByTagName(tag)[0];
@@ -336,7 +345,10 @@
       }))
       .select('id').single();
 
-    if (planRes.error) {
+    // Il ripiego scatta SOLO se mancano le colonne: un vincolo violato o un
+    // problema di permessi deve restare un errore visibile, non essere
+    // mascherato da un secondo tentativo silenzioso.
+    if (planRes.error && isMissingColumnError(planRes.error)) {
       console.warn('Import: colonne opzionali non disponibili, eseguire le ' +
                    'migrazioni in migrations/. Importo senza traccia GPS né temperatura.',
                    planRes.error);
