@@ -17,6 +17,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     return window.escapeHtml ? window.escapeHtml(html) : '';
   }
 
+  // Riconosce l'errore "colonna inesistente" di PostgREST, per distinguerlo
+  // da errori veri (rete, permessi, vincoli) che NON vanno mascherati da un
+  // ritentativo silenzioso.
+  function isMissingColumnError(err) {
+    if (!err) return false;
+    if (err.code === 'PGRST204' || err.code === '42703') return true;
+    const m = String(err.message || '').toLowerCase();
+    return m.includes('could not find') && m.includes('column');
+  }
+
   function esc(value) {
     if (value === null || value === undefined) return '';
     return window.escapeHtml ? window.escapeHtml(String(value)) : '';
@@ -442,7 +452,23 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     try {
-      const result = await supabaseClient.from('workout_plans').insert(workoutsWithUserId);
+      // source arriva da migrations/004: se non è stata eseguita, l'INSERT
+      // fallirebbe in blocco e il piano generato andrebbe perso. Al primo
+      // errore riproviamo senza quel campo — la provenienza resta comunque
+      // riconoscibile dall'obiettivo "Piano generato dall'AI Trainer".
+      let result = await supabaseClient.from('workout_plans').insert(workoutsWithUserId);
+
+      if (result.error && isMissingColumnError(result.error)) {
+        console.warn('AI Trainer: colonna source non disponibile, eseguire ' +
+                     'migrations/004-workout-source.sql. Salvo senza.', result.error);
+        const stripped = workoutsWithUserId.map(function (w) {
+          const copy = Object.assign({}, w);
+          delete copy.source;
+          return copy;
+        });
+        result = await supabaseClient.from('workout_plans').insert(stripped);
+      }
+
       if (result.error) throw result.error;
 
       window.showToast('Allenamenti salvati con successo!', 'success');
