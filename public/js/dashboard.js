@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Carica dati in parallelo per migliori performance
             await Promise.all([
                 loadWorkouts(),
+                loadCompletions(),
                 loadWeeklyStats(),
                 loadCaloricBalance()
             ]);
@@ -328,6 +329,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (err.code === 'PGRST204' || err.code === '42703') return true;
         const m = String(err.message || '').toLowerCase();
         return m.includes('could not find') && m.includes('column');
+    }
+
+    // workout_id -> { distance, calories_burned, heart_rate_avg }
+    // Serve al dettaglio: distanza, calorie e FC vivono in
+    // completed_workouts, mentre la dashboard legge solo workout_plans.
+    // Per le attività importate quei numeri finivano dentro una stringa di
+    // testo in main_phase, quindi non erano riutilizzabili.
+    let completionsByWorkout = {};
+
+    async function loadCompletions() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('completed_workouts')
+                .select('workout_id, distance, calories_burned, heart_rate_avg')
+                .eq('user_id', currentUser.id);
+            if (error) throw error;
+            completionsByWorkout = {};
+            (data || []).forEach(c => {
+                if (c.workout_id) completionsByWorkout[c.workout_id] = c;
+            });
+        } catch (err) {
+            // Non critico: senza, il dettaglio mostra solo i dati del piano
+            console.warn('Dettagli completamenti non disponibili:', err);
+            completionsByWorkout = {};
+        }
     }
 
     async function loadWorkouts() {
@@ -1002,37 +1028,46 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Crea il contenuto dei dettagli dell'allenamento
      */
-    function createWorkoutDetailsContent(workout) {
-        const detailsGrid = `
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <div class="detail-header">
-                        <i class="fas fa-clock"></i>
-                        <span>Durata</span>
-                    </div>
-                    <div class="detail-value">${formatDuration(workout.total_duration)}</div>
+    function detailItem(icon, label, value) {
+        return `
+            <div class="detail-item">
+                <div class="detail-header">
+                    <i class="fas ${icon}"></i>
+                    <span>${label}</span>
                 </div>
-                
-                <div class="detail-item">
-                    <div class="detail-header">
-                        <i class="fas fa-signal"></i>
-                        <span>Difficoltà</span>
-                    </div>
-                    <div class="detail-value">${escapeHtml(workout.difficulty || 'Non specificata')}</div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-header">
-                        <i class="fas fa-bullseye"></i>
-                        <span>Obiettivo</span>
-                    </div>
-                    <div class="detail-value">${escapeHtml(workout.objective || 'Non specificato')}</div>
-                </div>
-                ${weatherDetailItems(workout)}
+                <div class="detail-value">${value}</div>
             </div>
         `;
-        
-        const phases = createWorkoutPhasesContent(workout);
+    }
+
+    function createWorkoutDetailsContent(workout) {
+        const imported = isImported(workout);
+        const c = completionsByWorkout[workout.id] || {};
+        const items = [];
+
+        items.push(detailItem('fa-clock', 'Durata', formatDuration(workout.total_duration)));
+
+        if (imported) {
+            // Per un'attività importata i numeri veri (distanza, calorie, FC)
+            // finivano dentro una stringa in main_phase:
+            //   "Importato da Garmin: 5.3 km · 74 min · 392 kcal · FC 87 bpm"
+            // Illeggibile come dato e inutilizzabile per qualsiasi altra cosa.
+            // Qui vengono mostrati come metriche vere, prese da
+            // completed_workouts e workout_plans.
+            if (c.distance)        items.push(detailItem('fa-route', 'Distanza', escapeHtml(String(c.distance)) + ' km'));
+            if (c.calories_burned) items.push(detailItem('fa-fire', 'Calorie', escapeHtml(String(c.calories_burned)) + ' kcal'));
+            if (c.heart_rate_avg)  items.push(detailItem('fa-heart-pulse', 'FC media', escapeHtml(String(c.heart_rate_avg)) + ' bpm'));
+            if (workout.max_heart_rate) items.push(detailItem('fa-arrow-up', 'FC massima', escapeHtml(String(workout.max_heart_rate)) + ' bpm'));
+        } else {
+            // Per le schede da svolgere contano difficoltà e obiettivo.
+            // Su un'attività importata l'obiettivo è sempre "Attività
+            // importata da Garmin", che ripete l'etichetta di provenienza.
+            items.push(detailItem('fa-signal', 'Difficoltà', escapeHtml(workout.difficulty || 'Non specificata')));
+            items.push(detailItem('fa-bullseye', 'Obiettivo', escapeHtml(workout.objective || 'Non specificato')));
+        }
+
+        const detailsGrid = `<div class="detail-grid">${items.join('')}${weatherDetailItems(workout)}</div>`;
+        const phases = createWorkoutPhasesContent(workout, imported);
 
         return detailsGrid + createRouteMapContent(workout) + phases;
     }
@@ -1099,7 +1134,30 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (typeof track === 'string') {
             try { track = JSON.parse(track); } catch (e) { track = null; }
         }
-        if (!Array.isArray(track) || track.length < 2) return '';
+        const hasTrack = Array.isArray(track) && track.length > 1;
+
+        if (!hasTrack) {
+            // Senza traccia prima non compariva NULLA, e restava il dubbio se
+            // la mappa fosse rotta o l'attività non ne avesse. Per gli import
+            // spieghiamo il motivo: le attività caricate prima che salvassimo
+            // le tracce hanno perso le coordinate, e si recuperano solo
+            // reimportando il file originale.
+            if (!isImported(workout)) return '';
+            return `
+                <div class="detail-section">
+                    <h4 class="detail-section-title">
+                        <i class="fas fa-map-location-dot"></i> Percorso
+                    </h4>
+                    <p class="detail-nomap">
+                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                        Nessuna traccia GPS salvata per questa attività: è stata
+                        importata prima che l'app iniziasse a conservarla, oppure
+                        il file non conteneva coordinate (attività al chiuso).
+                        Reimportando il file originale la mappa comparirà.
+                    </p>
+                </div>
+            `;
+        }
 
         return `
             <div class="detail-section">
@@ -1114,9 +1172,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Crea il contenuto delle fasi dell'allenamento
      */
-    function createWorkoutPhasesContent(workout) {
+    function createWorkoutPhasesContent(workout, imported) {
         const phases = [];
-        
+
+        // Per le attività importate main_phase contiene solo il riepilogo
+        // testuale ("Importato da Garmin: 5.3 km · 74 min · ...") che ora è
+        // mostrato come metriche vere sopra: ripeterlo sarebbe rumore.
+        const skipMain = imported &&
+            /^Importato da Garmin/i.test(String(workout.main_phase || '').trim());
+
         if (workout.warmup) {
             phases.push({
                 title: 'Riscaldamento',
@@ -1125,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
         }
         
-        if (workout.main_phase) {
+        if (workout.main_phase && !skipMain) {
             phases.push({
                 title: 'Fase Principale',
                 icon: 'fa-dumbbell',
