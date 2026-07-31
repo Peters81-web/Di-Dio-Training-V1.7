@@ -309,9 +309,6 @@
       user_id: userId,
       name: name,
       objective: 'Attività importata da Garmin',
-      // Provenienza esplicita (migrations/004): un'attività importata è
-      // già svolta, quindi non va mostrata come scheda da completare.
-      source: 'garmin',
       main_phase: summary,
       activity_type: data.activityType,
       total_duration: data.durationMin,
@@ -330,7 +327,12 @@
       .insert(Object.assign({}, basePlan, {
         max_heart_rate: data.maxHr,
         gps_track: data.track,
-        temperature: data.temperature
+        temperature: data.temperature,
+        // Provenienza (migrations/004): un'attività importata è già svolta,
+        // quindi non va mostrata come scheda da completare. Sta QUI e non in
+        // basePlan perché basePlan è il ripiego, che deve contenere solo
+        // colonne esistenti da sempre.
+        source: 'garmin'
       }))
       .select('id').single();
 

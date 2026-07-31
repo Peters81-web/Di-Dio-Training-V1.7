@@ -286,12 +286,23 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Se mancassero, Postgres farebbe fallire l'INTERA query e la dashboard
     // resterebbe senza allenamenti: qui è la pagina principale, quindi vale
     // la pena tenere un ripiego invece di rischiare di svuotarla.
-    // scheduled_date e completed servono alla sezione "Oggi": senza non si
-    // può sapere cosa è in programma per la giornata.
+    // ATTENZIONE: WORKOUT_COLS_BASE è la lista di RIPIEGO, quella usata
+    // quando la query completa fallisce perché mancano colonne aggiunte da
+    // una migrazione. Deve quindi contenere SOLO colonne esistenti da
+    // sempre: infilarci una colonna nuova fa fallire anche il ripiego e la
+    // dashboard resta vuota con "Errore nel caricamento degli allenamenti".
+    //
+    // Ogni colonna introdotta da una migrazione va in WORKOUT_COLS_FULL.
     const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
                               'difficulty, objective, warmup, main_phase, cooldown, notes, created_at, ' +
-                              'scheduled_date, completed, source';
-    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate, temperature, weather';
+                              'scheduled_date, completed';
+
+    // Colonne aggiunte dalle migrazioni:
+    //   001 → gps_track, max_heart_rate
+    //   003 → temperature, weather
+    //   004 → source
+    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE +
+                              ', gps_track, max_heart_rate, temperature, weather, source';
 
     function isMissingColumnError(err) {
         if (!err) return false;
