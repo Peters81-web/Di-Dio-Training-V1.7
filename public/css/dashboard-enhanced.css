@@ -1018,14 +1018,6 @@
 }
 
 /* ── Balance result dx ──────────────────────────────────── */
-.cb-balance-note {
-    font-size: .78rem;
-    line-height: 1.45;
-    opacity: .92;
-    max-width: 32ch;
-    margin-top: .25rem;
-}
-
 /* ── Stato profilo incompleto ───────────────────────────── */
 .cb-incomplete {
     display: grid;
@@ -1524,7 +1516,15 @@
     border-radius: 0 8px 8px 0;
 }
 
-.cb-details .cb-breakdown { margin-top: .35rem; }
+/* Il padding orizzontale di .cb-breakdown (1.75rem) veniva dal vecchio
+   layout a tutto sangue, in cui la card non aveva padding proprio. Ora lo
+   ha, quindi quel padding rientrava le righe rispetto al resto del
+   contenuto e la nota qui sotto sembrava disallineata. */
+.cb-details .cb-breakdown {
+    margin-top: .35rem;
+    padding: 0;
+    background: transparent;
+}
 
 .cb-details .cb-disclaimer {
     margin-top: .85rem;
