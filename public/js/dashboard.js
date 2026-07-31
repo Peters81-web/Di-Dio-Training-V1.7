@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // può sapere cosa è in programma per la giornata.
     const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
                               'difficulty, objective, warmup, main_phase, cooldown, notes, created_at, ' +
-                              'scheduled_date, completed';
+                              'scheduled_date, completed, source';
     const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE + ', gps_track, max_heart_rate, temperature, weather';
 
     function isMissingColumnError(err) {
@@ -325,7 +325,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             // sollevasse un errore, il riquadro "Oggi" resterebbe bloccato
             // sullo spinner per sempre. Ogni render è isolato dagli altri.
             safe(function () { renderToday(workouts); });
-            safe(function () { displayWorkouts(workouts); });
+            safe(function () { renderSourceFilters(workouts); });
+            safe(function () { displayWorkouts(filterBySource(workouts)); });
             safe(function () { loadProgressionHints(workouts); });
 
         } catch (error) {
@@ -477,7 +478,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         elements.workoutList.classList.toggle('has-groups', workoutsData.length > 0);
 
         if (workoutsData.length === 0) {
-            elements.workoutList.innerHTML = `
+            // Distinguere i due casi: un filtro senza risultati non è la
+            // stessa cosa di un utente che non ha ancora nulla. Proporre
+            // "crea il tuo primo allenamento" a chi ne ha venti, solo perché
+            // ha filtrato per Garmin, sarebbe assurdo.
+            const filtering = activeSource !== 'all' && workouts.length > 0;
+            elements.workoutList.innerHTML = filtering ? `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <h3>Nessun allenamento in questa categoria</h3>
+                    <p>Non hai allenamenti con provenienza "${escapeHtml(SOURCE[activeSource].short)}".</p>
+                    <button type="button" class="btn btn-primary" id="clearSourceFilter">
+                        <i class="fas fa-list"></i> Mostra tutti
+                    </button>
+                </div>
+            ` : `
                 <div class="empty-state">
                     <div class="empty-state-icon">
                         <i class="fas fa-dumbbell"></i>
@@ -489,6 +506,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     </a>
                 </div>
             `;
+            const clear = document.getElementById('clearSourceFilter');
+            if (clear) clear.addEventListener('click', () => {
+                activeSource = 'all';
+                renderSourceFilters(workouts);
+                displayWorkouts(workouts);
+            });
             return;
         }
 
@@ -543,7 +566,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         card.style.animationDelay = `${index * 0.08}s`;
         card.innerHTML = `
             <div class="workout-header">
-                <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
+                <div class="workout-header-text">
+                    <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
+                    ${sourceBadge(workout)}
+                </div>
                 <div class="workout-icon">
                     <i class="fas ${iconClass}"></i>
                 </div>
@@ -569,21 +595,114 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <i class="fas fa-eye"></i>
                     <span>Visualizza</span>
                 </button>
+                ${isImported(workout) ? '' : `
                 <button class="btn btn-secondary edit-btn" onclick="editWorkout('${workout.id}')">
                     <i class="fas fa-edit"></i>
                     <span>Modifica</span>
-                </button>
+                </button>`}
                 <button class="btn btn-danger delete-btn" onclick="confirmDeleteWorkout('${workout.id}')">
                     <i class="fas fa-trash"></i>
                     <span>Elimina</span>
                 </button>
+                ${isImported(workout) ? '' : `
                 <button class="btn btn-success complete-btn" onclick="completeWorkout('${workout.id}')">
                     <i class="fas fa-check"></i>
                     <span>Completa</span>
-                </button>
+                </button>`}
             </div>
         `;
         return card;
+    }
+
+    // ===== PROVENIENZA =====
+
+    const SOURCE = {
+        garmin: { label: 'Da Garmin',  icon: 'fa-file-import', short: 'Garmin'  },
+        ai:     { label: "Dall'AI",    icon: 'fa-robot',         short: 'AI'      },
+        manual: { label: 'Create da te', icon: 'fa-pen',         short: 'Manuali' }
+    };
+
+    /**
+     * Un'attività importata da Garmin è un fatto compiuto: non ha senso
+     * offrire "Completa" (è già stata fatta) né "Modifica" (modificheresti
+     * la registrazione di ciò che è realmente accaduto). Restano
+     * "Visualizza" ed "Elimina".
+     *
+     * Il fallback sull'obiettivo copre le righe salvate prima della
+     * migrazione 004, se il riempimento non fosse ancora stato eseguito.
+     */
+    function isImported(workout) {
+        if (workout.source) return workout.source === 'garmin';
+        return workout.objective === 'Attività importata da Garmin';
+    }
+
+    // Etichetta di provenienza sulla card: rende evidente perché
+    // un'attività Garmin non ha i pulsanti "Completa" e "Modifica".
+    function sourceBadge(workout) {
+        const key = sourceOf(workout);
+        const s = SOURCE[key];
+        if (!s) return '';
+        return `<span class="source-badge source-badge--${key}">
+                    <i class="fas ${s.icon}" aria-hidden="true"></i> ${s.label}
+                </span>`;
+    }
+
+    function sourceOf(workout) {
+        if (workout.source && SOURCE[workout.source]) return workout.source;
+        if (workout.objective === 'Attività importata da Garmin') return 'garmin';
+        if (workout.objective === "Piano generato dall'AI Trainer") return 'ai';
+        return 'manual';
+    }
+
+    // ===== FILTRI PER PROVENIENZA =====
+
+    let activeSource = 'all';
+
+    /**
+     * Costruisce i filtri con il conteggio reale per ciascuna provenienza.
+     * Le voci senza allenamenti non vengono mostrate: un filtro che dà
+     * sempre zero risultati è solo rumore.
+     */
+    function renderSourceFilters(list) {
+        const box = document.getElementById('sourceFilters');
+        if (!box) return;
+
+        const counts = { garmin: 0, ai: 0, manual: 0 };
+        (list || []).forEach(w => { counts[sourceOf(w)]++; });
+        const total = (list || []).length;
+
+        // Con una sola provenienza i filtri non servono a nulla
+        const present = Object.keys(counts).filter(k => counts[k] > 0);
+        if (present.length < 2) { box.innerHTML = ''; return; }
+
+        // Se il filtro attivo è rimasto senza allenamenti (ultimo eliminato)
+        // torniamo a "Tutte", altrimenti la lista resterebbe vuota senza motivo
+        if (activeSource !== 'all' && !counts[activeSource]) activeSource = 'all';
+
+        const chip = (key, label, icon, count) => `
+            <button type="button" class="source-chip${activeSource === key ? ' is-active' : ''}"
+                    data-source="${key}" aria-pressed="${activeSource === key}">
+                ${icon ? `<i class="fas ${icon}" aria-hidden="true"></i>` : ''}
+                <span>${label}</span>
+                <span class="source-chip-count">${count}</span>
+            </button>`;
+
+        box.innerHTML =
+            chip('all', 'Tutte', '', total) +
+            present.map(k => chip(k, SOURCE[k].short, SOURCE[k].icon, counts[k])).join('');
+
+        box.querySelectorAll('.source-chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeSource = btn.dataset.source;
+                renderSourceFilters(workouts);
+                displayWorkouts(filterBySource(workouts));
+            });
+        });
+    }
+
+    function filterBySource(list) {
+        if (activeSource === 'all') return list || [];
+        return (list || []).filter(w => sourceOf(w) === activeSource);
     }
 
     // Raggruppa gli allenamenti per mese-anno di created_at.
@@ -836,12 +955,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <button class="btn btn-secondary" id="closeDetailsModalBtnFooter">
                         <i class="fas fa-times"></i> Chiudi
                     </button>
+                    ${isImported(workout) ? '' : `
                     <button class="btn btn-primary" onclick="editWorkout('${workout.id}')">
                         <i class="fas fa-edit"></i> Modifica
                     </button>
                     <button class="btn btn-success" onclick="completeWorkout('${workout.id}')">
                         <i class="fas fa-check"></i> Completa
-                    </button>
+                    </button>`}
                 </div>
             </div>
         `;

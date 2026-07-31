@@ -189,6 +189,9 @@ async function saveNewWorkout() {
             total_duration: parseInt(document.getElementById('duration').value),
             difficulty: document.getElementById('difficulty').value,
             objective: document.getElementById('objective').value.trim(),
+            // Provenienza esplicita (migrations/004). Il default del DB è
+            // già 'manual', ma dichiararlo rende il codice leggibile.
+            source: 'manual',
             user_id: session.user.id,
             created_at: new Date().toISOString()
         };

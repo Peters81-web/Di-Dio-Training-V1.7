@@ -1435,3 +1435,77 @@
 .cb-details-toggle i { transition: transform .18s; font-size: .7rem; }
 .cb-details[open] .cb-details-toggle i { transform: rotate(90deg); }
 .cb-details-toggle:hover { color: var(--primary-color, #4361ee); }
+
+/* =============================================
+   FILTRI PER PROVENIENZA
+   Le attività importate da Garmin sono già svolte; quelle create o
+   generate dall'AI sono da fare. Poterle separare evita di mescolare
+   due cose che non si usano allo stesso modo.
+   ============================================= */
+.source-filters {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.source-filters:empty { display: none; }
+
+.source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .42rem .85rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-color, #e5e7eb);
+    background: #fff;
+    color: #64748b;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+}
+.source-chip:hover {
+    border-color: var(--primary-color, #4361ee);
+    color: var(--primary-color, #4361ee);
+}
+.source-chip.is-active {
+    background: var(--primary-color, #4361ee);
+    border-color: var(--primary-color, #4361ee);
+    color: #fff;
+}
+
+.source-chip-count {
+    font-size: .72rem;
+    font-weight: 700;
+    background: rgba(0,0,0,.07);
+    border-radius: 99px;
+    padding: .08rem .42rem;
+    min-width: 1.35em;
+    text-align: center;
+}
+.source-chip.is-active .source-chip-count { background: rgba(255,255,255,.25); }
+
+/* Etichetta sulla card: spiega a colpo d'occhio perché un'attività
+   Garmin non ha i pulsanti Completa e Modifica. */
+.workout-header-text { min-width: 0; flex: 1; }
+
+.source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-top: .3rem;
+    padding: .15rem .5rem;
+    border-radius: 99px;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.source-badge i { font-size: .62rem; }
+.source-badge--garmin { background: #e0f2fe; color: #0369a1; }
+.source-badge--ai     { background: #ede9fe; color: #6d28d9; }
+.source-badge--manual { background: #f1f5f9; color: #475569; }
+
+@media (max-width: 560px) {
+    .source-chip { font-size: .78rem; padding: .38rem .7rem; }
+}
