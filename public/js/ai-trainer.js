@@ -374,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async function () {
           notes: notes,
           total_duration: 45,
           objective: "Piano generato dall'AI Trainer",
+          source: 'ai',
           activity_type: currentGeneratedActivityType || inferActivityTypeFromText({
             name: firstLine,
             warmup,

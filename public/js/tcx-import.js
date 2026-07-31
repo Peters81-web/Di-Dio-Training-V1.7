@@ -309,6 +309,9 @@
       user_id: userId,
       name: name,
       objective: 'Attività importata da Garmin',
+      // Provenienza esplicita (migrations/004): un'attività importata è
+      // già svolta, quindi non va mostrata come scheda da completare.
+      source: 'garmin',
       main_phase: summary,
       activity_type: data.activityType,
       total_duration: data.durationMin,
