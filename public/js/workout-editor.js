@@ -163,6 +163,18 @@ function validateForm() {
 }
 
 /**
+ * Riconosce l'errore "colonna inesistente" di PostgREST, per distinguerlo
+ * da errori veri (rete, permessi, vincoli violati) che NON vanno mascherati
+ * da un ritentativo silenzioso.
+ */
+function isMissingColumnError(err) {
+    if (!err) return false;
+    if (err.code === 'PGRST204' || err.code === '42703') return true;
+    const m = String(err.message || '').toLowerCase();
+    return m.includes('could not find') && m.includes('column');
+}
+
+/**
  * Salva un nuovo allenamento
  */
 async function saveNewWorkout() {
@@ -213,12 +225,28 @@ async function saveNewWorkout() {
         // Disabilita il pulsante durante il salvataggio
         toggleSubmitButton(false);
         
-        // Salva nel database
-        const { data, error } = await supabaseClient
+        // Salva nel database.
+        // 'source' arriva da migrations/004: se non è stata eseguita
+        // l'INSERT fallisce in blocco e l'allenamento appena scritto va
+        // perso. Al primo errore riproviamo senza quel campo — resta
+        // comunque riconosciuto come manuale, che è il comportamento
+        // predefinito quando la colonna non c'è.
+        let { data, error } = await supabaseClient
             .from('workout_plans')
             .insert([workoutData])
             .select();
-        
+
+        if (error && isMissingColumnError(error)) {
+            console.warn('Salvataggio: colonna source non disponibile, eseguire ' +
+                         'migrations/004-workout-source.sql. Salvo senza.', error);
+            const fallback = Object.assign({}, workoutData);
+            delete fallback.source;
+            ({ data, error } = await supabaseClient
+                .from('workout_plans')
+                .insert([fallback])
+                .select());
+        }
+
         if (error) {
             throw error;
         }
