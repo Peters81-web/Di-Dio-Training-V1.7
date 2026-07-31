@@ -226,6 +226,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         //
         // <details>/<summary> nativi: accessibili da tastiera e da screen
         // reader senza una riga di JavaScript.
+        // Composizione della spesa: metabolismo basale, movimento quotidiano
+        // e allenamenti. Una barra a segmenti dice a colpo d'occhio da dove
+        // arriva il numero, cosa che il solo totale non comunica.
+        const dailyMove = Math.max(0, r.tdeeBase - r.bmr);
+        const total     = Math.max(1, r.totalExpenditure);
+        const seg = v => (v / total * 100).toFixed(1);
+
         card.innerHTML = `
             <div class="cb-compact">
                 <div class="cb-compact-main">
@@ -236,6 +243,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <i class="fas ${inDeficit ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up'}" aria-hidden="true"></i>
                     <span>${inDeficit ? '−' + deficitAbs + ' kcal' : 'Pareggio'}</span>
                 </div>
+            </div>
+
+            <div class="cb-bar" role="img"
+                 aria-label="Composizione: ${r.bmr} kcal di metabolismo basale, ${dailyMove} di movimento quotidiano, ${r.workoutKcal} di allenamenti">
+                <span class="cb-bar-seg cb-bar-seg--bmr"     style="width:${seg(r.bmr)}%"></span>
+                <span class="cb-bar-seg cb-bar-seg--daily"   style="width:${seg(dailyMove)}%"></span>
+                <span class="cb-bar-seg cb-bar-seg--workout" style="width:${seg(r.workoutKcal)}%"></span>
+            </div>
+            <div class="cb-legend">
+                <span class="cb-legend-item"><i class="cb-dot cb-dot--bmr"></i>Basale <strong>${r.bmr}</strong></span>
+                <span class="cb-legend-item"><i class="cb-dot cb-dot--daily"></i>Movimento <strong>${dailyMove}</strong></span>
+                <span class="cb-legend-item"><i class="cb-dot cb-dot--workout"></i>Allenamenti <strong>${r.workoutKcal}</strong></span>
             </div>
 
             <details class="cb-details">

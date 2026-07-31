@@ -944,17 +944,11 @@
  * BILANCIO CALORICO — card "Bilancio Stimato Oggi" (Step 3a)
  * =============================================================*/
 .caloric-balance-card {
-    padding: 0 !important;
+    /* Il padding:0 serviva al vecchio layout a due colonne a tutto
+       sangue, dove ogni metà aveva il proprio padding. Con la card
+       compatta il contenuto restava incollato ai bordi. */
+    padding: 1.25rem 1.4rem !important;
     overflow: hidden;
-}
-
-.cb-grid {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 0;
-}
-@media (max-width: 768px) {
-    .cb-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Breakdown sx ───────────────────────────────────────── */
@@ -1024,46 +1018,6 @@
 }
 
 /* ── Balance result dx ──────────────────────────────────── */
-.cb-balance {
-    padding: 1.75rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: .5rem;
-    color: #fff;
-    position: relative;
-    min-height: 220px;
-}
-.cb-balance--deficit {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-.cb-balance--surplus {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-.cb-balance-icon {
-    font-size: 1.6rem;
-    opacity: .85;
-}
-.cb-balance-label {
-    font-size: .78rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    opacity: .9;
-    font-weight: 700;
-}
-.cb-balance-value {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1;
-}
-.cb-balance-value span {
-    font-size: 1rem;
-    font-weight: 500;
-    opacity: .85;
-    margin-left: 2px;
-}
 .cb-balance-note {
     font-size: .78rem;
     line-height: 1.45;
@@ -1508,4 +1462,84 @@
 
 @media (max-width: 560px) {
     .source-chip { font-size: .78rem; padding: .38rem .7rem; }
+}
+
+/* =============================================
+   BILANCIO CALORICO — rifiniture
+   Compattando la card avevo lasciato tre residui del layout precedente:
+   il contenuto senza padding, .cb-compact-main mai definita, e
+   .cb-balance-note ancora stilata come testo bianco dentro un riquadro
+   colorato che non esiste piu — quindi poco leggibile su fondo chiaro e
+   larga 32ch, cosa che la faceva sembrare fuori asse.
+   ============================================= */
+
+.cb-compact-main { min-width: 0; }
+
+/* Barra di composizione: da dove arrivano le calorie stimate. Il totale
+   da solo non dice se viene dal metabolismo o dall'allenamento. */
+.cb-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: #f1f5f9;
+    margin-top: 1rem;
+}
+.cb-bar-seg { display: block; height: 100%; transition: width .4s ease; }
+.cb-bar-seg--bmr     { background: #4361ee; }
+.cb-bar-seg--daily   { background: #7c9cff; }
+.cb-bar-seg--workout { background: #f59e0b; }
+
+.cb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1rem;
+    margin-top: .6rem;
+}
+.cb-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .74rem;
+    color: #64748b;
+}
+.cb-legend-item strong { color: var(--text-primary, #1e293b); font-weight: 700; }
+
+.cb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cb-dot--bmr     { background: #4361ee; }
+.cb-dot--daily   { background: #7c9cff; }
+.cb-dot--workout { background: #f59e0b; }
+
+/* La nota ora vive su fondo chiaro dentro <details>, non piu in bianco
+   dentro il riquadro colorato: colore e larghezza vanno riadattati. */
+.cb-balance-note {
+    font-size: .8rem;
+    line-height: 1.55;
+    color: #64748b;
+    max-width: none;
+    margin: .85rem 0 0;
+    padding: .7rem .85rem;
+    background: #f8fafc;
+    border-left: 3px solid var(--primary-color, #4361ee);
+    border-radius: 0 8px 8px 0;
+}
+
+.cb-details .cb-breakdown { margin-top: .35rem; }
+
+.cb-details .cb-disclaimer {
+    margin-top: .85rem;
+    font-size: .72rem;
+    line-height: 1.5;
+    color: #94a3b8;
+    display: flex;
+    gap: .5rem;
+    align-items: flex-start;
+}
+.cb-details .cb-disclaimer i { margin-top: .15rem; flex-shrink: 0; }
+
+@media (max-width: 480px) {
+    .cb-compact { gap: .75rem; }
+    .cb-compact-value { font-size: 1.5rem; }
+    .cb-legend { gap: .35rem .75rem; }
+    .cb-legend-item { font-size: .7rem; }
 }
