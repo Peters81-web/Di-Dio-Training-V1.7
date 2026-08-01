@@ -60,7 +60,7 @@
 //   v35 → CSS/JS passano a network-first: cache-first serviva codice
 //         vecchio con HTML nuovo dopo ogni deploy, e il riquadro "Oggi"
 //         restava in caricamento finché non si ricaricava la pagina.
-const CACHE_NAME  = 'didio-v40';
+const CACHE_NAME  = 'didio-v41';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
