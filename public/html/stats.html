@@ -790,7 +790,10 @@
   <!-- utils.js per showToast/showConfirm eleganti -->
   <script src="/js/utils.js"></script>
   <!-- Import attività da file TCX (Garmin) -->
-  <script src="/js/tcx-import.js"></script>
+  <!-- weather.js PRIMA di tcx-import.js: l'import lo usa per
+     recuperare il meteo storico dell'attività -->
+<script src="/js/weather.js"></script>
+<script src="/js/tcx-import.js"></script>
   <!-- hr-zones.js prima di stats-fixed.js: deve registrare window.hrZonesRender
        prima che renderAll() provi a chiamarla -->
   <script src="/js/hr-zones.js"></script>

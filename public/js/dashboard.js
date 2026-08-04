@@ -1202,7 +1202,29 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <h4 class="detail-section-title">
                     <i class="fas fa-map-location-dot"></i> Percorso
                 </h4>
-                <div class="arc-map" data-track="${escapeHtml(JSON.stringify(track))}"></div>
+                <div class="map-wrap">
+                    <div class="arc-map" data-track="${escapeHtml(JSON.stringify(track))}"></div>
+                    ${weatherBadge(workout)}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Pastiglia meteo sovrapposta alla mappa, nello stile di Garmin:
+     * temperatura e icona delle condizioni in un angolo del percorso.
+     * Compare solo se almeno uno dei due dati esiste.
+     */
+    function weatherBadge(workout) {
+        const hasTemp = workout.temperature !== null && workout.temperature !== undefined;
+        const w = WEATHER[workout.weather];
+        if (!hasTemp && !w) return '';
+
+        return `
+            <div class="map-weather" title="${w ? escapeHtml(w.label) : 'Temperatura'}">
+                ${hasTemp ? `<span class="map-weather-temp">${escapeHtml(String(workout.temperature))}°</span>` : ''}
+                ${w ? `<i class="fas ${w.icon}" aria-hidden="true"></i>` : ''}
+                <span class="sr-only">${w ? escapeHtml(w.label) : ''}</span>
             </div>
         `;
     }

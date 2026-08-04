@@ -1605,3 +1605,51 @@
     color: var(--text-primary, #1e293b);
     line-height: 1.35;
 }
+
+/* =============================================
+   MAPPA — pastiglia meteo sovrapposta
+   ============================================= */
+.map-wrap { position: relative; }
+
+.map-weather {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 500;              /* sopra i tile di Leaflet, sotto i suoi popup */
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .4rem .7rem;
+    background: rgba(255,255,255,.94);
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(15,23,42,.18);
+    backdrop-filter: blur(4px);
+    font-size: .9rem;
+    font-weight: 700;
+    color: #1e293b;
+    pointer-events: none;      /* non deve rubare il trascinamento della mappa */
+}
+.map-weather-temp { font-variant-numeric: tabular-nums; }
+.map-weather i { font-size: 1rem; color: #f59e0b; }
+.map-weather i.fa-cloud      { color: #94a3b8; }
+.map-weather i.fa-cloud-rain { color: #3b82f6; }
+.map-weather i.fa-snowflake  { color: #7dd3fc; }
+.map-weather i.fa-wind       { color: #64748b; }
+
+/* Testo riservato agli screen reader: fuori dalla vista ma leggibile dalle
+   tecnologie assistive. Senza questa regola comparirebbe a schermo. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 480px) {
+    .map-weather { top: 8px; right: 8px; font-size: .82rem; padding: .32rem .6rem; }
+}
