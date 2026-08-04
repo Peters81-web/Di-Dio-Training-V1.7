@@ -49,7 +49,7 @@ const MIGRATION_COLUMNS = [
 // mancando così proprio il bug segnalato dall'utente.
 const FALLBACK_HINTS = [
   /(?<!function\s)isMissingColumnError\s*\(/,   // chiamata, non dichiarazione
-  /COLS_LEGACY|WORKOUT_COLS|PROFILE_COLS_LEGACY|selectWorkouts/,
+  /COLS_LEGACY|WORKOUT_COLS|PROFILE_COLS_LEGACY|selectWorkouts|insertDroppingMissing/,
   /delete\s+\w+\.(source|temperature|weather|gps_track|max_heart_rate)/
 ];
 

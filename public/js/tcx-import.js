@@ -22,6 +22,50 @@
     return m.includes('could not find') && m.includes('column');
   }
 
+
+  /**
+   * INSERT che rimuove UNA ALLA VOLTA solo le colonne che il database
+   * dichiara di non conoscere.
+   *
+   * Prima il ripiego era tutto-o-niente: se mancava una sola colonna (per
+   * esempio 'source' della migrazione 004) si reinseriva il solo basePlan,
+   * buttando via ANCHE gps_track e temperature, che esistevano. Risultato:
+   * la traccia non veniva mai salvata e la mappa non compariva, nemmeno
+   * cancellando e reimportando l'attività.
+   */
+  async function insertDroppingMissing(sc, base, optional) {
+    let extra = Object.assign({}, optional);
+    const dropped = [];
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const res = await sc.from('workout_plans')
+        .insert(Object.assign({}, base, extra))
+        .select('id').single();
+
+      if (!res.error) return { res: res, dropped: dropped };
+      if (!isMissingColumnError(res.error)) return { res: res, dropped: dropped };
+
+      const bad = missingColumnName(res.error);
+      // Nome non estraibile: meglio restituire l'errore vero che togliere
+      // colonne alla cieca.
+      if (!bad || !(bad in extra)) return { res: res, dropped: dropped };
+
+      delete extra[bad];
+      dropped.push(bad);
+      console.warn('Import: colonna "' + bad + '" non presente nel database, ' +
+                   'eseguire le migrazioni in migrations/. Importo senza.');
+    }
+    return { res: { error: new Error('Troppi tentativi di ripiego') }, dropped: dropped };
+  }
+
+  function missingColumnName(err) {
+    const msg = String((err && err.message) || '');
+    let m = msg.match(/could not find the '([^']+)' column/i);
+    if (m) return m[1];
+    m = msg.match(/column\s+(?:[\w.]*\.)?"?([\w]+)"?\s+does not exist/i);
+    return m ? m[1] : null;
+  }
+
   // ── Parsing TCX ───────────────────────────────────────────────
   function getText(parent, tag) {
     const el = parent.getElementsByTagName(tag)[0];
@@ -332,30 +376,25 @@
     // dalla 003. Se una delle due non è stata eseguita l'INSERT fallirebbe
     // in blocco, quindi al primo errore riproviamo senza: meglio importare
     // l'attività senza questi extra che non importarla affatto.
-    let planRes = await sc.from('workout_plans')
-      .insert(Object.assign({}, basePlan, {
-        max_heart_rate: data.maxHr,
-        gps_track: data.track,
-        temperature: data.temperature,
-        // Provenienza (migrations/004): un'attività importata è già svolta,
-        // quindi non va mostrata come scheda da completare. Sta QUI e non in
-        // basePlan perché basePlan è il ripiego, che deve contenere solo
-        // colonne esistenti da sempre.
-        source: 'garmin'
-      }))
-      .select('id').single();
+    // Colonne opzionali, ciascuna da una migrazione diversa.
+    const optional = {
+      max_heart_rate: data.maxHr,      // 001
+      gps_track:      data.track,      // 001
+      temperature:    data.temperature,// 003
+      source:         'garmin'         // 004
+    };
 
-    // Il ripiego scatta SOLO se mancano le colonne: un vincolo violato o un
-    // problema di permessi deve restare un errore visibile, non essere
-    // mascherato da un secondo tentativo silenzioso.
-    if (planRes.error && isMissingColumnError(planRes.error)) {
-      console.warn('Import: colonne opzionali non disponibili, eseguire le ' +
-                   'migrazioni in migrations/. Importo senza traccia GPS né temperatura.',
-                   planRes.error);
-      planRes = await sc.from('workout_plans').insert(basePlan).select('id').single();
-    }
+    const ins = await insertDroppingMissing(sc, basePlan, optional);
+    const planRes = ins.res;
 
     if (planRes.error) throw planRes.error;
+
+    // Se la traccia c'era ma non è stata salvata, l'utente deve saperlo:
+    // altrimenti cerca la mappa, non la trova e non ha modo di capire perché.
+    if (data.track && ins.dropped.includes('gps_track') && window.showToast) {
+      window.showToast('Attività importata, ma la traccia GPS non è stata salvata: ' +
+                       'manca una colonna nel database (vedi migrations/).', 'warning', 7000);
+    }
 
     // 2) crea record completamento
     const compRes = await sc.from('completed_workouts').insert({
@@ -482,6 +521,12 @@
       const dup = await isDuplicate(parsed.startIso, userId, sc);
       const dateStr = new Date(parsed.startIso).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+      // Punti GPS letti dal file. Serve a distinguere subito "il file non
+      // contiene coordinate" da "l'app non le salva": senza questo dato si
+      // scopre che la mappa manca solo dopo aver importato, e non si capisce
+      // di chi sia la colpa.
+      const gpsPoints = Array.isArray(parsed.track) ? parsed.track.length : 0;
+
       preview.innerHTML =
         '<div class="tcx-pv-title"><i class="fas fa-check-circle"></i>' + parsed.activityLabel + ' — ' + dateStr + '</div>' +
         '<div class="tcx-metrics">' +
@@ -489,7 +534,12 @@
           metric('Distanza', parsed.distanceKm != null ? parsed.distanceKm + ' km' : '—') +
           metric('Calorie', parsed.calories != null ? parsed.calories + ' kcal' : '—') +
           metric('FC media', parsed.avgHr != null ? parsed.avgHr + ' bpm' : '—') +
+          metric('Temperatura', parsed.temperature != null ? parsed.temperature + ' °C' : '—') +
+          metric('Punti GPS', gpsPoints > 0 ? gpsPoints + ' punti' : '—') +
         '</div>' +
+        (gpsPoints === 0
+          ? '<div class="tcx-warn"><i class="fas fa-map-location-dot"></i> Il file non contiene coordinate GPS: la mappa del percorso non sarà disponibile. Se l\'attività è stata registrata all\'aperto, prova a esportarla da Garmin Connect in formato <strong>GPX</strong> invece che TCX.</div>'
+          : '') +
         (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '');
       preview.classList.add('show');
       drop.style.display = 'none';
