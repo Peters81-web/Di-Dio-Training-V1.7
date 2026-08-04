@@ -21,14 +21,10 @@
 (function () {
   'use strict';
 
-  // Percentuali di FCmax. Sono i confini classici a 5 zone.
-  var ZONES = [
-    { n: 1, lo: 0.50, hi: 0.60, name: 'Recupero',  desc: 'Rigenerante, respirazione facile', color: '#94a3b8' },
-    { n: 2, lo: 0.60, hi: 0.70, name: 'Fondo',     desc: 'Aerobico, si può conversare',      color: '#3b82f6' },
-    { n: 3, lo: 0.70, hi: 0.80, name: 'Medio',     desc: 'Impegnativo ma sostenibile',       color: '#22c55e' },
-    { n: 4, lo: 0.80, hi: 0.90, name: 'Soglia',    desc: 'Duro, parlare diventa difficile',  color: '#f59e0b' },
-    { n: 5, lo: 0.90, hi: 1.01, name: 'Massimale', desc: 'Massimo sforzo, breve durata',     color: '#ef4444' }
-  ];
+  // Definizione delle zone: anch'essa dal modello condiviso, così nome,
+  // colore e percentuali non possono divergere fra questa pagina e la
+  // stima di recupero sulla dashboard.
+  var ZONES = window.HrModel.ZONES;
 
   var maxHr  = null;   // FC massima: misurata se disponibile, altrimenti stimata
   var restHr = null;   // FC a riposo: abilita il metodo Karvonen
@@ -37,44 +33,21 @@
   var profileLoaded = false;
   var lastWorkouts  = null; // per ri-renderizzare quando arriva il profilo
 
-  // Confine inferiore di una zona, in bpm.
-  //
-  // Con la FC a riposo usiamo Karvonen (percentuale della RISERVA
-  // cardiaca): è il metodo di Garmin, e tiene conto di quanto si è
-  // allenati. Senza, ripieghiamo sulla percentuale della massima, che
-  // colloca le zone sensibilmente più in basso.
-  //
-  // Differenza reale misurata su un utente con riposo 59 e massima 179:
-  //   Karvonen  ->  119 131 143 155 167   (Garmin: 115 130 142 155 167)
-  //   % massima ->   89 106 124 142 159   (fuori di 20-25 bpm)
+  // Confini e formula vivono in hr-model.js, condiviso con la stima di
+  // recupero sulla dashboard: due copie della stessa formula potrebbero
+  // divergere, e la stessa sessione finirebbe in zone diverse fra una
+  // pagina e l'altra senza che nulla lo segnali.
   function hrAt(pct) {
-    if (restHr && maxHr > restHr) {
-      return Math.round(restHr + pct * (maxHr - restHr));
-    }
-    return Math.round(pct * maxHr);
+    return window.HrModel.hrAt(pct, maxHr, restHr);
   }
 
   function usingKarvonen() {
-    return !!(restHr && maxHr > restHr);
+    return window.HrModel.usingKarvonen(maxHr, restHr);
   }
 
-  // ── Età dalla data di nascita ────────────────────────────────────────────
-  function ageFromBirthdate(birthdate) {
-    if (!birthdate) return null;
-    var bd = new Date(String(birthdate).slice(0, 10));
-    if (isNaN(bd.getTime())) return null;
-    var today = new Date();
-    var a = today.getFullYear() - bd.getFullYear();
-    var m = today.getMonth() - bd.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) a--;
-    return (a > 0 && a < 120) ? a : null;
-  }
-
-  // Formula di Tanaka (2001): più accurata della classica 220-età, che
-  // sovrastima nei giovani e sottostima negli over 40.
-  function estimateMaxHr(a) {
-    return Math.round(208 - 0.7 * a);
-  }
+  // Anche queste vengono dal modello condiviso.
+  function ageFromBirthdate(b) { return window.HrModel.ageFromBirthdate(b); }
+  function estimateMaxHr(a)    { return window.HrModel.estimateMaxHr(a); }
 
   // ── Carica il profilo una volta sola ─────────────────────────────────────
   function loadProfile() {

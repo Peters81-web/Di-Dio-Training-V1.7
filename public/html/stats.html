@@ -796,7 +796,10 @@
 <script src="/js/tcx-import.js"></script>
   <!-- hr-zones.js prima di stats-fixed.js: deve registrare window.hrZonesRender
        prima che renderAll() provi a chiamarla -->
-  <script src="/js/hr-zones.js"></script>
+  <!-- hr-model.js: modello unico delle zone, condiviso con la
+     stima di recupero sulla dashboard -->
+<script src="/js/hr-model.js"></script>
+<script src="/js/hr-zones.js"></script>
 
   <!-- stats-fixed.js caricato PER ULTIMO, dopo tutti gli script sopra -->
   <script src="/js/stats-fixed.js"></script>
