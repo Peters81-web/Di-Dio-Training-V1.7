@@ -306,29 +306,82 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Se mancassero, Postgres farebbe fallire l'INTERA query e la dashboard
     // resterebbe senza allenamenti: qui è la pagina principale, quindi vale
     // la pena tenere un ripiego invece di rischiare di svuotarla.
-    // ATTENZIONE: WORKOUT_COLS_BASE è la lista di RIPIEGO, quella usata
-    // quando la query completa fallisce perché mancano colonne aggiunte da
-    // una migrazione. Deve quindi contenere SOLO colonne esistenti da
-    // sempre: infilarci una colonna nuova fa fallire anche il ripiego e la
-    // dashboard resta vuota con "Errore nel caricamento degli allenamenti".
+    // Elenco unico: non serve più distinguere "base" da "completa", perché
+    // selectWorkouts() toglie solo le colonne che il database dichiara di
+    // non conoscere, una alla volta. Aggiungere qui una colonna nuova è
+    // quindi sicuro anche prima di eseguire la migrazione corrispondente.
     //
-    // Ogni colonna introdotta da una migrazione va in WORKOUT_COLS_FULL.
-    const WORKOUT_COLS_BASE = 'id, name, activity_id, activity_type, total_duration, ' +
-                              'difficulty, objective, warmup, main_phase, cooldown, notes, created_at, ' +
-                              'scheduled_date, completed';
-
-    // Colonne aggiunte dalle migrazioni:
-    //   001 → gps_track, max_heart_rate
-    //   003 → temperature, weather
-    //   004 → source
-    const WORKOUT_COLS_FULL = WORKOUT_COLS_BASE +
-                              ', gps_track, max_heart_rate, temperature, weather, source';
+    // Da migrazioni:  001 → gps_track, max_heart_rate
+    //                 003 → temperature, weather
+    //                 004 → source
+    const WORKOUT_COLS = [
+        'id', 'name', 'activity_id', 'activity_type', 'total_duration',
+        'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
+        'created_at', 'scheduled_date', 'completed',
+        'gps_track', 'max_heart_rate', 'temperature', 'weather', 'source'
+    ];
 
     function isMissingColumnError(err) {
         if (!err) return false;
         if (err.code === 'PGRST204' || err.code === '42703') return true;
         const m = String(err.message || '').toLowerCase();
         return m.includes('could not find') && m.includes('column');
+    }
+
+    /**
+     * Estrae il nome della colonna mancante dal messaggio d'errore.
+     * PostgREST:  Could not find the 'source' column of 'workout_plans' ...
+     * Postgres :  column workout_plans.source does not exist
+     */
+    function missingColumnName(err) {
+        const msg = String((err && err.message) || '');
+        let m = msg.match(/could not find the '([^']+)' column/i);
+        if (m) return m[1];
+        m = msg.match(/column\s+(?:[\w.]*\.)?"?([\w]+)"?\s+does not exist/i);
+        return m ? m[1] : null;
+    }
+
+    /**
+     * Esegue una select togliendo UNA ALLA VOLTA solo le colonne che il
+     * database dice di non conoscere.
+     *
+     * Prima il ripiego era tutto-o-niente: bastava che mancasse una colonna
+     * (per esempio 'source' della migrazione 004) perché si ricadesse su una
+     * lista minima, perdendo ANCHE gps_track e temperature, che invece
+     * esistevano. Risultato: nel dettaglio spariva la mappa pur essendo la
+     * traccia regolarmente salvata — e nell'Archivio, che non chiede
+     * 'source', la stessa mappa si vedeva benissimo.
+     */
+    async function selectWorkouts(cols) {
+        let current = cols.slice();
+        const dropped = [];
+
+        for (let attempt = 0; attempt < 8; attempt++) {
+            const { data, error } = await supabaseClient
+                .from('workout_plans')
+                .select(current.join(', '))
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            if (!error) {
+                if (dropped.length) {
+                    console.warn('Dashboard: colonne non ancora presenti nel database, ' +
+                                 'eseguire le migrazioni in migrations/. Ignorate: ' +
+                                 dropped.join(', '));
+                }
+                return { data, error: null, dropped };
+            }
+            if (!isMissingColumnError(error)) return { data: null, error, dropped };
+
+            const bad = missingColumnName(error);
+            // Se non riusciamo a capire QUALE colonna manca, non possiamo
+            // togliere alla cieca: meglio restituire l'errore vero.
+            if (!bad || !current.includes(bad)) return { data: null, error, dropped };
+
+            current = current.filter(c => c !== bad);
+            dropped.push(bad);
+        }
+        return { data: null, error: new Error('Troppi tentativi di ripiego'), dropped };
     }
 
     // workout_id -> { distance, calories_burned, heart_rate_avg }
@@ -358,24 +411,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function loadWorkouts() {
         try {
-            let { data, error } = await supabaseClient
-                .from('workout_plans')
-                .select(WORKOUT_COLS_FULL)
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
-
-            if (error && isMissingColumnError(error)) {
-                console.warn('Dashboard: colonne mappa non disponibili, eseguire ' +
-                             'migrations/001-gps-track.sql. Carico senza.', error);
-                ({ data, error } = await supabaseClient
-                    .from('workout_plans')
-                    .select(WORKOUT_COLS_BASE)
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false }));
-            }
-
+            const { data, error } = await selectWorkouts(WORKOUT_COLS);
             if (error) throw error;
-            
+
             workouts = data || [];
             // renderToday PRIMA di displayWorkouts: se quest'ultima
             // sollevasse un errore, il riquadro "Oggi" resterebbe bloccato
@@ -401,7 +439,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     function safe(fn) {
         try { fn(); } catch (e) { console.error('Dashboard render:', e); }
     }
-    
+
     // ===== SEZIONE "OGGI" =====
 
     /**
