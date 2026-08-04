@@ -354,6 +354,7 @@
     if (data.temperature !== null && data.temperature !== undefined) {
       summaryParts.push(data.temperature + ' °C');
     }
+    if (data.weatherLabel) summaryParts.push(data.weatherLabel);
     const summary = 'Importato da Garmin: ' + summaryParts.join(' · ');
     const dateOnly = data.startIso.slice(0, 10);
 
@@ -381,6 +382,7 @@
       max_heart_rate: data.maxHr,      // 001
       gps_track:      data.track,      // 001
       temperature:    data.temperature,// 003
+      weather:        data.weather || null, // 003, dal servizio meteo
       source:         'garmin'         // 004
     };
 
@@ -458,8 +460,13 @@
     document.head.appendChild(s);
   }
 
+  // data-metric permette di aggiornare un singolo riquadro quando il dato
+  // arriva dopo (il meteo viene recuperato in modo asincrono).
   function metric(label, value) {
-    return '<div class="tcx-metric"><div class="l">' + label + '</div><div class="v">' + value + '</div></div>';
+    return '<div class="tcx-metric" data-metric="' + label + '">' +
+             '<div class="l">' + label + '</div>' +
+             '<div class="v">' + value + '</div>' +
+           '</div>';
   }
 
   // ── Entry point ───────────────────────────────────────────────
@@ -536,6 +543,7 @@
           metric('FC media', parsed.avgHr != null ? parsed.avgHr + ' bpm' : '—') +
           metric('Temperatura', parsed.temperature != null ? parsed.temperature + ' °C' : '—') +
           metric('Punti GPS', gpsPoints > 0 ? gpsPoints + ' punti' : '—') +
+          metric('Condizioni', gpsPoints > 0 ? '<i class="fas fa-spinner fa-spin"></i> cerco...' : '—') +
         '</div>' +
         (gpsPoints === 0
           ? '<div class="tcx-warn"><i class="fas fa-map-location-dot"></i> Il file non contiene coordinate GPS: la mappa del percorso non sarà disponibile. Se l\'attività è stata registrata all\'aperto, prova a esportarla da Garmin Connect in formato <strong>GPX</strong> invece che TCX.</div>'
@@ -544,6 +552,38 @@
       preview.classList.add('show');
       drop.style.display = 'none';
       saveBtn.disabled = false;
+
+      // Meteo: serve una posizione, quindi solo per le attività con traccia.
+      // Il recupero è asincrono e NON blocca il salvataggio: se il servizio
+      // non risponde si importa comunque, il meteo resta vuoto e si può
+      // sempre inserire a mano dall'Archivio.
+      if (gpsPoints > 0 && window.VortexWeather) {
+        const start = parsed.track[0];
+        window.VortexWeather.fetch(start[0], start[1], parsed.startIso)
+          .then(function (w) {
+            if (!w) return;
+            // Il file ha la precedenza sul servizio: se l'orologio ha
+            // registrato la temperatura, quella è la misura sul posto.
+            if (parsed.temperature === null || parsed.temperature === undefined) {
+              parsed.temperature = w.temperature;
+            }
+            parsed.weather = w.weather;
+            parsed.weatherLabel = w.label;
+            updateWeatherInPreview(w);
+          });
+      }
+    }
+
+    // Aggiorna i due riquadri meteo nell'anteprima quando la risposta arriva
+    function updateWeatherInPreview(w) {
+      const tEl = preview.querySelector('[data-metric="Temperatura"] .v');
+      if (tEl && parsed.temperature !== null && parsed.temperature !== undefined) {
+        tEl.textContent = parsed.temperature + ' °C';
+      }
+      const cEl = preview.querySelector('[data-metric="Condizioni"] .v');
+      if (cEl && w.label) {
+        cEl.innerHTML = '<i class="fas ' + w.icon + '"></i> ' + w.label;
+      }
     }
 
     drop.addEventListener('click', function () { fileInput.click(); });

@@ -361,6 +361,87 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
   }
 });
 
+// ─── API Meteo storico (Open-Meteo) ──────────────────────────────────────────
+//
+// I file TCX/GPX non contengono le condizioni meteo, e la temperatura solo
+// a volte. Garmin Connect le recupera da un servizio meteo usando posizione
+// e orario dell'attività: qui facciamo lo stesso.
+//
+// PERCHÉ PASSA DAL SERVER invece di chiamare l'API dal browser:
+//   * la CSP resta stretta (nessun dominio esterno da aggiungere a connect-src)
+//   * l'indirizzo IP dell'utente non arriva al servizio meteo: escono solo
+//     le coordinate dell'allenamento
+//   * l'endpoint è protetto dalla stessa autenticazione dell'AI
+//
+// Open-Meteo è gratuito e senza chiave API. L'endpoint "forecast" con
+// past_days copre gli ultimi ~92 giorni; per attività più vecchie serve
+// l'archivio, che però ha qualche giorno di ritardo sul presente. Proviamo
+// prima quello adatto alla distanza temporale, e in caso ripieghiamo
+// sull'altro.
+const WEATHER_TIMEOUT_MS = 5000;
+
+app.get('/api/weather', requireAuth, async (req, res) => {
+  const lat  = Number.parseFloat(req.query.lat);
+  const lon  = Number.parseFloat(req.query.lon);
+  const when = String(req.query.time || '');
+
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+    return res.status(400).json({ error: 'Latitudine non valida.' });
+  }
+  if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
+    return res.status(400).json({ error: 'Longitudine non valida.' });
+  }
+  const ts = new Date(when);
+  if (Number.isNaN(ts.getTime())) {
+    return res.status(400).json({ error: 'Data/ora non valida.' });
+  }
+
+  const day  = ts.toISOString().slice(0, 10);
+  const hour = ts.toISOString().slice(0, 13) + ':00';
+
+  // Quanto è distante nel tempo? L'archivio è affidabile per il passato,
+  // il forecast copre gli ultimi giorni con dati già consolidati.
+  const daysAgo = Math.floor((Date.now() - ts.getTime()) / 86400000);
+  const params  = `latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
+                  `&hourly=temperature_2m,weathercode&timezone=UTC`;
+
+  const endpoints = daysAgo <= 90
+    ? [`https://api.open-meteo.com/v1/forecast?${params}&past_days=92&forecast_days=1`,
+       `https://archive-api.open-meteo.com/v1/archive?${params}&start_date=${day}&end_date=${day}`]
+    : [`https://archive-api.open-meteo.com/v1/archive?${params}&start_date=${day}&end_date=${day}`];
+
+  for (const url of endpoints) {
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
+    try {
+      const r = await fetch(url, { signal: controller.signal });
+      if (!r.ok) continue;
+
+      const data  = await r.json();
+      const times = (data.hourly && data.hourly.time) || [];
+      const idx   = times.indexOf(hour);
+      if (idx < 0) continue;
+
+      const temperature = data.hourly.temperature_2m ? data.hourly.temperature_2m[idx] : null;
+      const code        = data.hourly.weathercode    ? data.hourly.weathercode[idx]    : null;
+      if (temperature === null && code === null) continue;
+
+      return res.json({
+        temperature: temperature === null ? null : Math.round(temperature * 10) / 10,
+        weatherCode: code
+      });
+    } catch (err) {
+      logErr('Meteo:', err.name === 'AbortError' ? 'timeout' : err.message);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // Nessun dato: non è un errore dell'app, semplicemente per quel punto e
+  // quell'ora il servizio non ha nulla.
+  return res.status(404).json({ error: 'Nessun dato meteo per quel luogo e orario.' });
+});
+
 // ─── Catch-all ────────────────────────────────────────────────────────────────
 // Serve index.html per le rotte sconosciute (comportamento SPA), MA non per i
 // file statici: un .js mancante che risponde "200 + HTML" fa fallire il parse
