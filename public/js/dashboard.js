@@ -803,14 +803,36 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Ritorna un array di { key:'YYYY-MM', label:'Giugno 2026', items:[...] }
     // ordinato dal mese più recente. Allenamenti senza created_at finiscono
     // in un gruppo "Senza data" in fondo.
+    /**
+     * Data a cui l'allenamento SI RIFERISCE, non quella in cui la riga è
+     * stata scritta nel database.
+     *
+     * Per un'attività importata da Garmin le due cose divergono: created_at
+     * è il momento dell'import, completed_at è quando hai davvero corso.
+     * Usare created_at faceva finire una corsa del 30 luglio, importata in
+     * agosto, nella cartella di agosto.
+     */
+    function activityDateOf(w) {
+        // Priorità: quando è stata svolta → quando è in programma → creazione
+        const raw = w.completed_at || w.scheduled_date || w.created_at;
+        if (!raw) return null;
+
+        // scheduled_date è una data senza orario ('2026-07-30'): interpretarla
+        // così com'è la colloca a mezzanotte UTC e in alcuni fusi slitta al
+        // giorno prima. Mezzogiorno la mette al sicuro.
+        const str = String(raw);
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(str) ? new Date(str + 'T12:00:00') : new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
     function groupWorkoutsByMonth(workouts) {
         const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                         'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
         const map = new Map();
         workouts.forEach(w => {
             let key, label;
-            const d = w.created_at ? new Date(w.created_at) : null;
-            if (d && !isNaN(d.getTime())) {
+            const d = activityDateOf(w);
+            if (d) {
                 key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
                 label = MONTHS[d.getMonth()] + ' ' + d.getFullYear();
             } else {
@@ -820,6 +842,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!map.has(key)) map.set(key, { key, label, items: [] });
             map.get(key).items.push(w);
         });
+
+        // Dentro ogni mese le card vanno dalla più recente alla più vecchia
+        // per DATA DELL'ATTIVITÀ: la query le ordina per created_at, che per
+        // gli import è l'ordine in cui li hai caricati, non quello in cui li
+        // hai svolti.
+        map.forEach(group => {
+            group.items.sort((a, b) => {
+                const da = activityDateOf(a), db = activityDateOf(b);
+                if (!da && !db) return 0;
+                if (!da) return 1;
+                if (!db) return -1;
+                return db - da;
+            });
+        });
+
         // Ordina i gruppi per chiave desc (più recente in alto)
         return Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
     }
