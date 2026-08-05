@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // senza quelle due colonne: si perde la mappa, non l'intera pagina.
   var BASE_COLS = 'id,workout_id,completed_at,actual_duration,calories_burned,' +
                   'distance,heart_rate_avg,perceived_difficulty,rating,notes';
-  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate,temperature,weather)';
+  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate,temperature,weather,humidity)';
   var COLS_LEGACY   = BASE_COLS + ',workout_plans(name,activity_type)';
 
   function fetchData() {
@@ -267,6 +267,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // legge anche il calore corporeo e segna qualche grado in più.
     if (plan.temperature !== null && plan.temperature !== undefined) {
       metrics.push(metric('fa-temperature-half', plan.temperature + ' °C', 'temperatura'));
+    }
+    if (plan.humidity !== null && plan.humidity !== undefined) {
+      metrics.push(metric('fa-droplet', plan.humidity + '%', 'umidità'));
     }
     var wx = WEATHER[plan.weather];
     if (wx) metrics.push(metric(wx.icon, wx.label, 'condizioni'));

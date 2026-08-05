@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         'id', 'name', 'activity_id', 'activity_type', 'total_duration',
         'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
         'created_at', 'scheduled_date', 'completed',
-        'gps_track', 'max_heart_rate', 'temperature', 'weather', 'source'
+        'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source'
     ];
 
     function isMissingColumnError(err) {
@@ -1184,6 +1184,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
         }
 
+        if (workout.humidity !== null && workout.humidity !== undefined) {
+            html += `
+                <div class="detail-item">
+                    <div class="detail-header">
+                        <i class="fas fa-droplet"></i>
+                        <span>Umidità</span>
+                    </div>
+                    <div class="detail-value">${escapeHtml(String(workout.humidity))}%</div>
+                </div>
+            `;
+        }
+
         const w = WEATHER[workout.weather];
         if (w) {
             html += `
@@ -1254,14 +1266,21 @@ document.addEventListener('DOMContentLoaded', async function() {
      */
     function weatherBadge(workout) {
         const hasTemp = workout.temperature !== null && workout.temperature !== undefined;
+        const hasHum  = workout.humidity !== null && workout.humidity !== undefined;
         const w = WEATHER[workout.weather];
-        if (!hasTemp && !w) return '';
+        if (!hasTemp && !hasHum && !w) return '';
+
+        const title = [
+            w ? w.label : null,
+            hasHum ? 'umidità ' + workout.humidity + '%' : null
+        ].filter(Boolean).join(' · ');
 
         return `
-            <div class="map-weather" title="${w ? escapeHtml(w.label) : 'Temperatura'}">
+            <div class="map-weather" title="${escapeHtml(title || 'Condizioni')}">
                 ${hasTemp ? `<span class="map-weather-temp">${escapeHtml(String(workout.temperature))}°</span>` : ''}
                 ${w ? `<i class="fas ${w.icon}" aria-hidden="true"></i>` : ''}
-                <span class="sr-only">${w ? escapeHtml(w.label) : ''}</span>
+                ${hasHum ? `<span class="map-weather-hum"><i class="fas fa-droplet" aria-hidden="true"></i>${escapeHtml(String(workout.humidity))}%</span>` : ''}
+                <span class="sr-only">${escapeHtml(title)}</span>
             </div>
         `;
     }

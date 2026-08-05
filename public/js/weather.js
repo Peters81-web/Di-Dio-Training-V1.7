@@ -105,6 +105,7 @@
                 var d = describe(data.weatherCode);
                 return {
                     temperature: (typeof data.temperature === 'number') ? data.temperature : null,
+                    humidity:    (typeof data.humidity === 'number')    ? data.humidity    : null,
                     weather: d ? d.weather : null,
                     label:   d ? d.label   : null,
                     icon:    d ? d.icon    : null
