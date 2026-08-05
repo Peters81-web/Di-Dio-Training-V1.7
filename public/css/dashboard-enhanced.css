@@ -1653,3 +1653,16 @@
 @media (max-width: 480px) {
     .map-weather { top: 8px; right: 8px; font-size: .82rem; padding: .32rem .6rem; }
 }
+
+/* Umidità nella pastiglia sulla mappa: separata dalla temperatura da una
+   sottile linea, per non confondere i due numeri a colpo d'occhio. */
+.map-weather-hum {
+    display: inline-flex;
+    align-items: center;
+    gap: .2rem;
+    padding-left: .45rem;
+    border-left: 1px solid rgba(15,23,42,.15);
+    font-size: .82rem;
+    color: #0369a1;
+}
+.map-weather-hum i { font-size: .78rem; color: #0ea5e9; }

@@ -355,6 +355,9 @@
       summaryParts.push(data.temperature + ' °C');
     }
     if (data.weatherLabel) summaryParts.push(data.weatherLabel);
+    if (data.humidity !== null && data.humidity !== undefined) {
+      summaryParts.push('umidità ' + data.humidity + '%');
+    }
     const summary = 'Importato da Garmin: ' + summaryParts.join(' · ');
     const dateOnly = data.startIso.slice(0, 10);
 
@@ -383,6 +386,7 @@
       gps_track:      data.track,      // 001
       temperature:    data.temperature,// 003
       weather:        data.weather || null, // 003, dal servizio meteo
+      humidity:       data.humidity,        // 005, dal servizio meteo
       source:         'garmin'         // 004
     };
 
@@ -544,6 +548,7 @@
           metric('Temperatura', parsed.temperature != null ? parsed.temperature + ' °C' : '—') +
           metric('Punti GPS', gpsPoints > 0 ? gpsPoints + ' punti' : '—') +
           metric('Condizioni', gpsPoints > 0 ? '<i class="fas fa-spinner fa-spin"></i> cerco...' : '—') +
+          metric('Umidità', gpsPoints > 0 ? '<i class="fas fa-spinner fa-spin"></i>' : '—') +
         '</div>' +
         (gpsPoints === 0
           ? '<div class="tcx-warn"><i class="fas fa-map-location-dot"></i> Il file non contiene coordinate GPS: la mappa del percorso non sarà disponibile. Se l\'attività è stata registrata all\'aperto, prova a esportarla da Garmin Connect in formato <strong>GPX</strong> invece che TCX.</div>'
@@ -569,6 +574,7 @@
             }
             parsed.weather = w.weather;
             parsed.weatherLabel = w.label;
+            parsed.humidity = w.humidity;
             updateWeatherInPreview(w);
           });
       }
@@ -583,6 +589,11 @@
       const cEl = preview.querySelector('[data-metric="Condizioni"] .v');
       if (cEl && w.label) {
         cEl.innerHTML = '<i class="fas ' + w.icon + '"></i> ' + w.label;
+      }
+      const hEl = preview.querySelector('[data-metric="Umidità"] .v');
+      if (hEl) {
+        hEl.textContent = (w.humidity !== null && w.humidity !== undefined)
+          ? w.humidity + '%' : '—';
       }
     }
 

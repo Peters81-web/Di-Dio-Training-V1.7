@@ -74,13 +74,26 @@ document.addEventListener('DOMContentLoaded', async function () {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: completed, error } = await supabaseClient
+      // temperature e humidity arrivano dalle migrazioni 003 e 005: se una
+      // manca, la query fallirebbe in blocco e il contesto sparirebbe del
+      // tutto. Al primo errore si ripiega sulle colonne di sempre.
+      const COLS_FULL   = 'completed_at, actual_duration, workout_plans(name, activity_type, temperature, humidity)';
+      const COLS_LEGACY = 'completed_at, actual_duration, workout_plans(name, activity_type)';
+
+      const runQuery = (cols) => supabaseClient
         .from('completed_workouts')
-        .select('completed_at, actual_duration, workout_plans(name, activity_type)')
+        .select(cols)
         .eq('user_id', currentUser.id)
         .gte('completed_at', thirtyDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
         .limit(30);
+
+      let { data: completed, error } = await runQuery(COLS_FULL);
+      if (error && isMissingColumnError(error)) {
+        console.warn('AI Trainer: colonne meteo non disponibili, eseguire le ' +
+                     'migrazioni in migrations/. Contesto senza condizioni ambientali.', error);
+        ({ data: completed, error } = await runQuery(COLS_LEGACY));
+      }
 
       if (error || !completed?.length) return;
 
@@ -116,7 +129,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         .map(w => w.workout_plans?.name)
         .filter(Boolean);
 
-      workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak, lastWorkouts };
+      // Condizioni ambientali tipiche degli allenamenti recenti.
+      // Servono all'AI per calibrare ritmi e idratazione: un piano pensato
+      // per 12 gradi e aria secca non regge a 28 gradi con l'80% di umidità,
+      // dove a parità di ritmo la frequenza cardiaca sale e il sudore
+      // evapora poco.
+      const temps = completed.map(w => w.workout_plans?.temperature)
+                             .filter(v => typeof v === 'number');
+      const hums  = completed.map(w => w.workout_plans?.humidity)
+                             .filter(v => typeof v === 'number');
+      const avg = arr => arr.length
+        ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
+        : null;
+
+      const avgTemperature = avg(temps);
+      const avgHumidity    = avg(hums);
+
+      workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak,
+                         lastWorkouts, avgTemperature, avgHumidity };
       renderContextCard(workoutContext);
     } catch (err) {
       console.warn('Context load error:', err);

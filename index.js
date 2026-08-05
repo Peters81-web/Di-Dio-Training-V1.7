@@ -173,6 +173,14 @@ function sanitizeWorkoutContext(raw) {
   };
   const clampStr = (v, maxLen) =>
     (typeof v === 'string' ? v : '').trim().slice(0, maxLen);
+  // Come clampInt, ma distingue "assente" da "zero": per temperatura e
+  // umidità lo zero è un valore legittimo, non un valore mancante.
+  const clampOrNull = (v, min, max) => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number.parseFloat(v);
+    if (Number.isNaN(n)) return null;
+    return Math.round(Math.min(max, Math.max(min, n)));
+  };
 
   const lastWorkoutsArr = Array.isArray(raw.lastWorkouts)
     ? raw.lastWorkouts
@@ -188,6 +196,11 @@ function sanitizeWorkoutContext(raw) {
     avgDuration:    clampInt(raw.avgDuration,    0, 600,   0),
     topActivity:    clampStr(raw.topActivity, MAX_TOP_ACTIVITY_LENGTH),
     streak:         clampInt(raw.streak,         0, 3650,  0),
+    // Condizioni ambientali tipiche. null quando il dato non c'è: uno zero
+    // finto direbbe all'AI "si allena a 0 gradi con 0% di umidità", che è
+    // peggio del non saperlo.
+    avgTemperature: clampOrNull(raw.avgTemperature, -60, 60),
+    avgHumidity:    clampOrNull(raw.avgHumidity,      0, 100),
     lastWorkouts:   lastWorkoutsArr
   };
 }
@@ -270,6 +283,30 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
   };
   const maxTokens = tokenBudgetMap[planType] || 1500;
 
+  // Condizioni ambientali: incidono sulla prestazione quanto il livello di
+  // allenamento. Con aria umida il sudore evapora poco, la termoregolazione
+  // perde efficacia e a parità di ritmo la frequenza cardiaca sale — quindi
+  // un piano tarato su clima secco va rivisto su clima afoso.
+  // Vengono incluse solo se disponibili: inventarle sarebbe peggio.
+  function envSection(ctx) {
+    const parts = [];
+    if (ctx.avgTemperature !== null) parts.push(`temperatura media ${ctx.avgTemperature} gradi`);
+    if (ctx.avgHumidity !== null)    parts.push(`umidità relativa media ${ctx.avgHumidity}%`);
+    if (!parts.length) return '';
+
+    let guidance = 'Tienine conto nel calibrare ritmi, durate e recuperi.';
+    if (ctx.avgHumidity !== null && ctx.avgHumidity >= 70 && (ctx.avgTemperature === null || ctx.avgTemperature >= 22)) {
+      guidance = 'Sono condizioni afose: con questa umidità il sudore evapora ' +
+                 'poco e a parità di ritmo la frequenza cardiaca sale. Riduci ' +
+                 'le aspettative sui ritmi, allunga i recuperi, prediligi le ' +
+                 'ore più fresche e dai indicazioni esplicite sull\'idratazione.';
+    } else if (ctx.avgTemperature !== null && ctx.avgTemperature <= 5) {
+      guidance = 'Sono condizioni fredde: prevedi un riscaldamento più lungo e ' +
+                 'graduale, e ricorda l\'abbigliamento a strati.';
+    }
+    return `- Condizioni abituali di allenamento: ${parts.join(', ')}.\n  ${guidance}`;
+  }
+
   const systemPrompt = `Sei un personal trainer professionista italiano. Crea piani di allenamento dettagliati, pratici e motivanti in italiano. Struttura sempre la risposta in Markdown con sezioni chiare.`;
 
   const contextSection = workoutContext ? `
@@ -280,6 +317,7 @@ Storico recente dell'utente (ultime settimane):
 - Attività più frequente: ${workoutContext.topActivity || 'non specificata'}
 - Giorni di streak: ${workoutContext.streak}
 ${workoutContext.lastWorkouts?.length ? `- Ultimi allenamenti: ${workoutContext.lastWorkouts.join(', ')}` : ''}
+${envSection(workoutContext)}
 Tieni conto di questo storico per calibrare il piano: non essere troppo conservativo se l'utente si allena già regolarmente.
 ` : '';
 
@@ -403,7 +441,7 @@ app.get('/api/weather', requireAuth, async (req, res) => {
   // il forecast copre gli ultimi giorni con dati già consolidati.
   const daysAgo = Math.floor((Date.now() - ts.getTime()) / 86400000);
   const params  = `latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
-                  `&hourly=temperature_2m,weathercode&timezone=UTC`;
+                  `&hourly=temperature_2m,relative_humidity_2m,weathercode&timezone=UTC`;
 
   const endpoints = daysAgo <= 90
     ? [`https://api.open-meteo.com/v1/forecast?${params}&past_days=92&forecast_days=1`,
@@ -422,12 +460,16 @@ app.get('/api/weather', requireAuth, async (req, res) => {
       const idx   = times.indexOf(hour);
       if (idx < 0) continue;
 
-      const temperature = data.hourly.temperature_2m ? data.hourly.temperature_2m[idx] : null;
-      const code        = data.hourly.weathercode    ? data.hourly.weathercode[idx]    : null;
-      if (temperature === null && code === null) continue;
+      const temperature = data.hourly.temperature_2m       ? data.hourly.temperature_2m[idx]       : null;
+      const humidity    = data.hourly.relative_humidity_2m ? data.hourly.relative_humidity_2m[idx] : null;
+      const code        = data.hourly.weathercode          ? data.hourly.weathercode[idx]          : null;
+      if (temperature === null && code === null && humidity === null) continue;
 
       return res.json({
         temperature: temperature === null ? null : Math.round(temperature * 10) / 10,
+        // L'umidità relativa è una percentuale: arrotondata all'intero,
+        // e comunque vincolata a 0-100 dal database.
+        humidity: (typeof humidity === 'number') ? Math.round(humidity) : null,
         weatherCode: code
       });
     } catch (err) {
