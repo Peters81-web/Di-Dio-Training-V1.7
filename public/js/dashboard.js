@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const WORKOUT_COLS = [
         'id', 'name', 'activity_id', 'activity_type', 'total_duration',
         'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
-        'created_at', 'scheduled_date', 'completed',
+        'created_at', 'scheduled_date', 'completed', 'completed_at',
         'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source'
     ];
 
@@ -1054,6 +1054,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         // su un contenitore di altezza zero Leaflet non calcola lo zoom.
         if (window.routeMapRenderAll) window.routeMapRenderAll(modal);
 
+        // Il log della palestra si riempie dopo, per lo stesso motivo per
+        // cui il modal non aspetta il database per aprirsi: se la lettura
+        // è lenta o fallisce, il dettaglio resta comunque utilizzabile.
+        // Se migrations/006 non è stata eseguita la sezione si rimuove
+        // da sola, senza errori a schermo.
+        if (window.ExerciseLog) {
+            window.ExerciseLog.hydrate(modal, workout, currentUser && currentUser.id);
+        }
+
         console.log('Modal dettagli allenamento aperto');
     };
     
@@ -1080,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 <div class="workout-details-content">
                     ${createWorkoutDetailsContent(workout)}
+                    ${window.ExerciseLog ? window.ExerciseLog.placeholder(workout) : ''}
                 </div>
                 
                 <div class="modal-actions">

@@ -60,7 +60,32 @@
 //   v35 → CSS/JS passano a network-first: cache-first serviva codice
 //         vecchio con HTML nuovo dopo ogni deploy, e il riquadro "Oggi"
 //         restava in caricamento finché non si ricaricava la pagina.
-const CACHE_NAME  = 'didio-v47';
+//   v36 → Provenienza degli allenamenti (garmin/ai/manual) + filtri
+//         rapidi sulla dashboard. Richiede migrations/004.
+//   v37 → Fix: 'source' era finita anche nelle liste di RIPIEGO, quindi
+//         il ripiego falliva insieme al tentativo principale e la
+//         dashboard mostrava "Errore nel caricamento degli allenamenti".
+//   v38 → Fix: la creazione manuale di una scheda non aveva ripiego e
+//         falliva con "Could not find the 'source' column" senza la 004.
+//   v39 → Fix: la card del bilancio calorico era rimasta mezzo stilata
+//   v40 → Fix: nota del bilancio calorico disallineata
+//   v41 → Dettaglio delle attività Garmin: metriche complete + mappa
+//   v42 → Fix: il ripiego tutto-o-niente perdeva la mappa insieme alla
+//         colonna mancante. Sostituito dal ripiego graduale, che toglie
+//         una alla volta solo le colonne che il database non conosce.
+//   v43 → Fix: la traccia GPS non veniva salvata in import, quindi la
+//         mappa non compariva nemmeno reimportando l'attività.
+//   v44 → Meteo storico dell'attività da Open-Meteo, via /api/weather
+//   v45 → Recupero muscolare pesato sull'intensità, dichiarato come stima
+//   v46 → Fix: le attività importate finivano nel mese sbagliato
+//         (raggruppamento per created_at invece che per data attività).
+//   v47 → Umidità relativa: dal servizio meteo fino al prompt dell'AI.
+//         Richiede migrations/005.
+//   v48 → Log di serie/ripetizioni/carico per la palestra, con
+//         sovraccarico progressivo nel dettaglio. Richiede migrations/006
+//         (tabella nuova): senza, la sezione resta nascosta e il resto
+//         della dashboard non cambia.
+const CACHE_NAME  = 'didio-v48';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -79,6 +104,7 @@ const PRECACHE = [
   '/js/app-nav.js',
   '/js/archivio.js',
   '/js/tcx-import.js',
+  '/js/exercise-log.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',

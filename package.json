@@ -10,7 +10,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "check:fallbacks": "node scripts/check-migration-fallbacks.js",
-    "test": "node scripts/check-migration-fallbacks.js"
+    "test": "node scripts/check-migration-fallbacks.js && node scripts/test-exercise-log.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
