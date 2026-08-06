@@ -28,11 +28,18 @@ const fs   = require('fs');
 const path = require('path');
 
 // Colonne introdotte dalle migrazioni in migrations/
+//
+// TENERE ALLINEATO A migrations/: una colonna che manca da questa lista è
+// invisibile al controllo, che continua a passare mostrando "tutto a posto".
+// È già successo con 'humidity' (005), rimasta fuori per due PR: la
+// scrittura in tcx-import.js aveva il ripiego, ma per fortuna, non perché
+// il controllo lo verificasse.
 const MIGRATION_COLUMNS = [
   'gps_track', 'max_heart_rate',      // 001
   'resting_heart_rate',               // 002 (max_heart_rate anche su profiles)
   'temperature', 'weather',           // 003
-  'source'                            // 004
+  'source',                           // 004
+  'humidity'                          // 005
 ];
 
 // Indizi che nelle vicinanze esiste un ripiego.
@@ -93,8 +100,44 @@ for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
   });
 }
 
+// ─── Tabelle introdotte dalle migrazioni ─────────────────────────────
+//
+// La 006 aggiunge una TABELLA, non delle colonne, e il controllo qui
+// sopra non la vedrebbe: cerca assegnazioni "colonna:" dentro una
+// scrittura, mentre qui il problema si presenta anche in LETTURA, e con
+// un codice d'errore diverso (PGRST205 / 42P01 invece di PGRST204 /
+// 42703). isMissingColumnError() non lo riconosce, quindi senza la
+// migrazione l'assenza della tabella arriverebbe all'utente come un
+// errore vero.
+//
+// Regola: se un file nomina una tabella di migrazione, deve anche
+// chiamare isMissingTableError.
+const MIGRATION_TABLES = [
+  'exercise_sets'                     // 006
+];
+
+for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
+  const src = stripComments(fs.readFileSync(path.join(JS_DIR, file), 'utf8'));
+
+  for (const table of MIGRATION_TABLES) {
+    // La tabella può comparire come stringa letterale in .from('...')
+    // oppure attraverso una costante (var TABLE = 'exercise_sets').
+    if (!new RegExp(`['"\`]${table}['"\`]`).test(src)) continue;
+
+    // Come per le colonne: la CHIAMATA, non la dichiarazione. Una
+    // ricerca per sottostringa conterebbe la definizione dell'helper
+    // come se fosse un ripiego attivo.
+    const hasGuard = /(?<!function\s)isMissingTableError\s*\(/.test(src);
+    if (!hasGuard) {
+      problems++;
+      console.error(`  MANCA RIPIEGO  ${file}  tabella "${table}" senza isMissingTableError()`);
+    }
+  }
+}
+
 if (problems === 0) {
   console.log('  Tutte le scritture con colonne di migrazione hanno un ripiego.');
+  console.log('  Tutti gli usi delle tabelle di migrazione hanno un ripiego.');
   process.exit(0);
 }
 
