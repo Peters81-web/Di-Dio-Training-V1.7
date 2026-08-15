@@ -276,12 +276,20 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
   // weekly ~ 7 giorni × ~150 token/giorno = ~1100 + intro
   // monthly ~ 28 giorni → serve molto più spazio
   // custom = manteniamo margine ampio
+  //
+  // I margini sono più larghi di quanto serva al solo piano perché
+  // gpt-oss-20b è un modello di RAGIONAMENTO: prima di rispondere produce
+  // token di ragionamento, che con llama-3.1-8b-instant non esistevano.
+  // Se quei token rientrano nel tetto (la documentazione Groq non è
+  // raggiungibile da qui per confermarlo), un budget tarato sul solo
+  // testo finale troncherebbe il piano a metà. Un tetto più alto non
+  // costa nulla se non viene usato: il limite vero resta il timeout.
   const tokenBudgetMap = {
-    weekly:  1500,
-    monthly: 3500,
-    custom:  2500
+    weekly:  2500,
+    monthly: 5000,
+    custom:  3500
   };
-  const maxTokens = tokenBudgetMap[planType] || 1500;
+  const maxTokens = tokenBudgetMap[planType] || 2500;
 
   // Condizioni ambientali: incidono sulla prestazione quanto il livello di
   // allenamento. Con aria umida il sudore evapora poco, la termoregolazione
@@ -363,13 +371,23 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({
-        model:       'llama-3.1-8b-instant',
+        // llama-3.1-8b-instant è stato spento da Groq il 16 agosto 2026
+        // (deprecato dal 17 giugno). openai/gpt-oss-20b è il sostituto
+        // indicato da Groq stessa nell'avviso di dismissione.
+        model:       'openai/gpt-oss-20b',
         messages:    [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMessage  }
         ],
         max_tokens:  maxTokens,
-        temperature: 0.7
+        temperature: 0.7,
+        // Il modello nuovo ragiona prima di rispondere, con effort
+        // 'medium' come predefinito. Qui il compito è compilare un piano
+        // in un formato dato, non risolvere un problema: il ragionamento
+        // aggiunge latenza e token senza migliorare il risultato, e la
+        // funzione ha 10 secondi in tutto su Vercel Hobby. 'low' è la
+        // scelta che protegge il budget.
+        reasoning_effort: 'low'
       }),
       signal: groqController.signal
     });
@@ -381,10 +399,37 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
       return res.status(502).json({ error: errData.error?.message || 'Errore nella chiamata a Groq.' });
     }
 
-    const data = await groqRes.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    const data    = await groqRes.json();
+    const message = data.choices?.[0]?.message || {};
+
+    // Con un modello di ragionamento il pensiero può arrivare in un campo
+    // separato (message.reasoning) oppure, a seconda del formato, inline
+    // dentro il contenuto racchiuso fra tag. Nel primo caso lo ignoriamo
+    // già leggendo solo .content; nel secondo finirebbe nel piano mostrato
+    // all'utente, che si troverebbe il monologo del modello al posto degli
+    // allenamenti. Lo togliamo in modo difensivo: se non c'è, questa riga
+    // non fa nulla.
+    const stripReasoning = (s) => s
+      .replace(/<(think|thinking|reasoning|analysis)>[\s\S]*?<\/\1>/gi, '')
+      // Blocco aperto e mai chiuso: succede quando la risposta viene
+      // troncata dal tetto di token a metà ragionamento.
+      .replace(/<(think|thinking|reasoning|analysis)>[\s\S]*$/i, '')
+      .trim();
+
+    const text = stripReasoning(String(message.content || ''));
 
     if (!text) {
+      // Distinguiamo i due casi: senza questa distinzione un piano
+      // mangiato dal ragionamento sembrerebbe un guasto di Groq, e si
+      // cercherebbe il problema nel posto sbagliato.
+      const finish = data.choices?.[0]?.finish_reason;
+      if (message.reasoning || finish === 'length') {
+        logErr('Groq: nessun contenuto utile.', { finish, usage: data.usage });
+        return res.status(502).json({
+          error: 'Il modello ha esaurito lo spazio disponibile ragionando ' +
+                 'senza scrivere il piano. Riprova, oppure chiedi un piano più breve.'
+        });
+      }
       return res.status(502).json({ error: 'Risposta vuota da Groq.' });
     }
 
