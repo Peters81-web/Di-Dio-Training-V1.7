@@ -314,6 +314,8 @@ document.addEventListener('DOMContentLoaded', async function () {
       <div class="ctx-stat"><i class="fas fa-running"></i><span>${ACT_LABELS[ctx.topActivity] || ctx.topActivity || '--'}</span><small>attività top</small></div>
     `;
 
+    renderContextDetail(ctx);
+
     // Suggerimenti contestuali
     const suggestions = buildSuggestions(ctx);
     quickPrompts.innerHTML = suggestions.map(s =>
@@ -330,6 +332,99 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     card.style.display = 'block';
+  }
+
+  /**
+   * Elenco esplicito di ciò che viene inviato all'AI.
+   *
+   * PERCHÉ ESISTE: la card mostrava quattro numeri generici, e non c'era modo
+   * di sapere se frequenza cardiaca, ritmo e carichi arrivassero al prompt.
+   * Chiederlo all'AI non funziona — questa pagina genera piani, non risponde
+   * a domande — quindi l'unica verifica possibile era leggere il codice.
+   *
+   * Mostra anche ciò che MANCA e come ottenerlo: due delle sezioni del prompt
+   * dipendono da dati che l'utente deve iniziare a registrare (la difficoltà
+   * percepita si imposta completando un allenamento a mano, i carichi con il
+   * log palestra). Senza dirlo, restano vuote senza spiegazione.
+   */
+  function renderContextDetail(ctx) {
+    const box = document.getElementById('contextDetail');
+    if (!box) return;
+
+    const rows = [];
+    const fmtPace = s => (window.AiContext ? window.AiContext.formatPace(s) : null);
+
+    (ctx.activityStats || []).forEach(s => {
+      const bits = [];
+      if (s.avgHr !== null && s.avgHr !== undefined) {
+        bits.push(`FC ${s.avgHr} bpm${s.zone ? ` · Z${s.zone}` : ''}`);
+      }
+      const p = fmtPace(s.avgPaceSec);
+      if (p) bits.push(`${p} min/km`);
+      if (s.avgKm) bits.push(`${String(s.avgKm).replace('.', ',')} km`);
+      if (!bits.length) bits.push(`${s.n} sessioni`);
+      rows.push({
+        ok: true,
+        label: ACT_LABELS[s.type] || s.type,
+        value: bits.join(' · ')
+      });
+    });
+
+    if (ctx.maxHr) {
+      rows.push({
+        ok: true,
+        label: 'Zone cardio',
+        value: ctx.restHr
+          ? `Karvonen · max ${ctx.maxHr}${ctx.maxIsMeasured ? '' : ' (stimata)'} · riposo ${ctx.restHr}`
+          : `% della massima ${ctx.maxHr}${ctx.maxIsMeasured ? '' : ' (stimata)'}`
+      });
+    } else {
+      rows.push({
+        ok: false,
+        label: 'Zone cardio',
+        value: 'imposta FC massima e a riposo nel Profilo'
+      });
+    }
+
+    if ((ctx.gymProgress || []).length) {
+      rows.push({
+        ok: true,
+        label: 'Carichi palestra',
+        value: ctx.gymProgress.map(g =>
+          `${g.exercise} ${String(g.toKg).replace('.', ',')} kg`).join(' · ')
+      });
+    } else {
+      rows.push({
+        ok: false,
+        label: 'Carichi palestra',
+        value: 'registra le serie dal dettaglio di un allenamento in palestra'
+      });
+    }
+
+    if ((ctx.hardSessions || []).length) {
+      rows.push({
+        ok: true,
+        label: 'Sessioni dure',
+        value: ctx.hardSessions.map(s => `${s.name} ${s.difficulty}/5`).join(' · ')
+      });
+    } else {
+      rows.push({
+        ok: false,
+        label: 'Difficoltà percepita',
+        value: 'indica quanto è stato faticoso quando completi un allenamento'
+      });
+    }
+
+    box.innerHTML =
+      '<p class="ctx-hint"><i class="fas fa-paper-plane" aria-hidden="true"></i> ' +
+      'Cosa riceve l\'AI</p>' +
+      rows.map(r =>
+        `<div class="ctx-row ${r.ok ? 'is-on' : 'is-off'}">` +
+          `<i class="fas ${r.ok ? 'fa-check' : 'fa-minus'}" aria-hidden="true"></i>` +
+          `<span class="ctx-row-l">${esc(r.label)}</span>` +
+          `<span class="ctx-row-v">${esc(r.value)}</span>` +
+        '</div>'
+      ).join('');
   }
 
   function buildSuggestions(ctx) {

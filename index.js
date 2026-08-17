@@ -548,7 +548,7 @@ Obiettivo e preferenze dell'utente: ${prompt.trim()}
 ${activityType ? `\nL'utente ha scelto un tipo di attività specifico: orienta prevalentemente il piano verso esercizi e sessioni di quel tipo.` : ''}
 ${contextSection}
 Struttura obbligatoria:
-1. Una breve introduzione che spiega l'approccio del piano (2-3 righe).
+1. Una breve introduzione (3-4 righe) che spiega l'approccio del piano. Se sopra ti sono stati forniti dati misurati sull'atleta, CITALI espressamente qui — frequenza cardiaca media e zona, ritmo, carichi, sessioni percepite come dure — e spiega come hanno cambiato le tue scelte. Se un dato NON ti è stato fornito non inventarlo: se non ne hai nessuno, dichiara che stai pianificando senza storico.
 2. Per ogni giorno di allenamento usa questo formato esatto:
 
 ### Giorno N: [Nome Allenamento]

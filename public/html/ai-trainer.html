@@ -190,6 +190,13 @@
                 <span class="ctx-badge" id="contextBadge"></span>
             </div>
             <div class="ctx-stats" id="contextStats"></div>
+
+            <!-- Cosa l'AI riceve davvero. Senza questo elenco non c'è modo di
+                 sapere se un dato è arrivato al prompt: chiederlo all'AI non
+                 funziona, perché questa pagina genera piani e non risponde a
+                 domande. -->
+            <div id="contextDetail" class="ctx-detail"></div>
+
             <div id="contextSuggestions">
                 <p class="ctx-hint"><i class="fas fa-bolt"></i> Suggerimenti rapidi</p>
                 <div id="quickPrompts" class="quick-prompts"></div>
