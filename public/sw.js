@@ -89,7 +89,10 @@
 //         FC media e zona per attività, ritmo, carichi in palestra,
 //         sessioni percepite come dure. Più un campo per incollare a mano
 //         i dati che l'app non registra (VO2max, sonno, FC a riposo).
-const CACHE_NAME  = 'didio-v49';
+//   v50 → Fix: reports.js non veniva interpretato per un SyntaxError
+//         ("const data" dove data era già il parametro della funzione),
+//         quindi la pagina Report era senza JavaScript dalla PR #23.
+const CACHE_NAME  = 'didio-v50';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
