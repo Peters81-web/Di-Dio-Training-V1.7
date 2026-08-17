@@ -232,6 +232,46 @@ body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height
     margin-top: .3rem;
 }
 
+/* Dati incollati a mano — chiuso di default: è facoltativo, e aperto
+   sposterebbe il pulsante "Genera" sotto la piega su telefono */
+.ai-extra {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: .75rem .9rem;
+    background: #fafbfc;
+}
+.ai-extra-summary {
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    list-style: none;
+}
+.ai-extra-summary::-webkit-details-marker { display: none; }
+.ai-extra-summary i { color: #4361ee; }
+/* Carattere unicode e non un'icona Font Awesome: per una freccia
+   decorativa non vale la pena dipendere dal caricamento di un font
+   esterno, che se fallisce lascerebbe un quadratino vuoto */
+.ai-extra-summary::after {
+    content: '\25BE'; /* ▾ */
+    font-size: .8rem;
+    color: #9ca3af;
+    margin-left: auto;
+    transition: transform .2s;
+}
+.ai-extra[open] > .ai-extra-summary::after { transform: rotate(180deg); }
+.ai-extra-opt { font-weight: 400; color: #9ca3af; }
+.ai-extra > .ai-label { margin-top: .9rem; }
+.ai-extra-hint {
+    font-size: .75rem;
+    color: #6b7280;
+    line-height: 1.45;
+    margin: .5rem 0 0;
+}
+
 /* Generate button */
 .ai-btn-generate {
     width: 100%;
@@ -399,6 +439,27 @@ body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height
 .ctx-stat i { color: #4361ee; font-size: .75rem; }
 .ctx-stat span { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
 .ctx-stat small { font-size: .68rem; color: #9ca3af; }
+
+/* Elenco di cosa viene inviato all'AI. Le voci spente non sono errori:
+   sono dati che l'utente non ha ancora registrato, con l'indicazione di
+   come ottenerli. */
+.ctx-detail { margin-bottom: 1rem; }
+.ctx-row {
+    display: flex;
+    align-items: baseline;
+    gap: .45rem;
+    padding: .3rem 0;
+    font-size: .76rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+.ctx-row:last-child { border-bottom: none; }
+.ctx-row i { font-size: .62rem; flex-shrink: 0; width: .8rem; }
+.ctx-row.is-on  i { color: #15803d; }
+.ctx-row.is-off i { color: #d1d5db; }
+.ctx-row-l { font-weight: 600; color: #4b5563; flex-shrink: 0; }
+.ctx-row-v { color: #6b7280; margin-left: auto; text-align: right; }
+.ctx-row.is-off .ctx-row-l { color: #9ca3af; font-weight: 500; }
+.ctx-row.is-off .ctx-row-v { color: #9ca3af; font-style: italic; }
 .ctx-hint {
     font-size: .75rem;
     font-weight: 700;
