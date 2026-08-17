@@ -232,6 +232,46 @@ body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height
     margin-top: .3rem;
 }
 
+/* Dati incollati a mano — chiuso di default: è facoltativo, e aperto
+   sposterebbe il pulsante "Genera" sotto la piega su telefono */
+.ai-extra {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: .75rem .9rem;
+    background: #fafbfc;
+}
+.ai-extra-summary {
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    list-style: none;
+}
+.ai-extra-summary::-webkit-details-marker { display: none; }
+.ai-extra-summary i { color: #4361ee; }
+/* Carattere unicode e non un'icona Font Awesome: per una freccia
+   decorativa non vale la pena dipendere dal caricamento di un font
+   esterno, che se fallisce lascerebbe un quadratino vuoto */
+.ai-extra-summary::after {
+    content: '\25BE'; /* ▾ */
+    font-size: .8rem;
+    color: #9ca3af;
+    margin-left: auto;
+    transition: transform .2s;
+}
+.ai-extra[open] > .ai-extra-summary::after { transform: rotate(180deg); }
+.ai-extra-opt { font-weight: 400; color: #9ca3af; }
+.ai-extra > .ai-label { margin-top: .9rem; }
+.ai-extra-hint {
+    font-size: .75rem;
+    color: #6b7280;
+    line-height: 1.45;
+    margin: .5rem 0 0;
+}
+
 /* Generate button */
 .ai-btn-generate {
     width: 100%;

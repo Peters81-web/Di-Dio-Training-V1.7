@@ -85,7 +85,11 @@
 //         sovraccarico progressivo nel dettaglio. Richiede migrations/006
 //         (tabella nuova): senza, la sezione resta nascosta e il resto
 //         della dashboard non cambia.
-const CACHE_NAME  = 'didio-v48';
+//   v49 → L'AI Trainer riceve i dati che l'app già aveva e non inviava:
+//         FC media e zona per attività, ritmo, carichi in palestra,
+//         sessioni percepite come dure. Più un campo per incollare a mano
+//         i dati che l'app non registra (VO2max, sonno, FC a riposo).
+const CACHE_NAME  = 'didio-v49';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -105,6 +109,8 @@ const PRECACHE = [
   '/js/archivio.js',
   '/js/tcx-import.js',
   '/js/exercise-log.js',
+  '/js/hr-model.js',
+  '/js/ai-context.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',

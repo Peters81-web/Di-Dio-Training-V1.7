@@ -109,6 +109,30 @@
                 <div class="char-count"><span id="charCount">0</span>/500</div>
             </div>
 
+            <!-- Dati incollati a mano -->
+            <!-- Serve per tutto ciò che l'app non registra: VO2max, sonno,
+                 FC a riposo mattutina, carico di allenamento Garmin. Sono i
+                 dati su cui si basa il recupero di Garmin e che la nostra
+                 stima dichiara di non avere. -->
+            <details class="ai-field ai-extra">
+                <summary class="ai-extra-summary">
+                    <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                    Aggiungi dati dal tuo Garmin <span class="ai-extra-opt">(facoltativo)</span>
+                </summary>
+                <label class="ai-label" for="aiUserData">
+                    Incolla qui i numeri che vuoi far leggere all'AI
+                </label>
+                <textarea id="aiUserData" class="ai-textarea" rows="4" maxlength="600"
+                    placeholder="Es: VO2max 48 · FC riposo 51 · sonno 6h30 di media · carico settimanale 320 · Garmin dice &quot;produttivo&quot;"></textarea>
+                <p class="ai-extra-hint">
+                    L'app conosce già durata, distanza, frequenza cardiaca, ritmo e carichi
+                    delle sessioni registrate: quelli vengono inviati da soli. Qui serve
+                    solo ciò che il tuo orologio misura e l'app non vede — variabilità
+                    cardiaca, sonno, VO2max, carico di allenamento.
+                </p>
+                <div class="char-count"><span id="userDataCount">0</span>/600</div>
+            </details>
+
             <button id="generatePlanBtn" class="ai-btn-generate">
                 <i class="fas fa-wand-magic-sparkles"></i>
                 Genera il mio piano
@@ -247,6 +271,18 @@
         });
     }
 
+    // Contatore del campo dati incollati a mano (limite 600, imposto anche
+    // dal server: oltre, il testo verrebbe troncato là e l'utente non
+    // capirebbe perché una parte dei suoi numeri è stata ignorata)
+    var td = document.getElementById('aiUserData');
+    var dc = document.getElementById('userDataCount');
+    if (td && dc) {
+        td.addEventListener('input', function () {
+            dc.textContent = td.value.length;
+            dc.style.color = td.value.length > 550 ? '#ef4444' : '';
+        });
+    }
+
     // Loading animation — gestita con funzioni globali usate da ai-trainer.js
     var msgs = [
         'Analizzo il tuo profilo...',
@@ -288,6 +324,11 @@
 })();
 </script>
 
+<!-- hr-model.js e ai-context.js PRIMA di ai-trainer.js, che li usa per
+     costruire il contesto: HrModel per le zone (fonte unica della formula
+     di Karvonen), AiContext per le aggregazioni che finiscono nel prompt -->
+<script src="/js/hr-model.js"></script>
+<script src="/js/ai-context.js"></script>
 <script src="/js/ai-trainer.js"></script>
 </body>
 </html>

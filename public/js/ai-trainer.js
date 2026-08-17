@@ -69,33 +69,160 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 
+  /**
+   * Estrae il nome della colonna mancante dal messaggio d'errore.
+   * PostgREST:  Could not find the 'humidity' column of 'workout_plans' ...
+   * Postgres :  column workout_plans.humidity does not exist
+   */
+  function missingColumnName(err) {
+    const msg = String((err && err.message) || '');
+    let m = msg.match(/could not find the '([^']+)' column/i);
+    if (m) return m[1];
+    m = msg.match(/column\s+(?:[\w.]*\.)?"?([\w]+)"?\s+does not exist/i);
+    return m ? m[1] : null;
+  }
+
+  /**
+   * Select con ripiego GRADUALE: toglie una alla volta solo le colonne che
+   * il database dichiara di non conoscere, cercandole in entrambi i livelli
+   * (completed_workouts e il nested workout_plans).
+   *
+   * Prima qui c'era un ripiego tutto-o-niente con una lista "completa" e una
+   * "minima". Ma temperature viene dalla 003 e humidity dalla 005: con la
+   * 003 eseguita e la 005 no, si ricadeva sulla lista minima perdendo ANCHE
+   * la temperatura, che invece c'era. È lo stesso difetto che aveva fatto
+   * sparire la mappa dal dettaglio (PR #48).
+   */
+  async function selectContext(baseCols, planCols, sinceIso) {
+    let base = baseCols.slice();
+    let plan = planCols.slice();
+    const dropped = [];
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const cols = base.join(', ') +
+                   (plan.length ? `, workout_plans(${plan.join(',')})` : ', workout_plans(name)');
+
+      const { data, error } = await supabaseClient
+        .from('completed_workouts')
+        .select(cols)
+        .eq('user_id', currentUser.id)
+        .gte('completed_at', sinceIso)
+        .order('completed_at', { ascending: false })
+        .limit(30);
+
+      if (!error) {
+        if (dropped.length) {
+          console.warn('AI Trainer: colonne non ancora presenti nel database, ' +
+                       'eseguire le migrazioni in migrations/. Ignorate: ' +
+                       dropped.join(', '));
+        }
+        return { data: data || [], dropped };
+      }
+      if (!isMissingColumnError(error)) {
+        console.warn('AI Trainer: contesto non disponibile.', error);
+        return { data: [], dropped };
+      }
+
+      const bad = missingColumnName(error);
+      // Nome non estraibile: meglio rinunciare al contesto che togliere
+      // colonne alla cieca fino a svuotare la query.
+      if (!bad) return { data: [], dropped };
+
+      const inBase = base.indexOf(bad);
+      const inPlan = plan.indexOf(bad);
+      if (inBase === -1 && inPlan === -1) return { data: [], dropped };
+
+      if (inBase !== -1) base.splice(inBase, 1);
+      if (inPlan !== -1) plan.splice(inPlan, 1);
+      dropped.push(bad);
+    }
+    return { data: [], dropped };
+  }
+
+  /**
+   * Progressione dei carichi in palestra, da exercise_sets (migrazione 006).
+   * La TABELLA può non esistere: è un errore diverso dalla colonna mancante
+   * (PGRST205/42P01 invece di PGRST204/42703), quindi serve un controllo
+   * proprio. Senza la 006 il contesto prosegue senza la sezione carichi.
+   */
+  function isMissingTableError(err) {
+    if (!err) return false;
+    if (err.code === 'PGRST205' || err.code === '42P01') return true;
+    const m = String(err.message || '').toLowerCase();
+    if (m.indexOf('could not find the table') !== -1) return true;
+    return m.indexOf('relation') !== -1 && m.indexOf('does not exist') !== -1;
+  }
+
+  async function loadGymProgress(sinceIso) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('exercise_sets')
+        .select('exercise_name, exercise_key, reps, weight_kg, performed_at')
+        .eq('user_id', currentUser.id)
+        .gte('performed_at', sinceIso)
+        .order('performed_at', { ascending: true });
+
+      if (error) {
+        if (isMissingTableError(error)) {
+          console.warn('AI Trainer: tabella exercise_sets non presente, ' +
+                       'eseguire migrations/006. Contesto senza carichi.');
+        } else {
+          console.warn('AI Trainer: carichi non disponibili.', error);
+        }
+        return [];
+      }
+      return window.AiContext ? window.AiContext.aggregateGymProgress(data || []) : [];
+    } catch (err) {
+      console.warn('AI Trainer: carichi non disponibili.', err);
+      return [];
+    }
+  }
+
+  /**
+   * Aggiunge al contesto i dati che l'utente ha incollato a mano (VO2max,
+   * sonno, FC a riposo, carichi di una scheda cartacea: qualsiasi cosa il
+   * database non abbia).
+   *
+   * Se il contesto automatico non c'è ancora — primo utilizzo, nessun
+   * allenamento negli ultimi 30 giorni — le note da sole valgono comunque
+   * un contesto: senza questo, chi non ha storico non potrebbe far leggere
+   * niente all'AI.
+   */
+  function withUserNotes(ctx) {
+    const el = document.getElementById('aiUserData');
+    const notes = el ? String(el.value || '').trim() : '';
+    if (!notes) return ctx;
+    return Object.assign({}, ctx || {}, { userNotes: notes });
+  }
+
   async function loadWorkoutContext() {
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sinceIso = thirtyDaysAgo.toISOString();
 
-      // temperature e humidity arrivano dalle migrazioni 003 e 005: se una
-      // manca, la query fallirebbe in blocco e il contesto sparirebbe del
-      // tutto. Al primo errore si ripiega sulle colonne di sempre.
-      const COLS_FULL   = 'completed_at, actual_duration, workout_plans(name, activity_type, temperature, humidity)';
-      const COLS_LEGACY = 'completed_at, actual_duration, workout_plans(name, activity_type)';
+      // heart_rate_avg, distance, perceived_difficulty e rating erano già nel
+      // database e non venivano mai chiesti: l'AI pianificava senza sapere a
+      // quale frequenza cardiaca e a quale ritmo l'utente si allena, né quali
+      // sessioni ha trovato dure.
+      const BASE_COLS = ['completed_at', 'actual_duration', 'distance',
+                         'calories_burned', 'heart_rate_avg',
+                         'perceived_difficulty', 'rating'];
+      const PLAN_COLS = ['name', 'activity_type', 'temperature', 'humidity',
+                         'max_heart_rate'];
 
-      const runQuery = (cols) => supabaseClient
-        .from('completed_workouts')
-        .select(cols)
-        .eq('user_id', currentUser.id)
-        .gte('completed_at', thirtyDaysAgo.toISOString())
-        .order('completed_at', { ascending: false })
-        .limit(30);
+      // Le tre letture sono indipendenti: in parallelo per non sommare le
+      // latenze, dato che la pagina attende il contesto per mostrare la card.
+      const [ctxRes, hrProfile, gymProgress] = await Promise.all([
+        selectContext(BASE_COLS, PLAN_COLS, sinceIso),
+        window.HrModel
+          ? window.HrModel.loadProfile(supabaseClient, currentUser.id)
+          : Promise.resolve(null),
+        loadGymProgress(sinceIso)
+      ]);
 
-      let { data: completed, error } = await runQuery(COLS_FULL);
-      if (error && isMissingColumnError(error)) {
-        console.warn('AI Trainer: colonne meteo non disponibili, eseguire le ' +
-                     'migrazioni in migrations/. Contesto senza condizioni ambientali.', error);
-        ({ data: completed, error } = await runQuery(COLS_LEGACY));
-      }
-
-      if (error || !completed?.length) return;
+      const completed = ctxRes.data;
+      if (!completed.length) return;
 
       const totalCompleted = completed.length;
       const avgDuration = Math.round(
@@ -145,13 +272,26 @@ document.addEventListener('DOMContentLoaded', async function () {
       const avgTemperature = avg(temps);
       const avgHumidity    = avg(hums);
 
+      // I dati che rendono il piano davvero personale: a che frequenza
+      // cardiaca e a che ritmo si allena, quali sessioni ha trovato dure,
+      // con che carichi lavora in palestra.
+      const activityStats = window.AiContext
+        ? window.AiContext.aggregateByActivity(completed, hrProfile) : [];
+      const hardSessions  = window.AiContext
+        ? window.AiContext.findHardSessions(completed) : [];
+
       workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak,
-                         lastWorkouts, avgTemperature, avgHumidity };
+                         lastWorkouts, avgTemperature, avgHumidity,
+                         maxHr:         hrProfile ? hrProfile.maxHr  : null,
+                         restHr:        hrProfile ? hrProfile.restHr : null,
+                         maxIsMeasured: hrProfile ? !!hrProfile.maxIsMeasured : false,
+                         activityStats, hardSessions, gymProgress };
       renderContextCard(workoutContext);
     } catch (err) {
       console.warn('Context load error:', err);
     }
   }
+
 
   const ACT_LABELS = {
     running: 'Corsa', gym: 'Palestra', yoga: 'Yoga',
@@ -346,7 +486,11 @@ document.addEventListener('DOMContentLoaded', async function () {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer ' + session.access_token
         },
-        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType, workoutContext }),
+        // I dati incollati a mano si leggono ORA e non al caricamento della
+        // pagina: l'utente li scrive dopo, e un contesto congelato all'avvio
+        // li ignorerebbe silenziosamente.
+        body: JSON.stringify({ prompt, planType, fitnessLevel, activityType,
+                               workoutContext: withUserNotes(workoutContext) }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
