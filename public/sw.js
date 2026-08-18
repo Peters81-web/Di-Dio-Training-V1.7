@@ -92,7 +92,12 @@
 //   v50 → Fix: reports.js non veniva interpretato per un SyntaxError
 //         ("const data" dove data era già il parametro della funzione),
 //         quindi la pagina Report era senza JavaScript dalla PR #23.
-const CACHE_NAME  = 'didio-v50';
+//   v51 → Metriche giornaliere di recupero (variabilità cardiaca, sonno,
+//         FC a riposo, VO2max) inseribili a mano, con confronto sulla
+//         linea di base personale. Primo passo verso Health Connect.
+//         Richiede migrations/007 (tabella nuova): senza, la striscia
+//         resta nascosta e il recupero non cambia.
+const CACHE_NAME  = 'didio-v51';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -114,6 +119,7 @@ const PRECACHE = [
   '/js/exercise-log.js',
   '/js/hr-model.js',
   '/js/ai-context.js',
+  '/js/daily-metrics.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
   '/js/fase1-features.js',

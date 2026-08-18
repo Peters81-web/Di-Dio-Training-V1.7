@@ -91,6 +91,15 @@ async function initRecovery() {
 
     const status = calcRecoveryStatus(completed || [], hr);
     renderRecovery(container, status, hr);
+
+    // Striscia dei dati di recupero (variabilità cardiaca, sonno, FC a
+    // riposo): si aggiunge DOPO renderRecovery, che riscrive tutto
+    // l'innerHTML del contenitore e cancellerebbe qualsiasi cosa
+    // inserita prima. Se migrations/007 non è stata eseguita si toglie
+    // da sola e la sezione resta esattamente com'era.
+    if (window.DailyMetrics) {
+      window.DailyMetrics.render(container, session.user.id);
+    }
   } catch (err) {
     console.warn('Recovery init error:', err);
     container.style.display = 'none';
