@@ -42,6 +42,23 @@ const MIGRATION_COLUMNS = [
   'humidity'                          // 005
 ];
 
+// ─── Tabelle introdotte dalle migrazioni ─────────────────────────────
+//
+// La 006 aggiunge una TABELLA, non delle colonne, e il controllo qui
+// sopra non la vedrebbe: cerca assegnazioni "colonna:" dentro una
+// scrittura, mentre qui il problema si presenta anche in LETTURA, e con
+// un codice d'errore diverso (PGRST205 / 42P01 invece di PGRST204 /
+// 42703). isMissingColumnError() non lo riconosce, quindi senza la
+// migrazione l'assenza della tabella arriverebbe all'utente come un
+// errore vero.
+//
+// Regola: se un file nomina una tabella di migrazione, deve anche
+// chiamare isMissingTableError.
+const MIGRATION_TABLES = [
+  'exercise_sets',                    // 006
+  'daily_metrics'                     // 007
+];
+
 // Indizi che nelle vicinanze esiste un ripiego.
 //
 // SOLO IDENTIFICATORI DI CODICE, mai frasi in italiano: la prima versione
@@ -73,9 +90,32 @@ const WINDOW = 40; // righe entro cui cercare il ripiego
 
 let problems = 0;
 
+/**
+ * Modi in cui, in questo file, si può fare riferimento a una tabella di
+ * migrazione: la stringa letterale, oppure la costante che la contiene
+ * (in daily-metrics.js e exercise-log.js è `var TABLE = '...'`, e le
+ * scritture usano `.from(TABLE)`, quindi la stringa non compare mai
+ * accanto alla scrittura).
+ */
+function migrationTableRefs(src) {
+  const refs = [];
+  for (const table of MIGRATION_TABLES) {
+    const lit = new RegExp(`['"\`]${table}['"\`]`);
+    if (!lit.test(src)) continue;
+    refs.push(lit);
+
+    const decl = src.match(
+      new RegExp(`(?:var|const|let)\\s+(\\w+)\\s*=\\s*['"\`]${table}['"\`]`));
+    if (decl) refs.push(new RegExp(`\\.from\\s*\\(\\s*${decl[1]}\\s*\\)`));
+  }
+  return refs;
+}
+
 for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
   const full  = path.join(JS_DIR, file);
-  const lines = fs.readFileSync(full, 'utf8').split('\n');
+  const raw   = fs.readFileSync(full, 'utf8');
+  const lines = raw.split('\n');
+  const tableRefs = migrationTableRefs(stripComments(raw));
 
   lines.forEach((line, i) => {
     // Interessano solo le righe che assegnano la colonna in un oggetto
@@ -92,6 +132,17 @@ for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
     const isDbWrite = /\.(insert|update|upsert)\s*\(/.test(around);
     if (!isDbWrite) return;
 
+    // Se la scrittura è diretta a una TABELLA di migrazione, il ripiego
+    // per colonna non ha senso: quella colonna nasce insieme alla sua
+    // tabella, quindi o ci sono entrambe o non c'è nessuna delle due.
+    // Il ripiego corretto è isMissingTableError, ed è il controllo sulle
+    // tabelle più sotto a pretenderlo.
+    //
+    // Senza questa esenzione il controllo segnalava daily_metrics.source
+    // (007) chiedendo un ripiego che non si può scrivere, e l'unico modo
+    // di zittirlo sarebbe stato indebolire il controllo per tutti.
+    if (tableRefs.some(re => re.test(around))) return;
+
     const hasFallback = FALLBACK_HINTS.some(re => re.test(around));
     if (!hasFallback) {
       problems++;
@@ -100,21 +151,6 @@ for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
   });
 }
 
-// ─── Tabelle introdotte dalle migrazioni ─────────────────────────────
-//
-// La 006 aggiunge una TABELLA, non delle colonne, e il controllo qui
-// sopra non la vedrebbe: cerca assegnazioni "colonna:" dentro una
-// scrittura, mentre qui il problema si presenta anche in LETTURA, e con
-// un codice d'errore diverso (PGRST205 / 42P01 invece di PGRST204 /
-// 42703). isMissingColumnError() non lo riconosce, quindi senza la
-// migrazione l'assenza della tabella arriverebbe all'utente come un
-// errore vero.
-//
-// Regola: se un file nomina una tabella di migrazione, deve anche
-// chiamare isMissingTableError.
-const MIGRATION_TABLES = [
-  'exercise_sets'                     // 006
-];
 
 for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
   const src = stripComments(fs.readFileSync(path.join(JS_DIR, file), 'utf8'));

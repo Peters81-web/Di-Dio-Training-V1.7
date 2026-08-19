@@ -640,8 +640,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
         
         // Prepara i dati per il grafico
+        // NB: non chiamarla "data": è già il nome del PARAMETRO della funzione,
+        // e ridichiararlo con const nello stesso ambito è un SyntaxError che
+        // impedisce l'interpretazione di TUTTO il file, non solo di questa
+        // funzione. È il difetto che teneva ferma l'intera pagina Report.
         const labels = Object.keys(activityCounts);
-        const data = Object.values(activityCounts);
+        const counts = Object.values(activityCounts);
         
         // Configura il grafico
         const chartConfig = {
@@ -649,7 +653,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             data: {
                 labels: labels,
                 datasets: [{
-                    data: data,
+                    data: counts,
                     backgroundColor: [
                         '#4361ee',
                         '#3a0ca3',
