@@ -97,7 +97,12 @@
 //         linea di base personale. Primo passo verso Health Connect.
 //         Richiede migrations/007 (tabella nuova): senza, la striscia
 //         resta nascosta e il recupero non cambia.
-const CACHE_NAME  = 'didio-v51';
+//   v52 → Tempo REALE in zona: il tracciato cardiaco veniva attraversato
+//         dall'import per prendere il GPS e la frequenza si leggeva solo
+//         dalle medie di lap. Su una corsa vera erano 16 medie invece di
+//         3153 campioni, e la sessione risultava "zona 2" mentre il 45%
+//         era in zona 3. Richiede migrations/008.
+const CACHE_NAME  = 'didio-v52';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

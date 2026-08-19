@@ -117,6 +117,39 @@
     return out;
   }
 
+  /**
+   * Costruisce il tracciato cardiaco da campioni { t: Date, hr: number }.
+   *
+   * Formato: array di coppie [secondiDallInizio, bpm], sottocampionato a
+   * MAX_TRACK_POINTS come la traccia GPS. Verificato sul file reale di
+   * una corsa da 52 minuti: da 3153 punti a 500 l'errore sulla
+   * distribuzione nelle zone è 0,45 punti percentuali e il TRIMP passa
+   * da 87,8 a 87,3, con il peso che scende da ~90 KB a ~5 KB.
+   *
+   * Si salva la SERIE e non i totali già calcolati perché tempo in zona
+   * e TRIMP dipendono da FC massima e a riposo: quelle stanno nel
+   * profilo e possono cambiare, e i totali resterebbero congelati sui
+   * valori vecchi senza che nulla lo segnali.
+   */
+  function buildHrSeries(samples) {
+    if (!samples || samples.length < 2) return null;
+
+    var base = samples[0].t;
+    var pts  = samples.map(function (s) {
+      return [Math.max(0, Math.round((s.t - base) / 1000)), Math.round(s.hr)];
+    });
+
+    if (pts.length <= MAX_TRACK_POINTS) return pts;
+
+    var step = (pts.length - 1) / (MAX_TRACK_POINTS - 1);
+    var out  = [];
+    for (var i = 0; i < MAX_TRACK_POINTS; i++) out.push(pts[Math.round(i * step)]);
+    // L'ultimo campionato può non essere l'ultimo reale, e sull'ultimo
+    // punto si chiude il conto della durata: forziamolo.
+    out[out.length - 1] = pts[pts.length - 1];
+    return out;
+  }
+
   function parseTcx(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) {
@@ -150,15 +183,41 @@
       if (maxEl) { const mv = parseFloat(getText(maxEl, 'Value')) || 0; if (mv > maxHr) maxHr = mv; }
     }
 
-    // Coordinate dei trackpoint. Il TCX le espone come
-    // <Position><LatitudeDegrees>/<LongitudeDegrees>; le attività indoor
-    // (palestra, tapis roulant) semplicemente non hanno Position.
-    const positions = activity.getElementsByTagName('Position');
+    // Trackpoint: coordinate e frequenza cardiaca, letti nello stesso
+    // passaggio.
+    //
+    // Prima si iterava solo <Position>, e la frequenza si prendeva dalle
+    // medie di lap: su questo file 16 medie invece di 3153 campioni. La
+    // media di lap dice "140 bpm, zona 2"; il tracciato dice 45% in zona
+    // 3. Non era un dettaglio di precisione, era la zona sbagliata.
+    //
+    // Si iterano i Trackpoint e non più le Position perché servono
+    // insieme: un punto può avere la frequenza senza avere il GPS (corsa
+    // sul tapis roulant) o viceversa.
+    const tps    = activity.getElementsByTagName('Trackpoint');
     const coords = [];
-    for (let i = 0; i < positions.length; i++) {
-      const la = parseFloat(getText(positions[i], 'LatitudeDegrees'));
-      const lo = parseFloat(getText(positions[i], 'LongitudeDegrees'));
-      if (!isNaN(la) && !isNaN(lo)) coords.push([la, lo]);
+    const hrSamples = [];
+
+    for (let i = 0; i < tps.length; i++) {
+      const tp = tps[i];
+
+      const pos = tp.getElementsByTagName('Position')[0];
+      if (pos) {
+        const la = parseFloat(getText(pos, 'LatitudeDegrees'));
+        const lo = parseFloat(getText(pos, 'LongitudeDegrees'));
+        if (!isNaN(la) && !isNaN(lo)) coords.push([la, lo]);
+      }
+
+      // <HeartRateBpm><Value>142</Value></HeartRateBpm>. Da non
+      // confondere con <AverageHeartRateBpm> e <MaximumHeartRateBpm>,
+      // che stanno sul lap e hanno nomi diversi.
+      const hrEl = tp.getElementsByTagName('HeartRateBpm')[0];
+      const tEl  = tp.getElementsByTagName('Time')[0];
+      if (hrEl && tEl) {
+        const hv = parseFloat(getText(hrEl, 'Value'));
+        const tv = new Date(tEl.textContent.trim());
+        if (hv > 0 && !isNaN(tv.getTime())) hrSamples.push({ t: tv.getTime(), hr: hv });
+      }
     }
 
     // Temperatura: il TCX non ha un campo standard (a differenza del GPX,
@@ -182,10 +241,20 @@
       durationMin: Math.max(1, Math.round(totalSec / 60)),
       distanceKm: totalMeters ? Math.round(totalMeters / 100) / 10 : null, // 1 decimale
       calories: totalCal ? Math.round(totalCal) : null,
-      avgHr: hrTime ? Math.round(hrWeighted / hrTime) : null,
-      maxHr: maxHr || null,
+      // Con il tracciato disponibile media e massimo si ricavano da
+      // quello, che è più fedele delle medie di lap: il lap le calcola
+      // sul proprio intervallo, e la media pesata dei lap non coincide
+      // con la media dei campioni quando gli intervalli sono irregolari.
+      // Senza tracciato si ripiega sui lap, come si è sempre fatto.
+      avgHr: hrSamples.length
+        ? Math.round(hrSamples.reduce(function (s, x) { return s + x.hr; }, 0) / hrSamples.length)
+        : (hrTime ? Math.round(hrWeighted / hrTime) : null),
+      maxHr: hrSamples.length
+        ? Math.round(hrSamples.reduce(function (m, x) { return x.hr > m ? x.hr : m; }, 0))
+        : (maxHr || null),
       temperature: tCount ? Math.round((tSum / tCount) * 10) / 10 : null,
-      track: buildTrack(coords)
+      track: buildTrack(coords),
+      hrSeries: buildHrSeries(hrSamples)
     };
   }
 
@@ -216,6 +285,7 @@
     let dist = 0, hrSum = 0, hrCount = 0, tempSum = 0, tempCount = 0;
     let firstTime = null, lastTime = null, prevLat = null, prevLon = null;
     const coords = []; // le stesse coordinate usate per la distanza, ora conservate
+    const hrSamples = [];
 
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
@@ -227,9 +297,21 @@
         coords.push([lat, lon]);
       }
       const tEl = p.getElementsByTagNameNS('*', 'time')[0];
-      if (tEl) { const tt = new Date(tEl.textContent.trim()); if (!isNaN(tt.getTime())) { if (!firstTime) firstTime = tt; lastTime = tt; } }
+      let ptTime = null;
+      if (tEl) {
+        const tt = new Date(tEl.textContent.trim());
+        if (!isNaN(tt.getTime())) { ptTime = tt; if (!firstTime) firstTime = tt; lastTime = tt; }
+      }
       const hrEl = p.getElementsByTagNameNS('*', 'hr')[0];
-      if (hrEl) { const hv = parseFloat(hrEl.textContent) || 0; if (hv > 0) { hrSum += hv; hrCount++; } }
+      if (hrEl) {
+        const hv = parseFloat(hrEl.textContent) || 0;
+        if (hv > 0) {
+          hrSum += hv; hrCount++;
+          // Il valore veniva letto e poi buttato nella media: qui si
+          // conserva, così il GPX dà il tempo reale in zona come il TCX.
+          if (ptTime) hrSamples.push({ t: ptTime.getTime(), hr: hv });
+        }
+      }
 
       // Temperatura: Garmin la scrive come <gpxtpx:atemp> dentro
       // TrackPointExtension, accanto a <gpxtpx:hr>. Stessa lettura
@@ -254,9 +336,14 @@
       distanceKm: dist ? Math.round(dist / 100) / 10 : null,
       calories: null, // il GPX non contiene calorie
       avgHr: hrCount ? Math.round(hrSum / hrCount) : null,
-      maxHr: null,
+      // Il GPX non ha un massimo dichiarato: con i campioni si ricava,
+      // senza resta null come prima.
+      maxHr: hrSamples.length
+        ? Math.round(hrSamples.reduce(function (m, x) { return x.hr > m ? x.hr : m; }, 0))
+        : null,
       temperature: tempCount ? Math.round((tempSum / tempCount) * 10) / 10 : null,
-      track: buildTrack(coords)
+      track: buildTrack(coords),
+      hrSeries: buildHrSeries(hrSamples)
     };
   }
 
@@ -387,7 +474,8 @@
       temperature:    data.temperature,// 003
       weather:        data.weather || null, // 003, dal servizio meteo
       humidity:       data.humidity,        // 005, dal servizio meteo
-      source:         'garmin'         // 004
+      source:         'garmin',        // 004
+      hr_series:      data.hrSeries    // 008, tracciato cardiaco
     };
 
     const ins = await insertDroppingMissing(sc, basePlan, optional);
@@ -641,6 +729,19 @@
     } catch (e) {
       console.warn('Share import error:', e);
       return false;
+    }
+  };
+
+  // Esportate per i test in Node (scripts/test-hr-series.js). parseTcx e
+  // parseGpx non sono qui perché dipendono da DOMParser, che in Node non
+  // esiste: quello che si può verificare senza browser è la costruzione
+  // del tracciato, ed è anche la parte dove un errore passerebbe
+  // inosservato.
+  window.TcxImport = {
+    _internals: {
+      buildHrSeries: buildHrSeries,
+      buildTrack: buildTrack,
+      MAX_TRACK_POINTS: MAX_TRACK_POINTS
     }
   };
 })();

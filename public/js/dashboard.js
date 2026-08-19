@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // ===== VARIABILI GLOBALI =====
     let currentUser = null;
+    // { maxHr, restHr, maxIsMeasured } dal profilo, o null.
+    let hrProfile = null;
     let workouts = [];
     let supabaseClient = null;
     
@@ -42,6 +44,15 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (!session) return;
             
             currentUser = session.user;
+
+            // Parametri FC del profilo: servono a tradurre il tracciato
+            // cardiaco in zone. Caricati una volta sola qui, non a ogni
+            // apertura del dettaglio. Se le colonne della migrazione 002
+            // mancano, HrModel ripiega da solo sull'età.
+            if (window.HrModel) {
+                hrProfile = await window.HrModel.loadProfile(supabaseClient, currentUser.id)
+                    .catch(() => null);
+            }
 
             // Setup della dashboard
             setupEventListeners();
@@ -318,7 +329,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         'id', 'name', 'activity_id', 'activity_type', 'total_duration',
         'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
         'created_at', 'scheduled_date', 'completed', 'completed_at',
-        'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source'
+        'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source',
+        'hr_series'
     ];
 
     function isMissingColumnError(err) {
@@ -1089,6 +1101,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 <div class="workout-details-content">
                     ${createWorkoutDetailsContent(workout)}
+                    ${zoneBreakdown(workout)}
                     ${window.ExerciseLog ? window.ExerciseLog.placeholder(workout) : ''}
                 </div>
                 
@@ -1267,6 +1280,64 @@ document.addEventListener('DOMContentLoaded', async function() {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Distribuzione reale del tempo nelle zone cardio, dal tracciato
+     * salvato all'import (migrazione 008).
+     *
+     * PERCHÉ SOSTITUISCE LA ZONA DEDOTTA DALLA MEDIA
+     * Su una corsa reale la media era 140 bpm — zona 2 — mentre il
+     * tracciato diceva 45% in zona 3, 38% in zona 2, 12% in zona 1 e 5%
+     * in zona 4. La media non era imprecisa: dava la zona sbagliata, e
+     * quel giudizio finiva anche nel prompt dell'AI.
+     *
+     * Si calcola qui e non si salva perché dipende da FC massima e a
+     * riposo: cambiando il profilo, tutto lo storico si riallinea da solo.
+     */
+    function zoneBreakdown(workout) {
+        if (!window.HrModel || !hrProfile || !hrProfile.maxHr) return '';
+        const series = workout.hr_series;
+        if (!Array.isArray(series) || series.length < 2) return '';
+
+        const tz = window.HrModel.timeInZones(series, hrProfile.maxHr, hrProfile.restHr);
+        if (!tz) return '';
+        const load = window.HrModel.trimp(series, hrProfile.maxHr, hrProfile.restHr);
+
+        const fmt = s => {
+            const m = Math.floor(s / 60), r = Math.round(s % 60);
+            return m ? m + 'm' + (r ? ' ' + r + 's' : '') : r + 's';
+        };
+
+        const rows = window.HrModel.bounds(hrProfile.maxHr, hrProfile.restHr)
+            .map(z => {
+                const sec = tz.secs[z.n];
+                if (!sec) return '';
+                return `
+                    <div class="hrz-row">
+                        <span class="hrz-tag" style="background:${z.color}">Z${z.n}</span>
+                        <span class="hrz-name">${escapeHtml(z.name)}</span>
+                        <span class="hrz-bar"><span class="hrz-fill" style="width:${tz.pct[z.n]}%;background:${z.color}"></span></span>
+                        <span class="hrz-time">${escapeHtml(fmt(sec))}</span>
+                        <span class="hrz-pct">${tz.pct[z.n]}%</span>
+                    </div>`;
+            }).join('');
+
+        if (!rows) return '';
+
+        return `
+            <div class="hrz-block">
+                <div class="hrz-head">
+                    <h4><i class="fas fa-heart-pulse" aria-hidden="true"></i> Tempo in zona</h4>
+                    ${load !== null ? `<span class="hrz-load" title="Carico di allenamento (TRIMP), stimato da noi: non è il valore di Garmin, che non lo espone">carico ${load}</span>` : ''}
+                </div>
+                ${rows}
+                <p class="hrz-note">
+                    Dal tracciato cardiaco della sessione, ${series.length} campioni.
+                    Il carico è una nostra stima con il metodo TRIMP: Garmin non
+                    espone il proprio, quindi i due numeri non sono confrontabili.
+                </p>
+            </div>`;
     }
 
     /**

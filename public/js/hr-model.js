@@ -73,6 +73,92 @@
     }
 
     /**
+     * Tempo trascorso in ciascuna zona, da una serie di campioni.
+     *
+     * serie = [[secondiDallInizio, bpm], ...], come salvata in
+     * workout_plans.hr_series dall'import.
+     *
+     * PERCHÉ NON BASTA LA MEDIA
+     * Su una corsa reale di 52 minuti la media era 140 bpm, che cade in
+     * Z2, ma il tracciato diceva 45% in Z3 e solo 37% in Z2. Riassumere
+     * con la media non è impreciso: dà la zona SBAGLIATA, e l'AI e il
+     * recupero ci costruiscono sopra.
+     *
+     * Ogni campione vale l'intervallo che lo separa dal successivo. Gli
+     * intervalli assurdi (negativi, o oltre il minuto: pause, perdita di
+     * segnale) valgono 1 secondo invece di essere sommati per intero,
+     * altrimenti una pausa di venti minuti finirebbe attribuita alla
+     * zona in cui ci si trovava quando è iniziata.
+     *
+     * Ritorna { secs: [null,z1..z5], total, pct: [null,z1..z5] } oppure
+     * null se la serie non è utilizzabile.
+     */
+    function timeInZones(series, maxHr, restHr) {
+        if (!Array.isArray(series) || series.length < 2 || !(maxHr > 0)) return null;
+
+        var secs = [null, 0, 0, 0, 0, 0];
+        var total = 0;
+
+        for (var i = 0; i < series.length - 1; i++) {
+            var a = series[i], b = series[i + 1];
+            if (!a || !b) continue;
+            var bpm = Number(a[1]);
+            if (!(bpm > 0)) continue;
+
+            var d = Number(b[0]) - Number(a[0]);
+            if (!(d > 0) || d > 60) d = 1;
+
+            var z = zoneOf(bpm, maxHr, restHr);
+            if (!z) continue;
+            secs[z] += d;
+            total += d;
+        }
+        if (!total) return null;
+
+        var pct = [null];
+        for (var n = 1; n <= 5; n++) pct.push(Math.round((secs[n] / total) * 100));
+        return { secs: secs, total: total, pct: pct };
+    }
+
+    /**
+     * Carico di allenamento secondo il TRIMP di Banister, pesato
+     * sull'esponenziale della riserva cardiaca usata.
+     *
+     * È una formula PUBBLICATA, non l'indice di Garmin: Training Load,
+     * Body Battery e Training Status sono metriche proprietarie che
+     * Garmin non espone da nessuna parte (né file, né Health Connect).
+     * Questo numero va quindi presentato come stima nostra, come già si
+     * fa per calorie e recupero, e non confrontato con quello
+     * dell'orologio: misurano la stessa cosa con metodi diversi.
+     *
+     * Il coefficiente 1.92 è quello maschile della formulazione
+     * originale; 0.64 è il fattore di scala che la accompagna.
+     */
+    function trimp(series, maxHr, restHr) {
+        if (!Array.isArray(series) || series.length < 2 || !(maxHr > 0)) return null;
+        var rest = (restHr > 0 && maxHr > restHr) ? restHr : 0;
+        var span = maxHr - rest;
+        if (!(span > 0)) return null;
+
+        var v = 0;
+        for (var i = 0; i < series.length - 1; i++) {
+            var a = series[i], b = series[i + 1];
+            if (!a || !b) continue;
+            var bpm = Number(a[1]);
+            if (!(bpm > 0)) continue;
+
+            var d = Number(b[0]) - Number(a[0]);
+            if (!(d > 0) || d > 60) d = 1;
+
+            var r = (bpm - rest) / span;
+            if (r < 0) r = 0;
+            if (r > 1) r = 1;
+            v += (d / 60) * r * 0.64 * Math.exp(1.92 * r);
+        }
+        return Math.round(v);
+    }
+
+    /**
      * Legge dal profilo i parametri della FC.
      * max_heart_rate e resting_heart_rate arrivano da migrations/002: se
      * mancano si ripiega sulla sola data di nascita, così le zone
@@ -116,6 +202,8 @@
         usingKarvonen: usingKarvonen,
         bounds: bounds,
         zoneOf: zoneOf,
+        timeInZones: timeInZones,
+        trimp: trimp,
         loadProfile: loadProfile
     };
 

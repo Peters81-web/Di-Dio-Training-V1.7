@@ -11,7 +11,7 @@
     "dev": "nodemon index.js",
     "check:fallbacks": "node scripts/check-migration-fallbacks.js",
     "check:syntax": "node scripts/check-syntax.js",
-    "test": "node scripts/check-syntax.js && node scripts/check-migration-fallbacks.js && node scripts/test-exercise-log.js && node scripts/test-ai-context.js && node scripts/test-prompt-context.js && node scripts/test-daily-metrics.js"
+    "test": "node scripts/check-syntax.js && node scripts/check-migration-fallbacks.js && node scripts/test-exercise-log.js && node scripts/test-ai-context.js && node scripts/test-prompt-context.js && node scripts/test-daily-metrics.js && node scripts/test-hr-series.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
