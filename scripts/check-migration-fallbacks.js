@@ -39,7 +39,8 @@ const MIGRATION_COLUMNS = [
   'resting_heart_rate',               // 002 (max_heart_rate anche su profiles)
   'temperature', 'weather',           // 003
   'source',                           // 004
-  'humidity'                          // 005
+  'humidity',                         // 005
+  'hr_series'                         // 008
 ];
 
 // ─── Tabelle introdotte dalle migrazioni ─────────────────────────────
