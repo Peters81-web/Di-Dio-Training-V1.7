@@ -60,8 +60,19 @@
 
       // max_heart_rate e resting_heart_rate esistono solo dopo
       // migrations/002-hr-settings.sql: se manca, la query fallirebbe in
-      // blocco e le zone sparirebbero. Al primo errore ripieghiamo sulla
-      // sola data di nascita.
+      // blocco e le zone sparirebbero. Ripieghiamo sulla sola data di
+      // nascita, ma SOLO su "colonna inesistente": con un ripiego su
+      // qualsiasi errore, un guasto di rete degraderebbe di nascosto alla
+      // stima dall'età e le zone comparirebbero comunque, sbagliate.
+      var isMissingColumnError = (window.HrModel && window.HrModel.isMissingColumnError)
+        ? window.HrModel.isMissingColumnError
+        : function (err) {
+            if (!err) return false;
+            if (err.code === 'PGRST204' || err.code === '42703') return true;
+            var m = String(err.message || '').toLowerCase();
+            return m.indexOf('could not find') !== -1 && m.indexOf('column') !== -1;
+          };
+
       var uid = session.user.id;
 
       function apply(row) {
@@ -87,6 +98,10 @@
         .eq('id', uid).single()
         .then(function (r) {
           if (!r.error) return apply(r.data);
+          if (!isMissingColumnError(r.error)) {
+            console.warn('Zone: lettura del profilo non riuscita.', r.error);
+            return apply(null);
+          }
           console.warn('Zone cardio: colonne FC non disponibili, eseguire ' +
                        'migrations/002-hr-settings.sql. Ripiego sulla stima dall\'età.', r.error);
           sc.from('profiles').select('birthdate').eq('id', uid).single()

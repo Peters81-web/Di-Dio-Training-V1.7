@@ -208,7 +208,11 @@ document.addEventListener('DOMContentLoaded', async function () {
       const BASE_COLS = ['completed_at', 'actual_duration', 'distance',
                          'calories_burned', 'heart_rate_avg',
                          'perceived_difficulty', 'rating'];
+      // hr_series (008) porta il tracciato cardiaco: da lì si ricava il
+      // tempo REALE in zona, invece della zona dedotta dalla media — che
+      // su una corsa vera diceva "zona 2" mentre il 45% era in zona 3.
       const PLAN_COLS = ['name', 'activity_type', 'temperature', 'humidity',
+                         'hr_series',
                          'max_heart_rate'];
 
       // Le tre letture sono indipendenti: in parallelo per non sommare le

@@ -62,6 +62,16 @@ function musclesFromWorkout(workout) {
 
 // ─── RECOVERY TRACKER ────────────────────────────────────────────────────────
 
+// Riconosce l'errore "colonna inesistente" di PostgREST, per distinguerlo da
+// errori veri (rete, permessi, vincoli) che NON vanno mascherati: mascherarli
+// farebbe sembrare una migrazione mancante quello che è un guasto.
+function isMissingColumnError(err) {
+  if (!err) return false;
+  if (err.code === 'PGRST204' || err.code === '42703') return true;
+  const m = String(err.message || '').toLowerCase();
+  return m.includes('could not find') && m.includes('column');
+}
+
 async function initRecovery() {
   const supabase = window.supabaseClient;
   const container = document.getElementById('recoverySection');
@@ -74,13 +84,29 @@ async function initRecovery() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { data: completed } = await supabase
+    // hr_series arriva dalla migrazione 008. Se manca, la query
+    // fallirebbe in blocco e la sezione recupero sparirebbe: al primo
+    // errore di colonna inesistente si riprova senza, tornando al
+    // calcolo sulla FC media. Solo quell'errore: permessi e rete devono
+    // restare visibili.
+    const RECOVERY_COLS = (extra) =>
+      'completed_at, actual_duration, heart_rate_avg, ' +
+      'workout_plans(name, objective, activity_type' + (extra ? ', hr_series' : '') + ')';
+
+    const runRecoveryQuery = (extra) => supabase
       .from('completed_workouts')
-      .select('completed_at, actual_duration, heart_rate_avg, workout_plans(name, objective, activity_type)')
+      .select(RECOVERY_COLS(extra))
       .eq('user_id', session.user.id)
       .gte('completed_at', sevenDaysAgo.toISOString())
       .order('completed_at', { ascending: false })
       .limit(20);
+
+    let { data: completed, error: recErr } = await runRecoveryQuery(true);
+    if (recErr && isMissingColumnError(recErr)) {
+      console.warn('Recupero: colonna hr_series non disponibile, eseguire ' +
+                   'migrations/008. Calcolo sulla FC media.', recErr);
+      ({ data: completed } = await runRecoveryQuery(false));
+    }
 
     // Parametri FC del profilo: servono a pesare il recupero sull'intensità
     // reale. Se mancano, il calcolo resta quello a tempo fisso.
@@ -133,19 +159,49 @@ function durationFactor(minutes) {
 
 function sessionLoad(workout, hr) {
   const bpm = workout.heart_rate_avg;
-  const zone = (hr && hr.maxHr && window.HrModel)
-    ? window.HrModel.zoneOf(bpm, hr.maxHr, hr.restHr)
-    : null;
+  const plan = workout.workout_plans || {};
+  const canZone = !!(hr && hr.maxHr && window.HrModel);
 
-  // Senza FC non possiamo pesare l'intensità: coefficiente neutro, e lo
-  // dichiariamo nell'interfaccia invece di far finta di saperlo.
-  const zoneFactor = zone ? ZONE_LOAD[zone] : 1;
+  // Con il tracciato cardiaco (hr_series, migrazione 008) il coefficiente
+  // si calcola sul tempo DAVVERO passato in ciascuna zona, non su quella
+  // della media. La differenza è sostanziale: su una corsa reale la media
+  // dava zona 2 (coefficiente 0,7) mentre il 45% del tempo era in zona 3 e
+  // il 5% in zona 4, che pesano molto di più. Con la media, quella sessione
+  // risultava quasi gratis per il recupero.
+  let zoneFactor = null;
+  let zone = null;
+  let fromSeries = false;
+
+  if (canZone && Array.isArray(plan.hr_series) && plan.hr_series.length > 1) {
+    const tz = window.HrModel.timeInZones(plan.hr_series, hr.maxHr, hr.restHr);
+    if (tz && tz.total > 0) {
+      // Media dei coefficienti pesata sul tempo trascorso in ogni zona.
+      let acc = 0;
+      for (let z = 1; z <= 5; z++) acc += ZONE_LOAD[z] * (tz.secs[z] / tz.total);
+      zoneFactor = acc;
+      fromSeries = true;
+      // La zona mostrata resta quella dominante, che è l'informazione
+      // sintetica più onesta quando se ne può dare una sola.
+      let best = 1;
+      for (let z = 2; z <= 5; z++) if (tz.secs[z] > tz.secs[best]) best = z;
+      zone = best;
+    }
+  }
+
+  if (zoneFactor === null) {
+    zone = canZone ? window.HrModel.zoneOf(bpm, hr.maxHr, hr.restHr) : null;
+    // Senza FC non possiamo pesare l'intensità: coefficiente neutro, e lo
+    // dichiariamo nell'interfaccia invece di far finta di saperlo.
+    zoneFactor = zone ? ZONE_LOAD[zone] : 1;
+  }
+
   const factor = zoneFactor * durationFactor(workout.actual_duration);
 
   return {
     factor: Math.min(2, Math.max(0.4, factor)),
     zone: zone,
-    hasHr: !!(bpm > 0)
+    hasHr: !!(bpm > 0),
+    fromSeries: fromSeries
   };
 }
 
@@ -155,13 +211,14 @@ function calcRecoveryStatus(completedWorkouts, hr) {
   // muscolo → { ts, hours } dell'ultima sollecitazione, con le ore di
   // recupero già pesate sull'intensità di QUELLA sessione.
   const lastWorked = {};
-  let withHr = 0, total = 0;
+  let withHr = 0, total = 0, withSeries = 0;
 
   completedWorkouts.forEach(w => {
     const ts = new Date(w.completed_at).getTime();
     const load = sessionLoad(w, hr);
     total++;
     if (load.hasHr && load.zone) withHr++;
+    if (load.fromSeries) withSeries++;
 
     musclesFromWorkout(w).forEach(m => {
       if (!lastWorked[m] || ts > lastWorked[m].ts) {
@@ -196,7 +253,7 @@ function calcRecoveryStatus(completedWorkouts, hr) {
 
   // Serve all'interfaccia per dire su quanti allenamenti l'intensità è
   // stata considerata davvero.
-  rows.coverage = { withHr: withHr, total: total };
+  rows.coverage = { withHr: withHr, total: total, withSeries: withSeries };
   return rows;
 }
 
@@ -224,14 +281,18 @@ function renderRecovery(container, status, hr) {
     </div>`;
   }).join('');
 
-  const cov = status.coverage || { withHr: 0, total: 0 };
+  const cov = status.coverage || { withHr: 0, total: 0, withSeries: 0 };
+  const seriesNote = cov.withSeries > 0
+    ? ` Su ${cov.withSeries} ${cov.withSeries === 1 ? 'allenamento' : 'allenamenti'} l'intensità è pesata sul tracciato cardiaco completo, non sulla media.`
+    : '';
+
   const intensityNote = cov.total === 0
     ? ''
     : (cov.withHr === cov.total
-        ? 'Intensità considerata su tutti gli allenamenti del periodo.'
+        ? 'Intensità considerata su tutti gli allenamenti del periodo.' + seriesNote
         : cov.withHr === 0
           ? 'Nessun allenamento del periodo ha la frequenza cardiaca: il calcolo usa solo tipo di attività e durata.'
-          : `Intensità considerata su ${cov.withHr} allenamenti su ${cov.total}: per gli altri manca la frequenza cardiaca.`);
+          : `Intensità considerata su ${cov.withHr} allenamenti su ${cov.total}: per gli altri manca la frequenza cardiaca.` + seriesNote);
 
   const method = (hr && hr.maxHr)
     ? (hr.restHr
@@ -244,10 +305,12 @@ function renderRecovery(container, status, hr) {
       <i class="fas fa-circle-info" aria-hidden="true"></i>
       <div>
         <strong>È una stima, non una misura.</strong>
-        Calcolata da tipo di attività, durata e intensità (dalla FC media).
-        Il tuo orologio usa dati che qui non abbiamo: il tracciato cardiaco
-        secondo per secondo, la variabilità cardiaca e il sonno. Usala come
-        indicazione di massima, non al posto di come ti senti.
+        Calcolata da tipo di attività, durata e intensità. Dove l'allenamento
+        è stato importato da un file con il tracciato cardiaco, l'intensità è
+        pesata sul tempo davvero passato in ogni zona; altrimenti sulla FC
+        media della sessione. Restano fuori la variabilità cardiaca e il
+        sonno, che puoi aggiungere qui sotto. Usala come indicazione di
+        massima, non al posto di come ti senti.
       </div>
     </div>
 
@@ -278,10 +341,10 @@ function renderRecovery(container, status, hr) {
         <p>La durata pesa rispetto a una sessione di 45 minuti, con crescita
         sotto-lineare: due ore non richiedono il doppio del recupero di un'ora.</p>
         <p class="recovery-caveat"><strong>Cosa NON entra nel calcolo:</strong>
-        il tracciato cardiaco continuo (abbiamo solo la media della sessione,
-        quindi un intervallato Z2/Z5 risulta un Z3 costante), la variabilità
-        cardiaca, la frequenza a riposo del mattino, il sonno e lo stress. Sono
-        proprio i dati su cui si basa il recupero del tuo orologio.</p>
+        la variabilità cardiaca, la frequenza a riposo del mattino, il sonno e
+        lo stress. Il tracciato cardiaco continuo invece ora c'è, per gli
+        allenamenti importati da un file che lo contiene: per quelli un
+        intervallato Z2/Z5 non risulta più un Z3 costante.</p>
         <p class="recovery-caveat">${intensityNote} ${method}</p>
       </div>
     </details>`;
@@ -409,5 +472,16 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => clearInterval(t), 5000);
   }
 });
+
+// Esportate per i test in Node (scripts/test-recovery-load.js). Il peso
+// dell'intensità decide quante ore di recupero vengono mostrate: un
+// errore qui non genera eccezioni, produce numeri credibili e sbagliati.
+window.RecoveryModel = {
+  _internals: {
+    sessionLoad: sessionLoad,
+    durationFactor: durationFactor,
+    ZONE_LOAD: ZONE_LOAD
+  }
+};
 
 })();

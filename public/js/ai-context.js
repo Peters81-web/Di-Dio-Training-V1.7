@@ -54,10 +54,33 @@
             var plan = w.workout_plans || {};
             var type = w.activity_type || plan.activity_type || 'gym';
             if (!byType[type]) {
-                byType[type] = { type: type, n: 0, hrs: [], paces: [], kms: [], durations: [] };
+                byType[type] = {
+                    type: type, n: 0, hrs: [], paces: [], kms: [], durations: [],
+                    // Tempo REALE nelle zone, sommato su tutte le sessioni che
+                    // hanno il tracciato (hr_series, migrazione 008). Le
+                    // sessioni importate prima non ce l'hanno: si contano a
+                    // parte, così il prompt può dire su quante si basa invece
+                    // di far credere che valga per tutte.
+                    zoneSecs: [null, 0, 0, 0, 0, 0],
+                    zoneTotal: 0, withSeries: 0, load: 0
+                };
             }
             var b = byType[type];
             b.n++;
+
+            if (Array.isArray(plan.hr_series) && plan.hr_series.length > 1 &&
+                hrProfile && hrProfile.maxHr && window.HrModel) {
+                var tz = window.HrModel.timeInZones(
+                    plan.hr_series, hrProfile.maxHr, hrProfile.restHr);
+                if (tz) {
+                    for (var z = 1; z <= 5; z++) b.zoneSecs[z] += tz.secs[z];
+                    b.zoneTotal += tz.total;
+                    b.withSeries++;
+                    var tr = window.HrModel.trimp(
+                        plan.hr_series, hrProfile.maxHr, hrProfile.restHr);
+                    if (tr !== null) b.load += tr;
+                }
+            }
 
             var hr = num(w.heart_rate_avg);
             if (hr !== null && hr > 0) b.hrs.push(hr);
@@ -81,6 +104,16 @@
             if (avgHr !== null && hrProfile && hrProfile.maxHr && window.HrModel) {
                 zone = window.HrModel.zoneOf(Math.round(avgHr), hrProfile.maxHr, hrProfile.restHr);
             }
+            // Distribuzione reale in percentuale, solo se c'è abbastanza
+            // tracciato da renderla significativa.
+            var zonePct = null;
+            if (b.zoneTotal > 60) {
+                zonePct = [null];
+                for (var z = 1; z <= 5; z++) {
+                    zonePct.push(Math.round((b.zoneSecs[z] / b.zoneTotal) * 100));
+                }
+            }
+
             return {
                 type:       b.type,
                 n:          b.n,
@@ -88,7 +121,11 @@
                 zone:       zone,
                 avgPaceSec: b.paces.length     ? Math.round(mean(b.paces)) : null,
                 avgKm:      b.kms.length       ? Math.round(mean(b.kms) * 10) / 10 : null,
-                avgMin:     b.durations.length ? Math.round(mean(b.durations)) : null
+                avgMin:     b.durations.length ? Math.round(mean(b.durations)) : null,
+                // Dal tracciato: la verità, quando c'è.
+                zonePct:    zonePct,
+                withSeries: b.withSeries,
+                load:       b.withSeries ? Math.round(b.load / b.withSeries) : null
             };
         });
 

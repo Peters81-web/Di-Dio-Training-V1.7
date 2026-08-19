@@ -153,6 +153,66 @@ for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
 }
 
 
+// ─── Colonne di migrazione lette in una select ───────────────────────
+//
+// Il controllo qui sopra guarda solo le SCRITTURE: cerca "colonna:" con
+// un insert/update nelle vicinanze. Ma una colonna mancante fa fallire
+// anche una LETTURA, e in blocco: se hr_series (008) finisce in una
+// select senza ripiego, senza quella migrazione sparisce l'intera
+// sezione che la usa, non solo il dato.
+//
+// È un buco scoperto rompendo il codice apposta: tolto il ripiego dalla
+// query del recupero, il controllo passava lo stesso.
+//
+// Regola: se una select nomina una colonna di migrazione, il file deve
+// avere un ripiego. Le select costruite da array di costanti
+// (WORKOUT_COLS, BASE_COLS) sono già coperte dagli indizi.
+for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
+  const src = stripComments(fs.readFileSync(path.join(JS_DIR, file), 'utf8'));
+
+  // Non basta guardare dentro .select('...'): l'elenco delle colonne è
+  // spesso costruito altrove — un array di costanti, o una funzione che
+  // concatena, come RECOVERY_COLS in fase3-features.js. Cercando solo la
+  // forma letterale il controllo passava su una query che aveva perso il
+  // ripiego, ed è il bug per cui questo blocco esiste.
+  //
+  // Nemmeno estrarre tutte le stringhe funziona: in un file pieno di
+  // testo italiano gli apostrofi (l'utente, dell'AI) fanno credere al
+  // regex che una stringa inizi dove non inizia, e da lì in poi
+  // l'estrazione è spazzatura — l'ho verificato, inghiottiva righe di
+  // codice.
+  //
+  // Si cerca invece la colonna come ELEMENTO DI UN ELENCO: preceduta da
+  // apice, virgola o parentesi e seguita dagli stessi. Prende
+  // "'hr_series'" in un array e ", hr_series" dentro una stringa di
+  // colonne, e non prende "w.workout_plans?.temperature" (preceduto da
+  // punto) né "max_heart_rate: data.maxHr" (seguito da due punti), che è
+  // una scrittura e la copre il controllo qui sopra.
+  //
+  // LIMITE DICHIARATO: la granularità è il FILE, non la singola query.
+  // Un file che ha un ripiego da qualche parte risulta coperto anche per
+  // una select che non ce l'ha — in ai-trainer.js, per esempio, basta il
+  // "delete copy.source" di un'altra funzione. Il segnale che si vuole
+  // qui è "questo file legge colonne di migrazione e non sa cosa farne
+  // se mancano", e per quello funziona.
+  const inSelect = new Set();
+  if (/\.select\s*\(/.test(src)) {
+    for (const col of MIGRATION_COLUMNS) {
+      if (new RegExp(`['"\`,(]\\s*${col}\\s*['"\`,)]`).test(src)) inSelect.add(col);
+    }
+  }
+
+  if (inSelect.size) {
+    const hasFallback = FALLBACK_HINTS.some(re => re.test(src)) ||
+                        /(?<!function\s)isMissingTableError\s*\(/.test(src);
+    if (!hasFallback) {
+      problems++;
+      console.error(`  MANCA RIPIEGO  ${file}  select con [${[...inSelect].join(', ')}] ` +
+                    `e nessun ripiego nel file`);
+    }
+  }
+}
+
 for (const file of fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'))) {
   const src = stripComments(fs.readFileSync(path.join(JS_DIR, file), 'utf8'));
 

@@ -158,6 +158,33 @@ const MAX_USER_NOTES_LENGTH   = 600;
 const MAX_EXERCISE_NAME       = 80;
 
 /**
+ * Valida la distribuzione nelle zone: array di 6 posizioni, la prima
+ * null e poi Z1..Z5 in percentuale.
+ *
+ * Ritorna null se non è utilizzabile. Il controllo sulla somma non è
+ * pedanteria: se il calcolo lato client sbagliasse, arriverebbe una
+ * distribuzione che fa 160% e l'AI la userebbe senza accorgersene,
+ * descrivendo un allenamento che non è mai esistito. Meglio nessuna
+ * distribuzione che una impossibile.
+ */
+function sanitizeZonePct(raw) {
+  if (!Array.isArray(raw) || raw.length !== 6) return null;
+
+  const out = [null];
+  let sum = 0;
+  for (let i = 1; i <= 5; i++) {
+    const n = Number.parseFloat(raw[i]);
+    if (Number.isNaN(n) || n < 0 || n > 100) return null;
+    const v = Math.round(n);
+    out.push(v);
+    sum += v;
+  }
+  // Tolleranza per gli arrotondamenti dei cinque valori.
+  if (sum < 95 || sum > 105) return null;
+  return out;
+}
+
+/**
  * Sanitizza workoutContext (proveniente dal client) prima di iniettarlo
  * nel prompt Groq. Difesa in profondità contro:
  *  - prompt injection (input troppo lunghi che gonfiano il prompt e
@@ -233,7 +260,15 @@ function sanitizeWorkoutContext(raw) {
           // per chilometro, sotto la camminata più lenta.
           avgPaceSec: rangeOrNull(s.avgPaceSec,  60, 3600),
           avgKm:      rangeOrNull(s.avgKm,        0, 1000, 1),
-          avgMin:     rangeOrNull(s.avgMin,       0, 600)
+          avgMin:     rangeOrNull(s.avgMin,       0, 600),
+          // Distribuzione reale nelle zone, dal tracciato cardiaco.
+          // Array di 6 posizioni: la prima è null, poi Z1..Z5 in
+          // percentuale. Accettata solo se la somma è plausibile: una
+          // distribuzione che non fa circa 100 è un errore di calcolo, e
+          // mostrarla darebbe all'AI una sessione da 160%.
+          zonePct:    sanitizeZonePct(s.zonePct),
+          withSeries: clampInt(s.withSeries, 0, 10000, 0),
+          load:       rangeOrNull(s.load, 0, 1000)
         }))
         .filter(s => s.type && s.n > 0)
     : [];
@@ -428,6 +463,9 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
    * Sono gli stessi limiti già dichiarati nell'interfaccia.
    */
   function performanceSection(ctx) {
+    let anySeries = false;
+    let anyAverageOnly = false;
+
     const rows = (ctx.activityStats || []).map(s => {
       const bits = [`${s.n} session${s.n === 1 ? 'e' : 'i'}`];
       if (s.avgMin !== null) bits.push(`${s.avgMin} min di media`);
@@ -437,7 +475,27 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
       if (s.avgHr !== null) {
         bits.push(`FC media ${s.avgHr} bpm${s.zone !== null ? ` (zona ${s.zone} di 5)` : ''}`);
       }
-      return `  - ${ACT_IT[s.type] || s.type}: ${bits.join(', ')}`;
+      let line = `  - ${ACT_IT[s.type] || s.type}: ${bits.join(', ')}`;
+
+      // La distribuzione REALE, quando c'è, va oltre la media: dice come
+      // è stato distribuito lo sforzo dentro le sessioni. Su una corsa
+      // vera la media diceva "zona 2" mentre il 45% del tempo era in
+      // zona 3 — la media non era imprecisa, era la zona sbagliata.
+      if (s.zonePct) {
+        anySeries = true;
+        const parts = [];
+        for (let z = 1; z <= 5; z++) {
+          if (s.zonePct[z] > 0) parts.push(`${s.zonePct[z]}% in Z${z}`);
+        }
+        line += `\n    Tempo effettivo per zona, dal tracciato cardiaco di ` +
+                `${s.withSeries} session${s.withSeries === 1 ? 'e' : 'i'}: ${parts.join(', ')}.`;
+        if (s.load !== null) {
+          line += ` Carico medio per sessione ${s.load} (TRIMP, nostra stima).`;
+        }
+      }
+      if (s.withSeries < s.n) anyAverageOnly = true;
+
+      return line;
     });
     if (!rows.length) return '';
 
@@ -450,24 +508,44 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
       out += `\n  Le zone sono calcolate con ${method}.`;
     }
 
-    out += '\n  ATTENZIONE: la frequenza cardiaca è la MEDIA della sessione, non il ' +
-           'tracciato continuo, quindi un allenamento a intervalli risulta una media ' +
-           'piatta a intensità intermedia. Il ritmo è medio sull\'intera sessione, ' +
-           'riscaldamento e defaticamento compresi, quindi più lento del ritmo di ' +
-           'lavoro. Usa questi numeri per calibrare, non citarli come se fossero ' +
-           'misure istantanee.';
+    // L'avvertenza sulla media vale SOLO dove manca il tracciato. Dove
+    // c'è, il limite non esiste più e ripeterlo porterebbe l'AI a
+    // diffidare di un dato che invece è preciso.
+    if (anyAverageOnly) {
+      out += '\n  ATTENZIONE: dove è indicata solo la FC media, quella è la media ' +
+             'della sessione e non il tracciato continuo, quindi un allenamento a ' +
+             'intervalli risulta una media piatta a intensità intermedia. Dove invece ' +
+             'è riportato il tempo effettivo per zona, il dato è preciso e va usato ' +
+             'al posto della media.';
+    }
+    out += '\n  Il ritmo è medio sull\'intera sessione, riscaldamento e defaticamento ' +
+           'compresi, quindi più lento del ritmo di lavoro.';
 
     // L'osservazione più utile che si possa fare con questi dati: chi corre
-    // "piano" spesso non corre piano. Se la media delle uscite cade in zona
-    // 3 o oltre, il problema non è il piano, è il ritmo delle sessioni facili.
-    const easy = (ctx.activityStats || []).find(
-      s => (s.type === 'running' || s.type === 'walking') && s.zone !== null && s.zone >= 3
-    );
-    if (easy) {
-      out += `\n  Nota: la FC media nelle sessioni di ${ACT_IT[easy.type] || easy.type} ` +
-             `cade in zona ${easy.zone}. Se il piano prevede lavoro aerobico facile, ` +
-             `dì esplicitamente che va corso più piano di così e indica a quale ` +
-             `frequenza o ritmo restare.`;
+    // "piano" spesso non corre piano. Con il tracciato la si può fare sul
+    // tempo davvero passato sopra la soglia aerobica, invece che sulla
+    // media — che comprime tutto verso il centro e nasconde il problema.
+    const endurance = (ctx.activityStats || []).filter(
+      s => s.type === 'running' || s.type === 'walking' || s.type === 'cycling');
+
+    const hardShare = endurance.find(s => s.zonePct &&
+      (s.zonePct[3] + s.zonePct[4] + s.zonePct[5]) >= 40);
+
+    if (hardShare) {
+      const over = hardShare.zonePct[3] + hardShare.zonePct[4] + hardShare.zonePct[5];
+      out += `\n  Nota: nelle sessioni di ${ACT_IT[hardShare.type] || hardShare.type} ` +
+             `l'utente passa il ${over}% del tempo in zona 3 o superiore. Per un lavoro ` +
+             `prevalentemente aerobico è troppo: dì esplicitamente che le sedute facili ` +
+             `vanno corse più piano, e indica a quale frequenza o ritmo restare.`;
+    } else if (!anySeries) {
+      // Senza tracciato ci si deve accontentare della media, con il suo limite.
+      const easy = endurance.find(s => s.zone !== null && s.zone >= 3);
+      if (easy) {
+        out += `\n  Nota: la FC media nelle sessioni di ${ACT_IT[easy.type] || easy.type} ` +
+               `cade in zona ${easy.zone}. Se il piano prevede lavoro aerobico facile, ` +
+               `dì esplicitamente che va corso più piano di così e indica a quale ` +
+               `frequenza o ritmo restare.`;
+      }
     }
     return out;
   }

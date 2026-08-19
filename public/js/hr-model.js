@@ -19,6 +19,17 @@
         { n: 5, lo: 0.90, hi: 1.01, name: 'Massimale', desc: 'Massimo sforzo, breve durata',     color: '#ef4444' }
     ];
 
+    // Il ripiego deve scattare SOLO su "colonna inesistente": con un
+    // catch su qualsiasi errore, un guasto di rete o di permessi
+    // degraderebbe silenziosamente alla stima dall'età, e nessuno se ne
+    // accorgerebbe perché le zone continuerebbero a comparire.
+    function isMissingColumnError(err) {
+        if (!err) return false;
+        if (err.code === 'PGRST204' || err.code === '42703') return true;
+        var m = String(err.message || '').toLowerCase();
+        return m.indexOf('could not find') !== -1 && m.indexOf('column') !== -1;
+    }
+
     function ageFromBirthdate(birthdate) {
         if (!birthdate) return null;
         var bd = new Date(String(birthdate).slice(0, 10));
@@ -186,6 +197,10 @@
             .eq('id', userId).single()
             .then(function (r) {
                 if (!r.error) return apply(r.data);
+                if (!isMissingColumnError(r.error)) {
+                    console.warn('HR: lettura del profilo non riuscita.', r.error);
+                    return apply(null);
+                }
                 console.warn('HR: colonne FC non disponibili, eseguire ' +
                              'migrations/002-hr-settings.sql. Ripiego sull\'età.', r.error);
                 return sc.from('profiles').select('birthdate').eq('id', userId).single()
@@ -202,6 +217,7 @@
         usingKarvonen: usingKarvonen,
         bounds: bounds,
         zoneOf: zoneOf,
+        isMissingColumnError: isMissingColumnError,
         timeInZones: timeInZones,
         trimp: trimp,
         loadProfile: loadProfile
