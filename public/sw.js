@@ -102,7 +102,12 @@
 //         dalle medie di lap. Su una corsa vera erano 16 medie invece di
 //         3153 campioni, e la sessione risultava "zona 2" mentre il 45%
 //         era in zona 3. Richiede migrations/008.
-const CACHE_NAME  = 'didio-v52';
+//   v53 → Il tempo reale in zona arriva all'AI e al recupero. L'AI
+//         riceve la distribuzione invece della zona dedotta dalla media,
+//         e il recupero pesa l'intensità sul tempo davvero passato in
+//         ogni zona: sulla stessa corsa il recupero delle gambe passa da
+//         54 a 66 ore, perché la media la trattava come fondo lento.
+const CACHE_NAME  = 'didio-v53';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

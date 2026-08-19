@@ -50,7 +50,7 @@ function extractConst(src, name) {
   return m ? m[0] : null;
 }
 
-const NEEDED_FUNCS = ['sanitizeWorkoutContext', 'pace', 'performanceSection',
+const NEEDED_FUNCS = ['sanitizeWorkoutContext', 'sanitizeZonePct', 'pace', 'performanceSection',
                       'feedbackSection', 'strengthSection', 'userNotesSection',
                       'envSection'];
 const NEEDED_CONSTS = ['MAX_TOP_ACTIVITY_LENGTH', 'MAX_LAST_WORKOUTS_ITEMS',
@@ -79,8 +79,8 @@ if (missing.length) {
 }
 
 const api = new Function(pieces.join('\n') + `
-  return { sanitizeWorkoutContext, pace, performanceSection, feedbackSection,
-           strengthSection, userNotesSection, envSection };`)();
+  return { sanitizeWorkoutContext, sanitizeZonePct, pace, performanceSection,
+           feedbackSection, strengthSection, userNotesSection, envSection };`)();
 
 let pass = 0, fail = 0;
 function check(name, actual, expected) {
@@ -174,7 +174,9 @@ contains('il metodo è dichiarato',  perf, 'Karvonen');
 contains('FC massima dichiarata misurata', perf, '179 misurata');
 // Le due avvertenze sono il motivo per cui questi numeri sono usabili:
 // senza, l'AI le interpreta come misure istantanee.
-contains('avvertenza sulla media di sessione', perf, 'MEDIA della sessione');
+// Il contesto di prova non ha tracciato, quindi l'avvertenza sulla media
+// deve esserci: senza tracciato quel limite è reale.
+contains('avvertenza sulla media di sessione', perf, 'media della sessione e non il tracciato');
 contains('avvertenza sul ritmo medio',         perf, 'riscaldamento e defaticamento');
 
 // Il consiglio più utile: se le uscite "facili" cadono in Z3+, dirlo.
@@ -219,6 +221,65 @@ console.log('\n— formattazione del ritmo (server) —');
 check('5:42',  api.pace(342),  '5:42');
 check('6:00',  api.pace(359.6), '6:00');
 check('null',  api.pace(null),  null);
+
+console.log('\n— distribuzione reale nelle zone —');
+// Il punto di tutto il lavoro: la media diceva "zona 2" mentre il 45% del
+// tempo era in zona 3. Con il tracciato il prompt deve riportare la
+// distribuzione, non la zona dedotta dalla media.
+const real = api.sanitizeWorkoutContext({
+  maxHr: 180, restHr: 53,
+  activityStats: [{ type: 'running', n: 6, avgHr: 140, zone: 2, avgPaceSec: 402,
+                    zonePct: [null, 12, 38, 45, 5, 0], withSeries: 6, load: 87 }]
+});
+check('distribuzione accettata', real.activityStats[0].zonePct, [null, 12, 38, 45, 5, 0]);
+check('sessioni col tracciato',  real.activityStats[0].withSeries, 6);
+check('carico medio',            real.activityStats[0].load, 87);
+
+const realTxt = api.performanceSection(real);
+contains('il prompt riporta il tempo per zona', realTxt, '45% in Z3');
+contains('dice da quante sessioni viene',       realTxt, '6 sessioni');
+contains('il carico è dichiarato stima nostra', realTxt, 'nostra stima');
+// Con il tracciato su TUTTE le sessioni, l'avvertenza sulla media non serve
+// e ripeterla farebbe diffidare l'AI di un dato preciso.
+checkTrue('nessuna avvertenza sulla media quando il tracciato copre tutto',
+  realTxt.indexOf('media della sessione e non il tracciato') === -1);
+// 45+5 = 50% sopra la zona 2: va segnalato.
+contains('segnala il troppo tempo sopra la soglia aerobica', realTxt, 'in zona 3 o superiore');
+contains('e quantifica', realTxt, '50%');
+
+console.log('\n— tracciato solo su una parte delle sessioni —');
+const partial = api.sanitizeWorkoutContext({
+  maxHr: 180, restHr: 53,
+  activityStats: [{ type: 'running', n: 9, avgHr: 140, zone: 2,
+                    zonePct: [null, 12, 38, 45, 5, 0], withSeries: 3, load: 87 }]
+});
+const partialTxt = api.performanceSection(partial);
+contains('l avvertenza torna se qualche sessione ha solo la media',
+  partialTxt, 'media della sessione e non il tracciato');
+contains('e dice quante sessioni hanno il tracciato', partialTxt, '3 sessioni');
+
+console.log('\n— distribuzioni impossibili rifiutate —');
+// Se il calcolo lato client sbagliasse, arriverebbe una sessione al 160%:
+// meglio nessuna distribuzione che una inventata.
+check('somma troppo alta',   api.sanitizeZonePct([null, 50, 50, 50, 10, 0]), null);
+check('somma troppo bassa',  api.sanitizeZonePct([null, 10, 10, 10, 0, 0]),  null);
+check('valore negativo',     api.sanitizeZonePct([null, -5, 50, 55, 0, 0]),  null);
+check('valore oltre 100',    api.sanitizeZonePct([null, 120, 0, 0, 0, 0]),   null);
+check('lunghezza sbagliata', api.sanitizeZonePct([null, 50, 50]),            null);
+check('non è un array',      api.sanitizeZonePct('100'),                     null);
+check('somma valida al 100', api.sanitizeZonePct([null, 12, 38, 45, 5, 0]), [null, 12, 38, 45, 5, 0]);
+// Tolleranza per gli arrotondamenti dei cinque valori.
+check('99 per arrotondamento accettato', api.sanitizeZonePct([null, 12, 38, 44, 5, 0]), [null, 12, 38, 44, 5, 0]);
+
+console.log('\n— senza tracciato si ripiega sulla media —');
+const noSeries = api.sanitizeWorkoutContext({
+  maxHr: 180, restHr: 53,
+  activityStats: [{ type: 'running', n: 5, avgHr: 150, zone: 3 }]
+});
+const noSeriesTxt = api.performanceSection(noSeries);
+check('nessuna distribuzione', noSeries.activityStats[0].zonePct, null);
+contains('usa la vecchia nota sulla media', noSeriesTxt, 'cade in zona 3');
+contains('con l avvertenza', noSeriesTxt, 'media della sessione e non il tracciato');
 
 console.log('\n' + (fail === 0
   ? `  Tutti i ${pass} controlli del prompt superati.`
