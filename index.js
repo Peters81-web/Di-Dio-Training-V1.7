@@ -80,6 +80,35 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://szybzycjdqlhpgdlcoou.s
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_9PWi6QX0YsUBx5RoaleQ1g_FQz82pmn';
 const AUTH_TIMEOUT_MS = 4000;
 
+// ─── Modello AI e budget di tempo ────────────────────────────────────────────
+//
+// IL MODELLO STA IN UNA VARIABILE D'AMBIENTE, non nel codice.
+// Groq ha dismesso llama-3.1-8b-instant con poche settimane di preavviso e
+// l'AI Trainer sarebbe morto in silenzio: con AI_MODEL, la prossima volta
+// basta cambiare una riga nel dashboard Vercel invece di fare un deploy.
+// Serve anche a provare un modello diverso senza toccare il codice.
+// Il valore predefinito è quello attualmente in uso.
+const AI_MODEL = process.env.AI_MODEL || 'openai/gpt-oss-20b';
+
+// LA CATENA DEI LIMITI, dal più largo al più stretto:
+//
+//   piattaforma  300 s  Vercel Hobby con Fluid compute attivo (verificato
+//                       sul progetto). Il vecchio limite di 10 secondi non
+//                       esiste più: era quello di Fluid compute disattivato.
+//   client        55 s  AbortController in public/js/ai-trainer.js
+//   server        50 s  questo valore
+//
+// Il server deve restare SOTTO il client, altrimenti è il browser ad
+// abortire per primo e l'utente vede un errore generico mentre la
+// funzione continua a lavorare per nulla. scripts/test-ai-budget.js
+// verifica che l'ordine regga.
+//
+// maxDuration NON è dichiarato in vercel.json di proposito: quel file usa
+// la configurazione legacy "builds", e "functions" non può convivere con
+// essa — aggiungerlo farebbe FALLIRE il build. Si eredita quindi il
+// default del piano, ed è il motivo per cui la catena è scritta qui.
+const AI_BUDGET_MS = Number(process.env.AI_BUDGET_MS) || 50000;
+
 async function requireAuth(req, res, next) {
   req.startedAt = Date.now(); // serve a calcolare il budget residuo per Groq
   const header = req.get('authorization') || '';
@@ -150,7 +179,8 @@ const MAX_LAST_WORKOUTS_ITEMS = 10;
 const MAX_LAST_WORKOUT_LENGTH = 100;
 // Tetti sulle sezioni nuove del contesto. Servono a due cose insieme:
 // impedire che un payload gonfiato sprechi token, e tenere il prompt entro
-// il budget dei 10 secondi di Vercel Hobby. Più contesto non è gratis.
+// il prompt di dimensioni ragionevoli. Più contesto non è gratis: costa
+// token a ogni generazione e allunga l'attesa.
 const MAX_ACTIVITY_STATS      = 6;
 const MAX_HARD_SESSIONS       = 3;
 const MAX_GYM_PROGRESS        = 6;
@@ -646,12 +676,10 @@ Per i giorni di riposo usa:
 Sii specifico, concreto e adatto al livello ${levelText}.`;
 
   try {
-    // Budget totale della funzione su Vercel Hobby: 10s. La verifica del token
-    // ha già consumato parte del tempo, quindi a Groq diamo ciò che resta
-    // (meno un margine per serializzare la risposta), non 9s fissi.
-    const HARD_BUDGET_MS = 9500;
-    const elapsed        = Date.now() - req.startedAt;
-    const groqBudget     = Math.max(3000, HARD_BUDGET_MS - elapsed);
+    // La verifica del token ha già consumato parte del tempo, quindi al
+    // modello diamo ciò che resta del budget, non un valore fisso.
+    const elapsed    = Date.now() - req.startedAt;
+    const groqBudget = Math.max(3000, AI_BUDGET_MS - elapsed);
 
     const groqController = new AbortController();
     const groqTimeout = setTimeout(() => groqController.abort(), groqBudget);
@@ -663,22 +691,22 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
         'Content-Type':  'application/json'
       },
       body: JSON.stringify({
-        // llama-3.1-8b-instant è stato spento da Groq il 16 agosto 2026
-        // (deprecato dal 17 giugno). openai/gpt-oss-20b è il sostituto
-        // indicato da Groq stessa nell'avviso di dismissione.
-        model:       'openai/gpt-oss-20b',
+        // Da AI_MODEL, con openai/gpt-oss-20b come predefinito: vedi la
+        // nota in cima. llama-3.1-8b-instant, il modello precedente, è
+        // stato spento da Groq il 16 agosto 2026.
+        model:       AI_MODEL,
         messages:    [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userMessage  }
         ],
         max_tokens:  maxTokens,
         temperature: 0.7,
-        // Il modello nuovo ragiona prima di rispondere, con effort
-        // 'medium' come predefinito. Qui il compito è compilare un piano
-        // in un formato dato, non risolvere un problema: il ragionamento
-        // aggiunge latenza e token senza migliorare il risultato, e la
-        // funzione ha 10 secondi in tutto su Vercel Hobby. 'low' è la
-        // scelta che protegge il budget.
+        // Il modello ragiona prima di rispondere, con effort 'medium'
+        // come predefinito. Qui il compito è compilare un piano in un
+        // formato dato, non risolvere un problema: il ragionamento
+        // aggiunge latenza e token senza migliorare il risultato.
+        // Ora che il budget non è più di 10 secondi si potrebbe alzare,
+        // ma non c'è motivo: si pagherebbero token e attesa per nulla.
         reasoning_effort: 'low'
       }),
       signal: groqController.signal
@@ -730,7 +758,7 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
   } catch (err) {
     logErr('generate-plan error:', err);
     const msg = err.name === 'AbortError'
-      ? 'Timeout: Groq ha impiegato troppo tempo. Riprova.'
+      ? `Timeout: il modello ha superato i ${Math.round(AI_BUDGET_MS / 1000)} secondi. Riprova, oppure chiedi un piano più breve.`
       : 'Errore interno del server durante la generazione del piano.';
     return res.status(500).json({ error: msg });
   }
