@@ -1738,3 +1738,23 @@
 @media (max-width: 480px) {
     .hrz-row { grid-template-columns: 1.8rem 3.6rem 1fr 2.9rem 2.2rem; font-size: .73rem; gap: .35rem; }
 }
+
+/* =============================================
+   GIORNO DEL PIANO
+   Le schede di un piano dell'AI entrano con un solo INSERT, quindi hanno
+   created_at identico: senza un secondo criterio di ordinamento uscivano
+   in ordine casuale. Sistemato l'ordine, restava il problema di capire a
+   colpo d'occhio a che punto del piano si e: da qui l'etichetta.
+   Sta sopra il titolo, piccola e in maiuscoletto, per non competere con
+   il nome della sessione.
+   ============================================= */
+
+.day-badge {
+    display: inline-block;
+    margin-bottom: .2rem;
+    font-size: .64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #6d28d9;
+}

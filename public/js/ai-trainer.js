@@ -621,6 +621,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 
+  // Vive in plan-days.js insieme alla numerazione: sono due facce dello
+  // stesso testo ("### Giorno 1: **Corsa**"), e da lì sono verificabili
+  // dai controlli senza aprire un browser. Il ripiego serve solo se il
+  // modulo non fosse stato caricato: meglio un titolo con gli asterischi
+  // che un piano che non si salva.
+  const cleanTitle = (window.PlanDays && window.PlanDays.cleanTitle) ||
+    function (raw) { return String(raw || '').trim(); };
+
   function parseAIResponse(text) {
     const workouts = [];
     const startDate = new Date();
@@ -649,7 +657,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       if (!isRest && (warmup || mainPhase)) {
         workouts.push({
-          name: firstLine.replace(/^Giorno\s*\d+:\s*/i, '').trim() || firstLine,
+          name: cleanTitle(firstLine) || firstLine,
           scheduled_date: new Date(startDate.getTime() + 12 * 60 * 60 * 1000).toISOString().split('T')[0],
           warmup: warmup,
           main_phase: mainPhase,
@@ -681,12 +689,26 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
 
+    // Lo stesso numero che comparirà sulle schede in dashboard, calcolato
+    // dalla stessa funzione. Prima l'anteprima contava le posizioni
+    // (1, 2, 3, 4, 5): su un piano con riposo al quarto giorno avrebbe
+    // detto "4" dove la scheda salvata dice "Giorno 5", creando proprio la
+    // confusione che questa etichetta serve a togliere.
+    const dayNumbers = window.PlanDays
+      ? window.PlanDays.planDayNumbers(generatedWorkouts)
+      : generatedWorkouts.map(function () { return null; });
+
     if (elements.workoutPreviewList) {
       elements.workoutPreviewList.innerHTML = generatedWorkouts.map(function (w, i) {
+        // Senza numero del piano si ricade sulla posizione: meglio un
+        // numero approssimativo che un cerchio vuoto.
+        const day = dayNumbers[i];
+        const num = day || (i + 1);
+        const hint = day ? `Giorno ${day} del piano` : `Sessione ${i + 1}`;
         return `
           <div class="preview-item">
             <div class="preview-item-header">
-              <span class="preview-item-number">${i + 1}</span>
+              <span class="preview-item-number" title="${esc(hint)}">${num}</span>
               <h4>${esc(w.name)}</h4>
             </div>
             <div class="preview-item-details">
