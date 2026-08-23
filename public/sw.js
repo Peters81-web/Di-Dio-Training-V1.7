@@ -107,7 +107,13 @@
 //         e il recupero pesa l'intensità sul tempo davvero passato in
 //         ogni zona: sulla stessa corsa il recupero delle gambe passa da
 //         54 a 66 ore, perché la media la trattava come fondo lento.
-const CACHE_NAME  = 'didio-v53';
+//   v54 → Fix: le schede di un piano dell'AI uscivano in ordine casuale.
+//         Entrano con un solo INSERT, quindi hanno created_at identico al
+//         microsecondo, e l'ordinamento non aveva un secondo criterio: a
+//         parità di chiave Postgres non garantisce nessun ordine. Aggiunta
+//         la data pianificata come secondo criterio, e sopra il titolo
+//         l'etichetta "Giorno N", ricavata dalle date senza nuove colonne.
+const CACHE_NAME  = 'didio-v54';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -129,6 +135,7 @@ const PRECACHE = [
   '/js/exercise-log.js',
   '/js/hr-model.js',
   '/js/ai-context.js',
+  '/js/plan-days.js',
   '/js/daily-metrics.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',

@@ -373,7 +373,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('workout_plans')
                 .select(current.join(', '))
                 .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                // Secondo criterio, non un dettaglio estetico: le schede di
+                // un piano dell'AI entrano con un solo INSERT, quindi hanno
+                // created_at IDENTICO al microsecondo. A parità di chiave
+                // Postgres non garantisce nessun ordine, e le stesse cinque
+                // schede potevano uscire in ordine diverso da un
+                // caricamento all'altro. Con la data pianificata crescente
+                // il Giorno 1 viene prima del Giorno 2, sempre.
+                .order('scheduled_date', { ascending: true });
 
             if (!error) {
                 if (dropped.length) {
@@ -403,6 +411,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     // testo in main_phase, quindi non erano riutilizzabili.
     let completionsByWorkout = {};
 
+    // workout id -> numero del giorno dentro il suo piano ("Giorno 3").
+    // Calcolata da PlanDays sull'elenco COMPLETO, mai su quello filtrato:
+    // se la si ricalcolasse dopo un filtro, cambiare provenienza
+    // cambierebbe anche i numeri, e la stessa scheda sarebbe "Giorno 3"
+    // o "Giorno 1" a seconda di cosa sta guardando l'utente.
+    let dayNumberById = {};
+
+    /**
+     * Solo i piani dell'AI vengono numerati. Su un'attività importata da
+     * Garmin o su una scheda scritta a mano "Giorno 1" non significa
+     * niente: non fanno parte di una sequenza.
+     */
+    function computeDayNumbers(list) {
+        if (!window.PlanDays) { dayNumberById = {}; return; }
+        dayNumberById = window.PlanDays.planDayNumbersById(
+            (list || []).filter(w => sourceOf(w) === 'ai')
+        );
+    }
+
     async function loadCompletions() {
         try {
             const { data, error } = await supabaseClient
@@ -427,6 +454,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (error) throw error;
 
             workouts = data || [];
+            safe(function () { computeDayNumbers(workouts); });
             // renderToday PRIMA di displayWorkouts: se quest'ultima
             // sollevasse un errore, il riquadro "Oggi" resterebbe bloccato
             // sullo spinner per sempre. Ogni render è isolato dagli altri.
@@ -439,6 +467,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error('Errore caricamento allenamenti:', error);
             showToast('Errore nel caricamento degli allenamenti', 'error');
             workouts = [];
+            dayNumberById = {};
             // Anche in errore il riquadro "Oggi" va chiuso: uno spinner
             // eterno non dice niente all'utente.
             safe(function () { renderToday([]); });
@@ -673,6 +702,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         card.innerHTML = `
             <div class="workout-header">
                 <div class="workout-header-text">
+                    ${dayBadge(workout)}
                     <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
                     ${sourceBadge(workout)}
                 </div>
@@ -740,6 +770,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     function isImported(workout) {
         if (workout.source) return workout.source === 'garmin';
         return workout.objective === 'Attività importata da Garmin';
+    }
+
+    /**
+     * "Giorno 3" sopra il titolo, per le sole schede di un piano dell'AI.
+     *
+     * Sta PRIMA del titolo perché la domanda a cui risponde ("a che punto
+     * del piano sono?") viene prima di quella a cui risponde il titolo
+     * ("cosa devo fare?"), e perché così le schede di uno stesso piano si
+     * leggono in colonna come un elenco numerato.
+     */
+    function dayBadge(workout) {
+        const n = dayNumberById[workout.id];
+        if (!n) return '';
+        return `<span class="day-badge">Giorno ${n}</span>`;
     }
 
     // Etichetta di provenienza sulla card: rende evidente perché
