@@ -157,6 +157,94 @@ check('arrotondamento a 60 s', A.formatPace(359.6), '6:00');
 check('null se assente', A.formatPace(null), null);
 check('null se zero',    A.formatPace(0),    null);
 
+// ─── Gli appunti di fine sessione ───────────────────────────────────
+//
+// Il campo note di completed_workouts non veniva letto da nessuna parte:
+// l'AI Trainer chiedeva durata, distanza, calorie, FC media, difficoltà e
+// gradimento, ma non le note. Eppure è lì che finisce il dettaglio dentro
+// la sessione, mentre gli altri campi sono medie dell'intera seduta.
+console.log('\n— gli appunti di fine sessione —');
+
+const NOTA = "5' camminata + 4x20sec di scatto media 5.25/km.\n" +
+             "25' corsa in Z2 (passo medio: 7.08/Km, 3.51Km, asfalto).";
+
+const righe = [
+  { completed_at: '2026-08-24T14:39:00Z', notes: NOTA,
+    workout_plans: { name: 'Corsa – Zone 2 + Core' } },
+  { completed_at: '2026-08-22T17:17:00Z', notes: '   ',
+    workout_plans: { name: 'Ciclismo' } },
+  { completed_at: '2026-08-20T08:00:00Z', notes: 'gambe pesanti',
+    workout_plans: { name: 'Palestra' } },
+  { completed_at: '2026-08-18T06:28:00Z', notes: null,
+    workout_plans: { name: 'Ciclismo' } }
+];
+
+const note = A.collectSessionNotes(righe);
+check('solo le sessioni che hanno una nota', note.length, 2);
+check('la data', note[0].date, '2026-08-24');
+check('il nome della sessione', note[0].name, 'Corsa – Zone 2 + Core');
+check('il testo integro', note[0].note, NOTA);
+checkTrue('gli a-capo non vengono appiattiti', note[0].note.indexOf('\n') !== -1);
+
+// L'ordine non deve dipendere da come arrivano le righe: basterebbe
+// cambiare un .order() altrove per mandare al modello le note più vecchie
+// invece delle ultime.
+const mescolate = [righe[2], righe[0], righe[3], righe[1]];
+check('la più recente resta prima',
+  A.collectSessionNotes(mescolate).map(n => n.date),
+  ['2026-08-24', '2026-08-20']);
+
+console.log('\n— i tetti che proteggono il budget —');
+// Senza tetto, 30 sessioni a nota piena costerebbero ~1.800 token
+// sottratti alla generazione del piano, che vive sullo stesso budget.
+const lunghe = A.collectSessionNotes([
+  { completed_at: '2026-08-24T10:00:00Z', notes: 'a'.repeat(5000) }
+]);
+check('una nota enorme viene troncata a 400', lunghe[0].note.length, 401); // +1 per il segno di taglio
+checkTrue('e il taglio è dichiarato', lunghe[0].note.slice(-1) === '…');
+
+const tante = A.collectSessionNotes(
+  Array.from({ length: 40 }, (_, i) => ({
+    completed_at: '2026-0' + (i % 8 + 1) + '-01T10:00:00Z',
+    notes: 'nota ' + i
+  })));
+check('non più di 8 sessioni', tante.length, 8);
+check('i tetti sono dichiarati',
+  [A._limits.MAX_NOTE_SESSIONS, A._limits.MAX_NOTE_CHARS], [8, 400]);
+
+// LA COLONNA DEVE ESSERE LETTA, non solo saputa aggregare.
+//
+// Buco trovato rompendo il codice: togliendo 'notes' da BASE_COLS in
+// ai-trainer.js, tutti i controlli qui sopra continuavano a passare —
+// perché lavorano su righe sintetiche costruite nel test. In produzione
+// però la query non avrebbe più chiesto quella colonna, collectSessionNotes
+// avrebbe ricevuto righe senza note, e l'intera funzione sarebbe morta in
+// silenzio: nessun errore, nessuna sezione nel prompt, nessun indizio.
+// È esattamente il modo in cui una funzione smette di esistere senza che
+// nessuno se ne accorga.
+console.log('\n— la colonna arriva davvero dal database —');
+const TRAINER = fs.readFileSync(
+  path.join(__dirname, '..', 'public', 'js', 'ai-trainer.js'), 'utf8');
+
+checkTrue("'notes' è fra le colonne lette da completed_workouts",
+  /BASE_COLS\s*=\s*\[[^\]]*'notes'/.test(TRAINER));
+checkTrue('collectSessionNotes viene chiamata',
+  /AiContext\.collectSessionNotes\s*\(completed\)/.test(TRAINER));
+checkTrue('e il risultato entra nel contesto inviato al server',
+  /workoutContext\s*=\s*\{[^}]*sessionNotes/.test(TRAINER));
+checkTrue('la card di trasparenza dichiara gli appunti',
+  /Appunti di fine sessione/.test(TRAINER),
+  'senza riscontro visibile non cè motivo di continuare a scriverli');
+
+console.log('\n— casi limite —');
+check('elenco vuoto', A.collectSessionNotes([]), []);
+check('argomento non valido', A.collectSessionNotes(null), []);
+check('riga senza data', A.collectSessionNotes([{ notes: 'x' }])[0].date, '');
+check('riga senza piano collegato',
+  A.collectSessionNotes([{ completed_at: '2026-08-24T10:00:00Z', notes: 'x' }])[0].name, null);
+check('note non testuali ignorate',
+  A.collectSessionNotes([{ completed_at: '2026-08-24T10:00:00Z', notes: 42 }]), []);
+
 console.log('\n' + (fail === 0
   ? `  Tutti i ${pass} controlli del contesto AI superati.`
   : `  ${fail} FALLITI su ${pass + fail}.`));

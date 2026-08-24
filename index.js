@@ -186,6 +186,44 @@ const MAX_HARD_SESSIONS       = 3;
 const MAX_GYM_PROGRESS        = 6;
 const MAX_USER_NOTES_LENGTH   = 600;
 const MAX_EXERCISE_NAME       = 80;
+// Note scritte completando un allenamento. Il client tronca già agli
+// stessi valori (public/js/ai-context.js), ma il server non può fidarsi
+// del payload: è tutto il senso di sanitizeWorkoutContext.
+//
+// 8 x 400 = 3.200 caratteri, circa 800 token. Senza tetto il contesto
+// pesca fino a 30 sessioni, e a nota piena farebbero ~1.800 token
+// sottratti alla GENERAZIONE del piano, che vive sullo stesso budget:
+// meglio otto note leggibili che trenta e un piano mensile troncato.
+const MAX_SESSION_NOTES       = 8;
+const MAX_SESSION_NOTE_LENGTH = 400;
+
+/**
+ * Ripulisce una nota prima di metterla nel prompt.
+ *
+ * Gli a-capo SI TENGONO: l'utente scrive una riga per tratto ("25' in Z2
+ * a 7:08/km", "camminata 12:44 a 11:22/km") e appiattirla in una riga
+ * sola distruggerebbe proprio la leggibilità per cui la si porta al
+ * modello. Si tolgono invece gli altri caratteri di controllo, che in un
+ * prompt non hanno nessun significato utile, e le sequenze di spazi.
+ */
+function cleanNote(v) {
+  var src = String(v == null ? '' : v);
+  var out = '';
+  // Niente classe di caratteri con escape esadecimali: scriverla a mano
+  // ha gia' prodotto due volte caratteri di controllo VERI dentro questo
+  // file, che l'ha reso binario. Il ciclo e' piu' lungo ma non ha modo di
+  // sbagliare.
+  for (var i = 0; i < src.length; i++) {
+    var code = src.charCodeAt(i);
+    if (code === 10) { out += '\n'; continue; }   // l'a-capo si tiene
+    if (code < 32 || code === 127) continue;      // gli altri controlli no
+    out += src.charAt(i);
+  }
+  return out
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 /**
  * Valida la distribuzione nelle zone: array di 6 posizioni, la prima
@@ -317,6 +355,30 @@ function sanitizeWorkoutContext(raw) {
         .filter(s => s.name)
     : [];
 
+  // Le note scritte dall'utente completando un allenamento.
+  //
+  // È l'unico campo di testo LIBERO e lungo che arriva dal database, ed è
+  // testo che finisce dentro un prompt: i limiti qui non sono formalità.
+  // Il client tronca già a 400 caratteri, ma il server non può fidarsi di
+  // ciò che riceve — è tutto il senso di questa funzione.
+  //
+  // Gli a-capo si tengono: la nota dell'utente è strutturata a righe (un
+  // tratto per riga) e appiattirla in una riga sola distruggerebbe
+  // proprio la leggibilità per cui la si porta al modello. Si tolgono
+  // invece gli altri caratteri di controllo, che nel prompt non hanno
+  // nessun significato utile.
+  const sessionNotes = Array.isArray(raw.sessionNotes)
+    ? raw.sessionNotes
+        .filter(n => n && typeof n === 'object')
+        .slice(0, MAX_SESSION_NOTES)
+        .map(n => ({
+          date: /^\d{4}-\d{2}-\d{2}$/.test(String(n.date || '')) ? String(n.date) : '',
+          name: clampStr(n.name, MAX_LAST_WORKOUT_LENGTH),
+          note: clampStr(cleanNote(n.note), MAX_SESSION_NOTE_LENGTH)
+        }))
+        .filter(n => n.note)
+    : [];
+
   // Progressione dei carichi in palestra.
   const gymProgress = Array.isArray(raw.gymProgress)
     ? raw.gymProgress
@@ -351,6 +413,7 @@ function sanitizeWorkoutContext(raw) {
     maxIsMeasured:  raw.maxIsMeasured === true,
     activityStats,
     hardSessions,
+    sessionNotes,
     gymProgress,
     // Dati incollati a mano dall'utente: tutto ciò che l'app non registra
     // (VO2max, sonno, variabilità cardiaca, carico di allenamento Garmin).
@@ -595,6 +658,37 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
            `(volume più basso, recuperi più lunghi, progressione più lenta).`;
   }
 
+  /**
+   * Le note che l'utente scrive completando un allenamento.
+   *
+   * È l'unica fonte di dettaglio DENTRO la sessione: gli altri campi sono
+   * medie di tutta la seduta, e la media fra quattro scatti a 5:25/km e
+   * venticinque minuti a 7:08/km non descrive né gli uni né gli altri.
+   * Da qui il modello sa che il fondo era asfalto, che i pesi sono stati
+   * fatti a 127 bpm, e a che ritmo è andato ogni tratto.
+   *
+   * Il testo si passa COM'È, senza riassumerlo: è l'utente a decidere
+   * cosa merita di essere scritto, e ogni riassunto qui sarebbe una
+   * scelta fatta al posto suo su quale dato conta.
+   */
+  function sessionNotesSection(ctx) {
+    const rows = (ctx.sessionNotes || []).map(n => {
+      const testa = [n.date, n.name].filter(Boolean).join(' — ');
+      // Le note vanno a capo: indentando le righe successive restano
+      // leggibili come un blocco unico invece di confondersi con la voce
+      // dell'elenco successiva.
+      const corpo = String(n.note).split('\n').join('\n    ');
+      return `  - ${testa}:\n    ${corpo}`;
+    });
+    if (!rows.length) return '';
+    return `- Appunti scritti dall'utente al termine delle sessioni ` +
+           `(parole sue, non dati calcolati):\n${rows.join('\n')}\n` +
+           `  Sono la fonte più ricca che hai: contengono ritmi per singolo ` +
+           `tratto, fondo, sensazioni e frequenze che le medie di sessione ` +
+           `non mostrano. USALI per calibrare ritmi e carichi del nuovo ` +
+           `piano, e cita esplicitamente quelli su cui ti basi.`;
+  }
+
   /** Carichi in palestra: dove è arrivato e quale passo proporre. */
   function strengthSection(ctx) {
     const rows = (ctx.gymProgress || []).map(g => {
@@ -640,6 +734,7 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
     workoutContext.lastWorkouts?.length ? `- Ultimi allenamenti: ${workoutContext.lastWorkouts.join(', ')}` : '',
     performanceSection(workoutContext),
     feedbackSection(workoutContext),
+    sessionNotesSection(workoutContext),
     strengthSection(workoutContext),
     envSection(workoutContext),
     userNotesSection(workoutContext)
@@ -670,7 +765,7 @@ Obiettivo e preferenze dell'utente: ${prompt.trim()}
 ${activityType ? `\nL'utente ha scelto un tipo di attività specifico: orienta prevalentemente il piano verso esercizi e sessioni di quel tipo.` : ''}
 ${contextSection}
 Struttura obbligatoria:
-1. Una breve introduzione (3-4 righe) che spiega l'approccio del piano. Se sopra ti sono stati forniti dati misurati sull'atleta, CITALI espressamente qui — frequenza cardiaca media e zona, ritmo, carichi, sessioni percepite come dure — e spiega come hanno cambiato le tue scelte. Se un dato NON ti è stato fornito non inventarlo: se non ne hai nessuno, dichiara che stai pianificando senza storico.
+1. Una breve introduzione (3-4 righe) che spiega l'approccio del piano. Se sopra ti sono stati forniti dati misurati sull'atleta, CITALI espressamente qui — frequenza cardiaca media e zona, ritmo, carichi, sessioni percepite come dure, e soprattutto gli appunti che l'utente ha scritto di suo pugno al termine delle sessioni — e spiega come hanno cambiato le tue scelte. Se un dato NON ti è stato fornito non inventarlo: se non ne hai nessuno, dichiara che stai pianificando senza storico.
 2. Per ogni giorno di allenamento usa questo formato esatto:
 
 ### Giorno N — GG/MM/AAAA: [Nome Allenamento]
