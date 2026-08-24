@@ -189,6 +189,139 @@ checkTrue('ai-trainer usa la versione del modulo, non una copia',
 checkTrue('e non ha più il vecchio replace nel nome',
   !/name:\s*firstLine\.replace/.test(AI));
 
+// ─── La data scritta nel titolo ─────────────────────────────────────
+//
+// IL CASO REALE: il 23 agosto l'utente ha chiesto un piano "a partire dal
+// 24". Il modello ha ubbidito e ha intitolato la prima sessione
+// "24 Agosto – Corsa – Zone 2 + Core", ma il parser scartava la data e
+// ripartiva da oggi: il piano è finito tutto sfasato di un giorno, e il
+// 24 la dashboard mostrava la sessione intitolata "25 Agosto".
+const { parsePlanDate, addDays, schedulePlanDates } = PlanDays;
+const OGGI = '2026-08-23';
+
+console.log('\n— la data si legge dal titolo —');
+check('il titolo che ha causato il bug',
+  parsePlanDate('24 Agosto – Corsa – Zone 2 + Core', OGGI), '2026-08-24');
+check('con il numero del giorno davanti',
+  parsePlanDate('Giorno 1 — 24/08/2026: Palestra', OGGI), '2026-08-24');
+check('con il giorno della settimana',
+  parsePlanDate('Lunedì 24 agosto – Corsa lenta', OGGI), '2026-08-24');
+check('mese abbreviato', parsePlanDate('24 ago 2026 – Corsa', OGGI), '2026-08-24');
+check('forma numerica senza anno', parsePlanDate('24/08 – Corsa', OGGI), '2026-08-24');
+check('forma numerica con anno a due cifre',
+  parsePlanDate('24/08/26 – Corsa', OGGI), '2026-08-24');
+check('in grassetto', parsePlanDate('**24 Agosto – Corsa**', OGGI), '2026-08-24');
+
+console.log('\n— e NON si legge dove non c è —');
+check('titolo senza data', parsePlanDate('Corsa – Zone 2 + Core', OGGI), null);
+check('formato vecchio senza data', parsePlanDate('Giorno 1: Palestra', OGGI), null);
+check('una data che non esiste', parsePlanDate('31 Febbraio – Corsa', OGGI), null);
+check('mese inventato', parsePlanDate('24 Piovoso – Corsa', OGGI), null);
+check('argomento vuoto', parsePlanDate('', OGGI), null);
+
+// Il rischio della forma numerica: "10/12" possono essere ripetizioni.
+// Per questo si cerca solo nella TESTA del titolo, prima del trattino.
+check('le ripetizioni dopo il trattino non diventano una data',
+  parsePlanDate('24/08 – Push-up 10/12', OGGI), '2026-08-24');
+check('e senza data in testa non si inventa nulla dalle ripetizioni',
+  parsePlanDate('Palestra – Push-up 10/12', OGGI), null);
+// "10 km" comincia per numero ma "km" non è un mese.
+check('una distanza in testa non è una data',
+  parsePlanDate('10 km facili', OGGI), null);
+
+console.log('\n— l anno si deduce scegliendo la data più vicina —');
+check('a fine dicembre, gennaio è l anno dopo',
+  parsePlanDate('3 gennaio – Corsa', '2026-12-28'), '2027-01-03');
+check('a inizio gennaio, dicembre è l anno prima',
+  parsePlanDate('28 dicembre – Corsa', '2027-01-03'), '2026-12-28');
+check('l anno scritto vince sulla deduzione',
+  parsePlanDate('3 gennaio 2030 – Corsa', '2026-12-28'), '2030-01-03');
+
+console.log('\n— la data sparisce dal nome —');
+check('il titolo che ha causato il bug',
+  cleanTitle('24 Agosto – Corsa – Zone 2 + Core'), 'Corsa – Zone 2 + Core');
+check('formato nuovo completo',
+  cleanTitle('Giorno 1 — 24/08/2026: Palestra – Forza'), 'Palestra – Forza');
+check('con il giorno della settimana in mezzo',
+  cleanTitle('Giorno 2: Lunedì 24 Agosto – Corsa'), 'Corsa');
+check('una distanza in testa NON viene mangiata',
+  cleanTitle('10 km facili'), '10 km facili');
+check('un titolo senza prefissi resta intero',
+  cleanTitle('Corsa – Zone 2 + Core'), 'Corsa – Zone 2 + Core');
+
+console.log('\n— il piano vero, dal titolo al calendario —');
+// I titoli esattamente come il modello li ha scritti il 23 agosto, dopo
+// che l'utente aveva chiesto di partire dal 24. Il riposo è al quinto
+// blocco e NON va tolto prima: occupa un giorno di calendario.
+const TITOLI_VERI = [
+  '24 Agosto – Corsa – Zone 2 + Core',
+  '25 Agosto – Palestra – Forza a corpo libero',
+  '26 Agosto – Corsa Fartlek (Zona 3)',
+  '27 Agosto – Riposo attivo',
+  '28 Agosto – Corsa a ritmo gara (Zona 3)',
+  '29 Agosto – Ciclismo (Zona 1‑2)',
+  '30 Agosto – Palestra – Full Body + Stretch'
+];
+check('le date del piano sono quelle chieste dall utente',
+  schedulePlanDates(TITOLI_VERI, OGGI),
+  ['2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27',
+   '2026-08-28', '2026-08-29', '2026-08-30']);
+checkTrue('e il piano NON parte più dal giorno della generazione',
+  schedulePlanDates(TITOLI_VERI, OGGI)[0] !== OGGI,
+  'partiva dal 23, che è il bug segnalato dall utente');
+
+console.log('\n— i tre comportamenti del cursore —');
+check('piano senza date: parte da oggi e avanza, come prima',
+  schedulePlanDates(['Giorno 1: Corsa', 'Giorno 2: Palestra', 'Giorno 3: Riposo',
+                     'Giorno 4: Corsa'], OGGI),
+  ['2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26']);
+check('piano misto: riparte dall ultima data certa, non da oggi',
+  schedulePlanDates(['1 settembre – Corsa', 'Giorno 2: Palestra',
+                     'Giorno 3: Corsa'], OGGI),
+  ['2026-09-01', '2026-09-02', '2026-09-03']);
+check('un riposo in mezzo occupa il suo giorno',
+  schedulePlanDates(['Giorno 1: Corsa', 'Giorno 2: Riposo', 'Giorno 3: Palestra'], OGGI),
+  ['2026-08-23', '2026-08-24', '2026-08-25']);
+check('un piano che scavalca il fine mese',
+  schedulePlanDates(['30 agosto – Corsa', 'Giorno 2: Palestra', 'Giorno 3: Corsa'], OGGI),
+  ['2026-08-30', '2026-08-31', '2026-09-01']);
+check('elenco vuoto', schedulePlanDates([], OGGI), []);
+
+// Le etichette "Giorno N" e le date devono raccontare la stessa storia.
+const dateVere = schedulePlanDates(TITOLI_VERI, OGGI);
+const senzaRiposo = dateVere
+  .filter((_, i) => !/riposo/i.test(TITOLI_VERI[i]))
+  .map(d => ({ created_at: 'x', scheduled_date: d }));
+check('e la numerazione dei giorni salta il riposo',
+  planDayNumbers(senzaRiposo), [1, 2, 3, 5, 6, 7]);
+
+console.log('\n— il cursore delle date nel parser —');
+checkTrue('il parser usa la funzione del modulo',
+  /PlanDays\.schedulePlanDates\s*\(/.test(AI));
+checkTrue('e calcola le date su TUTTI i blocchi, riposi compresi',
+  /schedulePlanDates\(titles,/.test(AI),
+  'filtrando i riposi prima, ogni sessione dopo slitterebbe indietro');
+checkTrue('e non riparte più da un contatore ancorato a oggi',
+  !/startDate\.setDate\(startDate\.getDate\(\) \+ 1\)/.test(AI),
+  'era la riga che sfasava tutto il piano');
+checkTrue('la data salvata è quella calcolata, non un offset su oggi',
+  /scheduled_date:\s*dates\[idx\]/.test(AI));
+
+check('addDays attraversa il fine mese', addDays('2026-08-31', 1), '2026-09-01');
+check('addDays attraversa il fine anno', addDays('2026-12-31', 1), '2027-01-01');
+check('addDays su un anno bisestile', addDays('2028-02-28', 1), '2028-02-29');
+check('addDays su una data non valida', addDays('domani', 1), null);
+
+console.log('\n— il prompt dice al modello che giorno è —');
+const SERVER = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+checkTrue('la data di oggi finisce nel prompt', /Oggi è \$\{oggiEsteso\}/.test(SERVER));
+checkTrue('il formato del titolo chiede la data', /### Giorno N — GG\/MM\/AAAA/.test(SERVER));
+checkTrue('anche per i giorni di riposo',
+  (SERVER.match(/### Giorno N — GG\/MM\/AAAA/g) || []).length >= 2,
+  'un riposo senza data spezzerebbe il conteggio dei giorni successivi');
+checkTrue('e spiega che la data viene usata davvero',
+  /l'applicazione ci programma sopra/.test(SERVER));
+
 console.log('\n— il service worker serve i file nuovi —');
 checkTrue('plan-days.js è nel precache', /'\/js\/plan-days\.js'/.test(SW));
 checkTrue('la versione della cache è stata alzata',

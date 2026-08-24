@@ -651,7 +651,21 @@ ${contextBlocks.join('\n')}
 Tieni conto di questo storico per calibrare il piano: non essere troppo conservativo se l'utente si allena già regolarmente.
 ` : '';
 
+  // IL MODELLO NON SA CHE GIORNO È.
+  //
+  // Finché non gliela si diceva, la data se la inventava: chiedendogli un
+  // piano "a partire dal 24 agosto" ubbidiva, ma in un piano senza
+  // indicazioni tirava a indovinare dalle date dello storico. Le date
+  // scritte nei titoli ora contano davvero — il parser ci programma sopra
+  // gli allenamenti — quindi devono poggiare su un fatto, non su una
+  // deduzione.
+  const oggiIso = new Date().toISOString().split('T')[0];
+  const oggiEsteso = new Date().toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+  });
+
   const userMessage = `Crea un piano di allenamento ${planTypeText} per un atleta di livello ${levelText}.
+Oggi è ${oggiEsteso} (${oggiIso}).
 Obiettivo e preferenze dell'utente: ${prompt.trim()}
 ${activityType ? `\nL'utente ha scelto un tipo di attività specifico: orienta prevalentemente il piano verso esercizi e sessioni di quel tipo.` : ''}
 ${contextSection}
@@ -659,7 +673,7 @@ Struttura obbligatoria:
 1. Una breve introduzione (3-4 righe) che spiega l'approccio del piano. Se sopra ti sono stati forniti dati misurati sull'atleta, CITALI espressamente qui — frequenza cardiaca media e zona, ritmo, carichi, sessioni percepite come dure — e spiega come hanno cambiato le tue scelte. Se un dato NON ti è stato fornito non inventarlo: se non ne hai nessuno, dichiara che stai pianificando senza storico.
 2. Per ogni giorno di allenamento usa questo formato esatto:
 
-### Giorno N: [Nome Allenamento]
+### Giorno N — GG/MM/AAAA: [Nome Allenamento]
 #### Riscaldamento (10 minuti)
 [dettagli]
 #### Fase Principale (30 minuti)
@@ -670,8 +684,16 @@ Struttura obbligatoria:
 [dettagli]
 
 Per i giorni di riposo usa:
-### Giorno N: Riposo attivo
+### Giorno N — GG/MM/AAAA: Riposo attivo
 [cosa fare]
+
+3. LE DATE: la data nel titolo è obbligatoria e l'applicazione ci programma sopra gli allenamenti, quindi deve essere reale.
+- Se l'utente ha indicato un giorno di partenza, il Giorno 1 cade in quel giorno.
+- Altrimenti il Giorno 1 cade oggi, ${oggiIso}.
+- I giorni successivi seguono il calendario uno dopo l'altro, riposi compresi: se il Giorno 3 è riposo, il Giorno 4 è il giorno dopo.
+- Non scrivere la data anche nel nome dell'allenamento: sta già nel titolo.
+
+4. TABELLE: se elenchi esercizi con serie e ripetizioni, usa una tabella markdown con la riga di separazione (|---|---|). Ogni riga della tabella su una riga a sé.
 
 Sii specifico, concreto e adatto al livello ${levelText}.`;
 
