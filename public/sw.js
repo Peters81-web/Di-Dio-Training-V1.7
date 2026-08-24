@@ -125,7 +125,14 @@
 //         (md-lite.js) invece di una libreria da CDN, perche in
 //         dashboard.html gli script esterni hanno l'hash SRI verificato
 //         e per marked non e possibile calcolarlo qui.
-const CACHE_NAME  = 'didio-v56';
+//   v57 → Fix: completando un allenamento la pagina restava bloccata in
+//         "Caricamento...". Lo spinner restava acceso durante la domanda
+//         "vuoi vedere le statistiche?", la copriva col suo blur e ne
+//         intercettava i clic: nessuno poteva rispondere, quindi la
+//         promessa non si risolveva e lo spinner non veniva mai tolto.
+//         L'allenamento era comunque salvato. Ora lo spinner si spegne
+//         prima della domanda, e la finestra di conferma sta sopra.
+const CACHE_NAME  = 'didio-v57';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

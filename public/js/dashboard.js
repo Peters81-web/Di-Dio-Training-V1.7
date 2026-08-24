@@ -1695,6 +1695,27 @@ document.addEventListener('DOMContentLoaded', async function() {
             displayWorkouts(workouts);
             await loadWeeklyStats();
 
+            // LO SPINNER VA TOLTO PRIMA DELLA DOMANDA, non nel finally.
+            //
+            // Il lavoro è finito qui: da questo punto in poi si aspetta
+            // l'utente, non il database. Lasciando lo spinner acceso
+            // durante la conferma si creava un blocco senza uscita:
+            // .loading-overlay copre tutto lo schermo con un blur, e la
+            // domanda ci finiva sotto — illeggibile e con i pulsanti non
+            // cliccabili. Nessuno poteva rispondere, quindi la promessa
+            // della conferma non si risolveva mai, quindi il finally con
+            // hideLoading() non veniva mai raggiunto: l'unica via
+            // d'uscita era ricaricare la pagina. L'allenamento però era
+            // già stato salvato, perché l'INSERT avviene prima.
+            //
+            // Il livello della conferma è stato alzato in utils.js, ma
+            // quello è il secondo strato: la causa è l'ordine qui.
+            //
+            // hideLoading() resta anche nel finally: rimuove il nodo se
+            // c'è, quindi chiamarlo due volte non fa danno, e continua a
+            // coprire il caso in cui qualcosa fallisca prima di qui.
+            hideLoading();
+
             const goStats = await window.showConfirm({
                 title: 'Allenamento completato! 💪',
                 message: 'Vuoi vedere le statistiche dei tuoi allenamenti?',
