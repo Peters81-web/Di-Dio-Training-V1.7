@@ -52,11 +52,12 @@ function extractConst(src, name) {
 
 const NEEDED_FUNCS = ['sanitizeWorkoutContext', 'sanitizeZonePct', 'pace', 'performanceSection',
                       'feedbackSection', 'strengthSection', 'userNotesSection',
-                      'envSection'];
+                      'envSection', 'sessionNotesSection', 'cleanNote'];
 const NEEDED_CONSTS = ['MAX_TOP_ACTIVITY_LENGTH', 'MAX_LAST_WORKOUTS_ITEMS',
                        'MAX_LAST_WORKOUT_LENGTH', 'MAX_ACTIVITY_STATS',
                        'MAX_HARD_SESSIONS', 'MAX_GYM_PROGRESS',
-                       'MAX_USER_NOTES_LENGTH', 'MAX_EXERCISE_NAME'];
+                       'MAX_USER_NOTES_LENGTH', 'MAX_EXERCISE_NAME',
+                       'MAX_SESSION_NOTES', 'MAX_SESSION_NOTE_LENGTH'];
 
 let pieces = [];
 let missing = [];
@@ -80,7 +81,8 @@ if (missing.length) {
 
 const api = new Function(pieces.join('\n') + `
   return { sanitizeWorkoutContext, sanitizeZonePct, pace, performanceSection,
-           feedbackSection, strengthSection, userNotesSection, envSection };`)();
+           feedbackSection, strengthSection, userNotesSection, envSection,
+           sessionNotesSection, cleanNote };`)();
 
 let pass = 0, fail = 0;
 function check(name, actual, expected) {
@@ -280,6 +282,103 @@ const noSeriesTxt = api.performanceSection(noSeries);
 check('nessuna distribuzione', noSeries.activityStats[0].zonePct, null);
 contains('usa la vecchia nota sulla media', noSeriesTxt, 'cade in zona 3');
 contains('con l avvertenza', noSeriesTxt, 'media della sessione e non il tracciato');
+
+// ─── Gli appunti di fine sessione ───────────────────────────────────
+//
+// PERCHÉ ESISTONO QUESTI CONTROLLI
+// Il campo note di completed_workouts non veniva letto da nessuna parte.
+// L'utente ci scrive il dettaglio che nessun altro campo porta — ritmi
+// per singolo tratto, fondo, FC per blocco — mentre distance e
+// heart_rate_avg sono medie dell'intera sessione: la media fra quattro
+// scatti a 5:25/km e venticinque minuti a 7:08/km non descrive né gli
+// uni né gli altri.
+//
+// La nota qui sotto è quella VERA scritta il 24 agosto 2026.
+console.log('\n— gli appunti di fine sessione arrivano al prompt —');
+
+const NOTA_VERA =
+  "5' camminata + 4x20sec di scatto media 5.25/km.\n" +
+  "25' corsa in Z2 (passo medio: 7.08/Km, distanza 3.51Km , asfalto).\n" +
+  "Pesi: Tempo 4.47 3 x plank, 3 side plank per ogni lato, FCmedia: 127 bpm.\n" +
+  "Camminata: tempo 12:44, passo medio 11:22/Km , distanza 1.12 Km";
+
+const conNote = api.sanitizeWorkoutContext({
+  sessionNotes: [
+    { date: '2026-08-24', name: 'Corsa – Zone 2 + Core', note: NOTA_VERA }
+  ]
+});
+check('la nota supera la sanificazione', conNote.sessionNotes.length, 1);
+check('e non viene troncata (240 caratteri, tetto 400)',
+  conNote.sessionNotes[0].note.length, NOTA_VERA.length);
+
+const txtNote = api.sessionNotesSection(conNote);
+contains('il ritmo del fondo arriva al modello', txtNote, '7.08/Km');
+contains('e quello degli scatti', txtNote, '5.25/km');
+contains('e la FC dei pesi', txtNote, '127 bpm');
+contains('e il fondo su cui ha corso', txtNote, 'asfalto');
+contains('con la data', txtNote, '2026-08-24');
+contains('e il nome della sessione', txtNote, 'Corsa – Zone 2 + Core');
+contains('dichiarate come parole dell utente', txtNote, 'parole sue, non dati calcolati');
+contains('con l istruzione di usarle', txtNote, 'USALI per calibrare');
+contains('e di citarle', txtNote, 'cita esplicitamente');
+
+// Gli a-capo NON vanno appiattiti: l'utente scrive una riga per tratto, e
+// una riga sola renderebbe illeggibile proprio ciò per cui la si manda.
+checkTrue('gli a-capo della nota sopravvivono',
+  txtNote.split('\n').length > 4, txtNote.split('\n').length + ' righe');
+
+console.log('\n— e i limiti reggono —');
+const notaLunga = api.sanitizeWorkoutContext({
+  sessionNotes: [{ date: '2026-08-24', name: 'X', note: 'a'.repeat(5000) }]
+});
+check('una nota enorme viene troncata',
+  notaLunga.sessionNotes[0].note.length, 400);
+
+const troppeNote = api.sanitizeWorkoutContext({
+  sessionNotes: Array.from({ length: 50 },
+    (_, i) => ({ date: '2026-08-01', name: 'X', note: 'nota ' + i }))
+});
+check('non più di 8 sessioni', troppeNote.sessionNotes.length, 8);
+
+const noteSporche = api.sanitizeWorkoutContext({
+  sessionNotes: [
+    { date: '2026-08-24', name: 'A', note: '   ' },          // vuota -> scartata
+    { date: 'domani',     name: 'B', note: 'data assurda' },
+    { date: '2026-08-25', name: 'C', note: 'buona' },
+    'non un oggetto',
+    null
+  ]
+});
+check('le note vuote vengono scartate', noteSporche.sessionNotes.length, 2);
+check('una data non valida diventa stringa vuota', noteSporche.sessionNotes[0].date, '');
+check('ma la nota si tiene lo stesso', noteSporche.sessionNotes[0].note, 'data assurda');
+
+// Il campo è testo libero e finisce dentro un prompt: i caratteri di
+// controllo non hanno nessun significato utile lì.
+checkTrue('i caratteri di controllo spariscono',
+  api.cleanNote('a' + String.fromCharCode(0) + 'b' + String.fromCharCode(27) + 'c') === 'abc');
+check('ma l a-capo resta', api.cleanNote('riga1\nriga2'), 'riga1\nriga2');
+check('le sequenze di spazi si compattano', api.cleanNote('a      b'), 'a b');
+check('e le righe vuote in eccesso', api.cleanNote('a\n\n\n\n\nb'), 'a\n\nb');
+check('nota assente', api.cleanNote(null), '');
+
+// LA SEZIONE DEVE ESSERE COLLEGATA, non solo esistere.
+//
+// Buco trovato rompendo il codice: togliendo sessionNotesSection
+// dall'elenco dei blocchi del contesto, TUTTI i controlli qui sopra
+// continuavano a passare — perché chiamano la funzione direttamente. La
+// sezione poteva restare orfana, perfettamente funzionante e mai
+// inviata a nessuno.
+console.log('\n— la sezione è davvero agganciata al prompt —');
+checkTrue('sessionNotesSection è fra i blocchi del contesto',
+  /^\s*sessionNotesSection\(workoutContext\),\s*$/m.test(SRC));
+checkTrue('e il prompt chiede di citare gli appunti',
+  /appunti che l'utente ha scritto di suo pugno/.test(SRC));
+
+console.log('\n— senza appunti la sezione non compare —');
+const senzaNote = api.sanitizeWorkoutContext({ totalCompleted: 5 });
+check('nessuna nota', senzaNote.sessionNotes.length, 0);
+check('e nessuna sezione', api.sessionNotesSection(senzaNote), '');
 
 console.log('\n' + (fail === 0
   ? `  Tutti i ${pass} controlli del prompt superati.`

@@ -205,9 +205,13 @@ document.addEventListener('DOMContentLoaded', async function () {
       // database e non venivano mai chiesti: l'AI pianificava senza sapere a
       // quale frequenza cardiaca e a quale ritmo l'utente si allena, né quali
       // sessioni ha trovato dure.
+      // 'notes' porta il dettaglio che nessun altro campo ha: i ritmi per
+      // singolo tratto, il fondo, la FC per blocco. distance e
+      // heart_rate_avg sono medie dell'intera sessione e appiattiscono
+      // proprio quella differenza.
       const BASE_COLS = ['completed_at', 'actual_duration', 'distance',
                          'calories_burned', 'heart_rate_avg',
-                         'perceived_difficulty', 'rating'];
+                         'perceived_difficulty', 'rating', 'notes'];
       // hr_series (008) porta il tracciato cardiaco: da lì si ricava il
       // tempo REALE in zona, invece della zona dedotta dalla media — che
       // su una corsa vera diceva "zona 2" mentre il 45% era in zona 3.
@@ -283,9 +287,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? window.AiContext.aggregateByActivity(completed, hrProfile) : [];
       const hardSessions  = window.AiContext
         ? window.AiContext.findHardSessions(completed) : [];
+      const sessionNotes  = window.AiContext
+        ? window.AiContext.collectSessionNotes(completed) : [];
 
       workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak,
-                         lastWorkouts, avgTemperature, avgHumidity,
+                         lastWorkouts, avgTemperature, avgHumidity, sessionNotes,
                          maxHr:         hrProfile ? hrProfile.maxHr  : null,
                          restHr:        hrProfile ? hrProfile.restHr : null,
                          maxIsMeasured: hrProfile ? !!hrProfile.maxIsMeasured : false,
@@ -416,6 +422,26 @@ document.addEventListener('DOMContentLoaded', async function () {
         ok: false,
         label: 'Difficoltà percepita',
         value: 'indica quanto è stato faticoso quando completi un allenamento'
+      });
+    }
+
+    // Le note delle sessioni. Vanno mostrate qui più di ogni altra riga:
+    // sono l'unico dato che dipende interamente da un'abitudine
+    // dell'utente, e senza un riscontro visibile non c'è motivo di
+    // continuare a scriverle.
+    if ((ctx.sessionNotes || []).length) {
+      const n = ctx.sessionNotes.length;
+      rows.push({
+        ok: true,
+        label: 'Appunti di fine sessione',
+        value: `${n} ${n === 1 ? 'sessione' : 'sessioni'} · ` +
+               ctx.sessionNotes.map(s => s.date).filter(Boolean).join(', ')
+      });
+    } else {
+      rows.push({
+        ok: false,
+        label: 'Appunti di fine sessione',
+        value: 'scrivi nel campo note quando completi: ritmi, fondo, sensazioni'
       });
     }
 

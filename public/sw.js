@@ -132,7 +132,13 @@
 //         promessa non si risolveva e lo spinner non veniva mai tolto.
 //         L'allenamento era comunque salvato. Ora lo spinner si spegne
 //         prima della domanda, e la finestra di conferma sta sopra.
-const CACHE_NAME  = 'didio-v57';
+//   v58 -> Gli appunti scritti completando un allenamento arrivano
+//         all'AI. Il campo note di completed_workouts non era letto da
+//         nessuna parte: l'AI Trainer chiedeva durata, distanza, calorie,
+//         FC media, difficolta e gradimento, ma non le note - dove
+//         finisce il dettaglio DENTRO la sessione (ritmi per tratto,
+//         fondo, FC per blocco) che le medie appiattiscono.
+const CACHE_NAME  = 'didio-v58';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

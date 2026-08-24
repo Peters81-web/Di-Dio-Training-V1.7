@@ -220,12 +220,79 @@
         return m + ':' + (s < 10 ? '0' : '') + s;
     }
 
+    // ─── Le note che l'utente scrive completando un allenamento ─────
+    //
+    // PERCHÉ ESISTE
+    // Il campo note di completed_workouts non veniva letto da nessuna
+    // parte: l'AI Trainer chiedeva durata, distanza, calorie, FC media,
+    // difficoltà percepita e gradimento, ma non le note. Eppure è lì che
+    // finisce il dettaglio che nessun altro campo porta — l'utente ci ha
+    // scritto i ritmi per singolo tratto, il fondo e la FC per blocco:
+    //
+    //   "5' camminata + 4x20sec di scatto media 5.25/km. 25' corsa in Z2
+    //    (passo medio 7.08/Km, 3.51Km, asfalto). Pesi: 3 x plank...
+    //    FCmedia 127 bpm."
+    //
+    // distance e heart_rate_avg sono medie dell'intera sessione e
+    // appiattiscono proprio quella differenza: la media fra gli scatti e
+    // il fondo lento non descrive né gli uni né l'altro.
+
+    // Quante sessioni con note portare nel prompt, e quanto lunga può
+    // essere ciascuna.
+    //
+    // Il tetto non è prudenza generica: il contesto pesca fino a 30
+    // sessioni, e a nota piena farebbero circa 1.800 token sottratti alla
+    // GENERAZIONE del piano, che vive sullo stesso budget. Meglio otto
+    // note leggibili che trenta e un piano mensile troncato a metà.
+    var MAX_NOTE_SESSIONS = 8;
+    var MAX_NOTE_CHARS = 400;
+
+    /**
+     * Estrae le note delle sessioni completate, dalla più recente.
+     *
+     * @param {Array} rows righe di completed_workouts, con il nested
+     *                     workout_plans per il nome
+     * @returns {Array} [{ date: 'YYYY-MM-DD', name, note }]
+     */
+    function collectSessionNotes(rows) {
+        var list = Array.isArray(rows) ? rows : [];
+        var out = [];
+
+        list.forEach(function (r) {
+            if (!r) return;
+            var note = typeof r.notes === 'string' ? r.notes.trim() : '';
+            if (!note) return;
+
+            // Il troncamento avviene qui, non nel prompt: chi legge il
+            // contesto deve vedere esattamente ciò che arriva al modello.
+            if (note.length > MAX_NOTE_CHARS) {
+                note = note.slice(0, MAX_NOTE_CHARS).trim() + '…';
+            }
+
+            out.push({
+                date: r.completed_at ? String(r.completed_at).slice(0, 10) : '',
+                name: (r.workout_plans && r.workout_plans.name) || null,
+                note: note
+            });
+        });
+
+        // Le righe arrivano già ordinate dalla più recente (la query usa
+        // completed_at discendente), ma non ci si appoggia a quello:
+        // basterebbe cambiare un .order() altrove per far arrivare al
+        // modello le note più vecchie invece delle ultime.
+        out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+
+        return out.slice(0, MAX_NOTE_SESSIONS);
+    }
+
     window.AiContext = {
         aggregateByActivity: aggregateByActivity,
         findHardSessions: findHardSessions,
         aggregateGymProgress: aggregateGymProgress,
+        collectSessionNotes: collectSessionNotes,
         formatPace: formatPace,
-        _num: num
+        _num: num,
+        _limits: { MAX_NOTE_SESSIONS: MAX_NOTE_SESSIONS, MAX_NOTE_CHARS: MAX_NOTE_CHARS }
     };
 
 })();
