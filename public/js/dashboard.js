@@ -1463,7 +1463,31 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
         }
         
-          const sanitize = (html) => typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : escapeHtml(html);
+        /**
+         * Markdown -> HTML -> ripulitura, in quest'ordine.
+         *
+         * Prima il contenuto andava dritto in DOMPurify, che toglie
+         * l'HTML pericoloso ma NON traduce il markdown: le tabelle di
+         * esercizi si vedevano come "| Esercizio | Serie | |-----|---..."
+         * tutte su una riga sola, perché in HTML gli a-capo valgono come
+         * spazi.
+         *
+         * LA PROVENIENZA DECIDE, non un indovinello sul contenuto.
+         * Il testo dell'AI è markdown e viene sempre scappato prima di
+         * essere tradotto: niente di ciò che scrive può diventare markup.
+         * Le schede scritte a mano invece contengono HTML vero, perché
+         * l'editor salva innerHTML: quelle passano intatte a DOMPurify,
+         * come prima di questo modulo.
+         *
+         * DOMPurify resta a valle in entrambi i casi.
+         */
+        const isAi = sourceOf(workout) === 'ai';
+        const toHtml = (text) => {
+            if (typeof MdLite === 'undefined') return String(text == null ? '' : text);
+            return isAi ? MdLite.render(text) : MdLite.renderUnlessHtml(text);
+        };
+
+        const sanitize = (html) => typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : escapeHtml(html);
 
         return `
             <div class="workout-phases">
@@ -1474,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             ${phase.title}
                         </h4>
                         <div class="phase-content">
-                            ${sanitize(phase.content)}
+                            ${sanitize(toHtml(phase.content))}
                         </div>
                     </div>
                 `).join('')}
