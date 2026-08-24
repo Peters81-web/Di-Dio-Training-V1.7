@@ -1758,3 +1758,58 @@
     letter-spacing: .08em;
     color: #6d28d9;
 }
+
+/* =============================================
+   MARKDOWN NELLE FASI DELL'ALLENAMENTO
+   L'AI scrive gli esercizi in tabella. Prima il markdown finiva in
+   pagina in chiaro: "| Esercizio | Serie | |-----|-----|" tutto su una
+   riga sola, perche in HTML gli a-capo valgono come spazi.
+   Lo scorrimento orizzontale sta sull'involucro e non sulla tabella:
+   quattro colonne su un telefono, senza, allargano l'intera finestra e
+   mandano in scorrimento laterale tutta la pagina.
+   ============================================= */
+
+.phase-content .md-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: .6rem 0;
+}
+
+.phase-content .md-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 24rem;
+    font-size: .82rem;
+}
+
+.phase-content .md-table th,
+.phase-content .md-table td {
+    border: 1px solid #e2e8f0;
+    padding: .4rem .6rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.phase-content .md-table th {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.phase-content .md-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+.phase-content ul,
+.phase-content ol { margin: .4rem 0 .4rem 1.1rem; }
+.phase-content li { margin-bottom: .25rem; }
+.phase-content li > ul,
+.phase-content li > ol { margin-top: .25rem; }
+.phase-content p { margin-bottom: .5rem; }
+.phase-content p:last-child { margin-bottom: 0; }
+.phase-content strong { color: #1e293b; font-weight: 700; }
+.phase-content code {
+    background: #f1f5f9;
+    padding: .05rem .3rem;
+    border-radius: 4px;
+    font-size: .95em;
+}

@@ -119,7 +119,13 @@
 //         il parser scartava quelle date e ripartiva da oggi: tutto
 //         sfasato di un giorno. Ora la data si legge dal titolo, e il
 //         prompt dice al modello che giorno è — prima se lo inventava.
-const CACHE_NAME  = 'didio-v55';
+//   v56 → Il markdown delle schede viene finalmente interpretato: le
+//         tabelle di esercizi si vedevano come "| Esercizio | Serie |
+//         |-----|-----|" tutte su una riga sola. Renderer locale
+//         (md-lite.js) invece di una libreria da CDN, perche in
+//         dashboard.html gli script esterni hanno l'hash SRI verificato
+//         e per marked non e possibile calcolarlo qui.
+const CACHE_NAME  = 'didio-v56';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -142,6 +148,7 @@ const PRECACHE = [
   '/js/hr-model.js',
   '/js/ai-context.js',
   '/js/plan-days.js',
+  '/js/md-lite.js',
   '/js/daily-metrics.js',
   '/js/caloric-math.js',
   '/js/supabase-config.js',
