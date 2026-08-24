@@ -631,8 +631,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   function parseAIResponse(text) {
     const workouts = [];
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
+
+    // Oggi, come 'YYYY-MM-DD'. Serve sia per dedurre l'anno quando il
+    // titolo dice solo "24 Agosto", sia come punto di partenza per il
+    // ripiego progressivo.
+    const now = new Date();
+    const todayIso = new Date(Date.UTC(
+      now.getFullYear(), now.getMonth(), now.getDate(), 12)).toISOString().split('T')[0];
 
     const dayBlocks = text.split(/(?=^###\s)/m).filter(function (block) {
       return block.trim().startsWith('###');
@@ -640,8 +645,28 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     console.log('Blocchi giorno trovati:', dayBlocks.length);
 
-    dayBlocks.forEach(function (day) {
-      const firstLine = day.split('\n')[0].replace(/^#+\s*/, '').trim();
+    const titles = dayBlocks.map(function (day) {
+      return day.split('\n')[0].replace(/^#+\s*/, '').trim();
+    });
+
+    // LA DATA LA DECIDE L'UTENTE, NON L'OROLOGIO.
+    //
+    // Prima qui c'era un contatore che partiva da oggi e avanzava di un
+    // giorno per blocco, ignorando del tutto la data scritta nel titolo.
+    // Chiedendo all'AI un piano "a partire dal 24 agosto" il 23, il
+    // modello ubbidiva e intitolava la prima sessione "24 Agosto", ma
+    // l'app la programmava per il 23: tutto il piano sfasato di un
+    // giorno, e il titolo che contraddiceva il calendario.
+    //
+    // Le date si calcolano su TUTTI i blocchi, riposi compresi: un
+    // riposo occupa un giorno di calendario, e saltarlo qui farebbe
+    // scalare in avanti ogni sessione successiva.
+    const dates = window.PlanDays
+      ? window.PlanDays.schedulePlanDates(titles, todayIso)
+      : titles.map(function () { return todayIso; });
+
+    dayBlocks.forEach(function (day, idx) {
+      const firstLine = titles[idx];
       const isRest = /riposo/i.test(firstLine);
 
       function extractSection(sectionName) {
@@ -658,7 +683,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       if (!isRest && (warmup || mainPhase)) {
         workouts.push({
           name: cleanTitle(firstLine) || firstLine,
-          scheduled_date: new Date(startDate.getTime() + 12 * 60 * 60 * 1000).toISOString().split('T')[0],
+          scheduled_date: dates[idx],
           warmup: warmup,
           main_phase: mainPhase,
           cooldown: cooldown,
@@ -676,8 +701,6 @@ document.addEventListener('DOMContentLoaded', async function () {
           })
         });
       }
-
-      startDate.setDate(startDate.getDate() + 1);
     });
 
     return workouts;

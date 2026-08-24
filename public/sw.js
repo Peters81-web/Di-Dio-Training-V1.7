@@ -113,7 +113,13 @@
 //         parità di chiave Postgres non garantisce nessun ordine. Aggiunta
 //         la data pianificata come secondo criterio, e sopra il titolo
 //         l'etichetta "Giorno N", ricavata dalle date senza nuove colonne.
-const CACHE_NAME  = 'didio-v54';
+//   v55 → Fix: il piano partiva dal giorno della generazione invece che
+//         dalla data chiesta. L'utente aveva chiesto un piano "dal 24
+//         agosto" il 23; il modello aveva ubbidito e datato i titoli, ma
+//         il parser scartava quelle date e ripartiva da oggi: tutto
+//         sfasato di un giorno. Ora la data si legge dal titolo, e il
+//         prompt dice al modello che giorno è — prima se lo inventava.
+const CACHE_NAME  = 'didio-v55';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
