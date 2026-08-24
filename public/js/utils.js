@@ -158,8 +158,24 @@ function ensureConfirmStyles() {
     if (document.getElementById('app-confirm-styles')) return;
     const style = document.createElement('style');
     style.id = 'app-confirm-styles';
+    // z-index 10000, non 3000: sotto c'è .loading-overlay a 9999, e a
+    // 3000 la finestra di conferma ci finiva SOTTO. Risultato visto in
+    // produzione: il testo sfocato dal blur dello spinner, i pulsanti non
+    // cliccabili, e siccome nessuno poteva rispondere, la promessa della
+    // conferma non si risolveva mai e lo spinner non veniva mai tolto.
+    // Un blocco senza uscita, con il ricaricamento della pagina come
+    // unica via.
+    //
+    // La causa vera era un altro ordine di chiamate, corretta in
+    // dashboard.js; questo è il secondo strato: se domani qualcuno
+    // rimettesse una conferma sotto lo spinner, la finestra resterebbe
+    // comunque leggibile e rispondibile, e l'app recuperabile.
+    //
+    // 10000 è il massimo già in uso nel progetto (.skip-link): la
+    // conferma viene aggiunta in fondo al body, quindi a parità di
+    // livello sta sopra. Non serve salire oltre.
     style.textContent = `
-.app-confirm-overlay{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .2s ease}
+.app-confirm-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .2s ease}
 .app-confirm-overlay.is-open{opacity:1}
 .app-confirm{background:#fff;border-radius:18px;max-width:380px;width:100%;padding:26px 24px 20px;text-align:center;box-shadow:0 24px 60px rgba(15,23,42,.35);transform:translateY(12px) scale(.97);transition:transform .25s cubic-bezier(.16,1,.3,1)}
 .app-confirm-overlay.is-open .app-confirm{transform:translateY(0) scale(1)}
