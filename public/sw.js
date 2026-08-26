@@ -180,7 +180,16 @@
 //         Delle sei forme che un modello scrive comunemente ne veniva
 //         letta UNA. Ora si leggono tutte, e se non si capisce niente
 //         l'app lo dice subito invece che al salvataggio.
-const CACHE_NAME  = 'didio-v64';
+//   v65 -> Fix: l'AI diceva di non avere dati storici mentre nel database
+//         c'erano 25 sessioni. Il client spediva workoutContext: null e
+//         il prompt restava senza storico, ma NIENTE lo mostrava:
+//         selectContext restituiva una lista vuota su qualsiasi errore
+//         (rete e permessi indistinguibili da "nessun allenamento"), la
+//         card "Cosa riceve l'AI" spariva invece di dirlo, e "Genera"
+//         era cliccabile prima che lo storico fosse letto. Ora la card
+//         c'e' sempre e dichiara cosa manca e perche', e la generazione
+//         aspetta la lettura.
+const CACHE_NAME  = 'didio-v65';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

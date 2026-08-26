@@ -472,6 +472,42 @@ body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height
     gap: .35rem;
 }
 .ctx-hint i { color: #f59e0b; }
+
+/* La card quando lo storico non c'è. Due stati DIVERSI a colpo d'occhio:
+   grigio = non hai ancora allenamenti (normale), giallo = non sono
+   riuscito a leggerli (guasto). Prima erano la stessa cosa: la card non
+   compariva affatto, e il piano usciva senza dati senza dirlo. */
+.ctx-empty {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    padding: .7rem .8rem;
+    border-radius: 8px;
+    font-size: .78rem;
+    line-height: 1.45;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+}
+.ctx-empty i { color: #9ca3af; margin-top: .18rem; flex-shrink: 0; }
+.ctx-empty strong { color: #1a1a2e; }
+.ctx-empty.is-error {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #78350f;
+}
+.ctx-empty.is-error i      { color: #d97706; }
+.ctx-empty.is-error strong { color: #78350f; }
+.ctx-empty code {
+    /* Il messaggio del database può essere lungo e senza spazi: senza
+       questo esce dalla card invece di andare a capo. */
+    display: block;
+    margin-top: .3rem;
+    font-size: .72rem;
+    word-break: break-word;
+    color: #92400e;
+}
+
 .quick-prompts { display: flex; flex-direction: column; gap: .4rem; }
 .quick-prompt-btn {
     text-align: left;

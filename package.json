@@ -11,7 +11,7 @@
     "dev": "nodemon index.js",
     "check:fallbacks": "node scripts/check-migration-fallbacks.js",
     "check:syntax": "node scripts/check-syntax.js",
-    "test": "node scripts/check-syntax.js && node scripts/check-migration-fallbacks.js && node scripts/check-loading-overlay.js && node scripts/test-exercise-log.js && node scripts/test-ai-context.js && node scripts/test-prompt-context.js && node scripts/test-daily-metrics.js && node scripts/test-hr-series.js && node scripts/test-recovery-load.js && node scripts/test-ai-budget.js && node scripts/test-plan-days.js && node scripts/test-md-lite.js && node scripts/test-dashboard-pending.js && node scripts/test-complete-from-file.js"
+    "test": "node scripts/check-syntax.js && node scripts/check-migration-fallbacks.js && node scripts/check-loading-overlay.js && node scripts/test-exercise-log.js && node scripts/test-ai-context.js && node scripts/test-prompt-context.js && node scripts/test-daily-metrics.js && node scripts/test-hr-series.js && node scripts/test-recovery-load.js && node scripts/test-ai-budget.js && node scripts/test-plan-days.js && node scripts/test-md-lite.js && node scripts/test-dashboard-pending.js && node scripts/test-complete-from-file.js && node scripts/test-context-visibility.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
