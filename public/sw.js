@@ -165,7 +165,15 @@
 //         stava, con due no. Corretto anche l'elenco dei blocchi, che
 //         era in ordine di caricamento mentre le note sotto erano in
 //         ordine di orologio: due elenchi che si contraddicevano.
-const CACHE_NAME  = 'didio-v62';
+//   v63 -> Fix: la scheda del recupero non salvava e il messaggio che
+//         spiegava perche' era illeggibile. Due cause: parseSleep
+//         rifiutava "5.42" col punto (accettava solo 5:42 / 5h42), e
+//         utils.js scriveva class="toast warning" mentre
+//         dashboard-enhanced.css stila .toast-warning col trattino e
+//         dichiara .toast{color:white}: nessuno sfondo colorato,
+//         sfondo chiaro, testo bianco. Bianco su bianco, su OGNI
+//         messaggio di window.showToast in dashboard.
+const CACHE_NAME  = 'didio-v63';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

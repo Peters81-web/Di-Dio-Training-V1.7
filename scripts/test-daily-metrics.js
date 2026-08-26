@@ -159,12 +159,92 @@ check('fasi oltre il totale',
 
 // Testo scritto ma non interpretabile: va segnalato, altrimenti il
 // campo verrebbe salvato vuoto senza che nessuno lo dica.
-check('sonno illeggibile segnalato',
-  D.validate({ hrv: null, restingHr: null, sleepMinutes: null, sleepDeep: null, sleepRem: null, vo2max: null }, 'stanotte male', '', ''),
-  'Sonno non riconosciuto: usa "6:30" o i minuti totali.');
+checkTrue('sonno illeggibile segnalato',
+  /^Sonno totale non riconosciuto\./.test(
+    D.validate({ hrv: null, restingHr: null, sleepMinutes: null,
+                 sleepDeep: null, sleepRem: null, vo2max: null },
+               'boh', '', '') || ''),
+  'il testo esatto cambia; quello che conta e che il campo venga nominato')
 check('campi vuoti non sono un errore',
   D.validate({ hrv: null, restingHr: null, sleepMinutes: null, sleepDeep: null, sleepRem: null, vo2max: null }, '', '', ''),
   null);
+
+// ─── I due guasti dello screenshot ──────────────────────────────────
+//
+// L'utente ha compilato la scheda del recupero, ha premuto Salva, non e'
+// successo niente ed e' comparso un riquadro con dentro solo un'icona.
+// Due cause indipendenti.
+console.log('\n— il sonno scritto col punto —');
+
+// PRIMA CAUSA: "5.42" per cinque ore e quarantadue veniva rifiutato.
+// parseSleep accettava i due punti, la "h" e la "m", non il punto — che
+// in italiano e' un modo altrettanto normale di scrivere un orario.
+check('cinque ore e quarantadue col punto', D.parseSleep('5.42'), 342);
+check('con la virgola',                     D.parseSleep('5,42'), 342);
+check('un ora e dieci col punto',           D.parseSleep('1.10'), 70);
+check('i due punti continuano a valere',    D.parseSleep('1:25'), 85);
+check('e la h pure',                        D.parseSleep('5h42'), 342);
+check('solo cifre restano minuti',          D.parseSleep('342'),  342);
+
+// I minuti oltre 59 restano rifiutati con ogni separatore: e' quello che
+// distingue "ore.minuti" da un numero decimale scritto per sbaglio.
+check('minuti impossibili col punto',  D.parseSleep('5.60'), null);
+check('minuti impossibili coi due punti', D.parseSleep('5:60'), null);
+check('testo qualsiasi',               D.parseSleep('ciao'), null);
+check('campo vuoto',                   D.parseSleep(''),     null);
+
+// AMBIGUITA' DICHIARATA, non nascosta: "5.5" e' 5 ore e 5 minuti, non
+// cinque ore e mezza. E' coerente con il formato che il campo dichiara.
+check('"5.5" vale cinque e cinque, non cinque e mezza', D.parseSleep('5.5'), 305);
+
+console.log('\n— e l etichetta lo dice —');
+const DM = fs.readFileSync(
+  path.join(__dirname, '..', 'public', 'js', 'daily-metrics.js'), 'utf8');
+checkTrue('il suggerimento sotto il campo nomina le forme accettate',
+  /5:42, 5\.42 o 5h42/.test(DM),
+  'senza, la forma col punto resterebbe da indovinare');
+checkTrue('e il messaggio di errore pure',
+  /Scrivi ore e minuti \(6:30, 6\.30, 6h30\)/.test(DM));
+
+console.log('\n— il messaggio invisibile —');
+// SECONDA CAUSA, e la piu' grave: il messaggio c'era ma non si leggeva.
+// utils.js scriveva class="toast warning", mentre dashboard-enhanced.css
+// stila .toast-warning col trattino e dichiara .toast { color: white }.
+// Nessuno sfondo colorato, sfondo chiaro da styles.css, testo bianco:
+// bianco su bianco. Riguardava OGNI messaggio di window.showToast su
+// quella pagina, non solo questo.
+const UTILS = fs.readFileSync(
+  path.join(__dirname, '..', 'public', 'js', 'utils.js'), 'utf8');
+const CSS_DASH = fs.readFileSync(
+  path.join(__dirname, '..', 'public', 'css', 'dashboard-enhanced.css'), 'utf8');
+const CSS_BASE = fs.readFileSync(
+  path.join(__dirname, '..', 'public', 'css', 'styles.css'), 'utf8');
+
+checkTrue('il toast porta entrambe le convenzioni',
+  /toast\.className = `toast toast-\$\{type\} \$\{type\}`/.test(UTILS));
+
+// Il controllo che conta: per ogni tipo, la classe che il JS scrive deve
+// esistere in almeno un foglio di stile INSIEME a uno sfondo. Senza
+// sfondo, il "color: white" di dashboard-enhanced lascia il testo
+// invisibile.
+['success', 'error', 'warning', 'info'].forEach(function (t) {
+  const conTrattino = new RegExp('\\.toast-' + t + '\\s*\\{[^}]*background');
+  const conPunto    = new RegExp('\\.toast\\.' + t + '\\s*\\{[^}]*background');
+  checkTrue('lo sfondo di "' + t + '" viene applicato',
+    conTrattino.test(CSS_DASH) || conPunto.test(CSS_BASE) || conPunto.test(CSS_DASH),
+    'la classe scritta dal JS deve combaciare con quella stilata');
+});
+
+// E la prova diretta del bianco su bianco: se un foglio dichiara
+// color:white su .toast, allora la classe di tipo DEVE portare uno
+// sfondo, altrimenti il testo sparisce.
+if (/\.toast\s*\{[^}]*color:\s*white/.test(CSS_DASH)) {
+  checkTrue('con .toast{color:white} ogni tipo ha il suo sfondo',
+    ['success', 'error', 'warning', 'info'].every(function (t) {
+      return new RegExp('\\.toast-' + t + '\\s*\\{[^}]*background').test(CSS_DASH);
+    }),
+    'era esattamente il caso: testo bianco su sfondo chiaro');
+}
 
 console.log('\n' + (fail === 0
   ? `  Tutti i ${pass} controlli delle metriche di recupero superati.`

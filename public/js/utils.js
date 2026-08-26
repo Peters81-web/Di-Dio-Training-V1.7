@@ -11,7 +11,27 @@ function showToast(message, type = 'info', duration = 3000) {
     
     // Crea il toast
     const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+    // DUE CONVENZIONI, ENTRAMBE APPLICATE.
+    //
+    // In giro per i fogli di stile il tipo del toast compare in due forme:
+    //   styles.css e rich-text.css      ->  .toast.warning
+    //   dashboard-enhanced.css          ->  .toast-warning
+    //
+    // Scrivendo solo la prima, sulla dashboard succedeva questo:
+    // .toast-warning non combaciava, quindi nessuno sfondo colorato; ma
+    // dashboard-enhanced.css dichiara .toast { color: white }, e lo
+    // sfondo restava quello chiaro di styles.css. Risultato: TESTO BIANCO
+    // SU BIANCO. L'utente vedeva un riquadro con l'icona e il pulsante di
+    // chiusura — che hanno un colore proprio — e nessun messaggio.
+    //
+    // Non era un caso isolato: riguardava OGNI messaggio passato da
+    // window.showToast su quella pagina, quindi tutti gli errori di
+    // daily-metrics, exercise-log e dell'import. L'app non riusciva a
+    // dire niente all'utente, e l'utente non aveva modo di saperlo.
+    //
+    // Mettere entrambe le classi costa nulla e rende il toast leggibile
+    // con qualunque foglio di stile sia caricato.
+    toast.className = `toast toast-${type} ${type}`;
 
     // Accessibilità: senza questi attributi il toast è puramente visivo e chi
     // usa uno screen reader non riceve MAI il messaggio (conferme di

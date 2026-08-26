@@ -179,7 +179,19 @@
     var s = String(text == null ? '' : text).trim().toLowerCase();
     if (!s) return null;
 
-    var m = s.match(/^(\d{1,2})\s*[:hm]\s*(\d{1,2})?\s*m?$/);
+    // Separatori accettati: due punti, "h", "m", ma anche PUNTO e VIRGOLA.
+    //
+    // L'utente ha scritto "5.42" per cinque ore e quarantadue, ed è il
+    // modo in cui in italiano si scrive un orario tanto quanto "5:42".
+    // Veniva rifiutato, e siccome il messaggio di errore era invisibile
+    // (vedi utils.js) il salvataggio sembrava non funzionare e basta.
+    //
+    // AMBIGUITÀ DICHIARATA: "5.5" viene letto come 5 ore e 5 minuti, non
+    // come cinque ore e mezza. È coerente con il formato che il campo
+    // dichiara — ore:minuti — ma è una scelta, non una verità, ed è il
+    // motivo per cui l'etichetta sotto il campo ora nomina entrambe le
+    // forme accettate invece di lasciarlo indovinare.
+    var m = s.match(/^(\d{1,2})\s*[:hm.,]\s*(\d{1,2})?\s*m?$/);
     if (m) {
       var h = parseInt(m[1], 10);
       var mi = m[2] ? parseInt(m[2], 10) : 0;
@@ -429,7 +441,7 @@
             '<input class="dm-input" type="text" id="dmSleep" inputmode="numeric" ' +
               'placeholder="6:30 oppure 390" value="' +
               (pre.sleep_minutes == null ? '' : esc(fmtSleepInput(pre.sleep_minutes))) + '">' +
-            '<p class="dm-hint">Ore:minuti, oppure minuti totali.</p>' +
+            '<p class="dm-hint">Ore e minuti: 5:42, 5.42 o 5h42. Oppure i minuti totali: 342.</p>' +
           '</div>' +
 
           '<div class="dm-grid">' +
@@ -563,9 +575,10 @@
     }
     // Testo scritto ma non interpretabile: va segnalato, altrimenti il
     // campo verrebbe salvato come vuoto senza che nessuno lo dica.
-    if (sleepRaw && f.sleepMinutes === null) return 'Sonno non riconosciuto: usa "6:30" o i minuti totali.';
-    if (deepRaw  && f.sleepDeep    === null) return 'Sonno profondo non riconosciuto: usa "1:10" o i minuti.';
-    if (remRaw   && f.sleepRem     === null) return 'Sonno REM non riconosciuto: usa "1:25" o i minuti.';
+    var COME = ' Scrivi ore e minuti (6:30, 6.30, 6h30) oppure i minuti totali (390).';
+    if (sleepRaw && f.sleepMinutes === null) return 'Sonno totale non riconosciuto.' + COME;
+    if (deepRaw  && f.sleepDeep    === null) return 'Sonno profondo non riconosciuto.' + COME;
+    if (remRaw   && f.sleepRem     === null) return 'Sonno REM non riconosciuto.' + COME;
 
     var vals = [f.sleepMinutes, f.sleepDeep, f.sleepRem];
     for (var i = 0; i < vals.length; i++) {
