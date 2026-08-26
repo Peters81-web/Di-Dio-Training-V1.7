@@ -189,7 +189,13 @@
 //         era cliccabile prima che lo storico fosse letto. Ora la card
 //         c'e' sempre e dichiara cosa manca e perche', e la generazione
 //         aspetta la lettura.
-const CACHE_NAME  = 'didio-v65';
+//   v66 -> Il rifiuto per quota di Groq (429) arrivava a schermo come
+//         "Errore:" seguito dal testo inglese di Groq, con l'id
+//         dell'organizzazione e un link al billing. Non e' un guasto ed
+//         era pure inoltrato come 502. Ora e' un 429, il messaggio e' in
+//         italiano coi numeri dichiarati da Groq, e il pulsante conta
+//         alla rovescia i secondi da aspettare e si riaccende da solo.
+const CACHE_NAME  = 'didio-v66';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
