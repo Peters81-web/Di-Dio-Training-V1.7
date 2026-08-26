@@ -1,0 +1,76 @@
+/* =============================================
+   TEMPO IN ZONA — riquadro condiviso
+   Stava in dashboard-enhanced.css, ma da quando le schede completate
+   lasciano la dashboard e si consultano dall'Archivio, il riquadro serve
+   in due pagine. Il markup lo genera hr-model.js: se questi stili non
+   fossero caricati, l'Archivio mostrerebbe le zone come testo nudo.
+   ============================================= */
+
+.hrz-block {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+.hrz-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+}
+.hrz-head h4 {
+    margin: 0;
+    font-size: .95rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.hrz-head h4 i { color: #ef4444; font-size: .85rem; }
+.hrz-load {
+    font-size: .75rem;
+    font-weight: 700;
+    color: #4361ee;
+    background: #eef2ff;
+    border-radius: 6px;
+    padding: .2rem .5rem;
+    cursor: help;
+}
+.hrz-row {
+    display: grid;
+    grid-template-columns: 2rem 4.4rem 1fr 3.2rem 2.4rem;
+    align-items: center;
+    gap: .5rem;
+    padding: .22rem 0;
+    font-size: .78rem;
+}
+.hrz-tag {
+    color: #fff;
+    font-weight: 700;
+    font-size: .68rem;
+    text-align: center;
+    border-radius: 4px;
+    padding: .12rem 0;
+}
+.hrz-name { color: #6b7280; }
+.hrz-bar {
+    background: #f3f4f6;
+    border-radius: 4px;
+    height: .5rem;
+    overflow: hidden;
+}
+.hrz-fill { display: block; height: 100%; border-radius: 4px; }
+.hrz-time { color: #1a1a2e; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.hrz-pct  { color: #9ca3af; text-align: right; font-variant-numeric: tabular-nums; }
+.hrz-note {
+    font-size: .72rem;
+    color: #9ca3af;
+    line-height: 1.45;
+    margin: .6rem 0 0;
+}
+
+@media (max-width: 480px) {
+    .hrz-row { grid-template-columns: 1.8rem 3.6rem 1fr 2.9rem 2.2rem; font-size: .73rem; gap: .35rem; }
+}

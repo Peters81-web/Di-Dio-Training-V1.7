@@ -10,6 +10,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   var sc = window.supabaseClient;
   var currentUser = null;
+  var hrProfile   = null;   // { maxHr, restHr } per il riquadro delle zone
 
   // Stato vista
   var viewYear, viewMonth;            // mese mostrato (0-11)
@@ -49,6 +50,18 @@ document.addEventListener('DOMContentLoaded', function () {
     viewMonth = now.getMonth();
 
     bindUI();
+
+    // Il profilo cardiaco serve al riquadro "Tempo in zona": senza FC
+    // massima non ci sono zone da calcolare. Si carica una volta sola, in
+    // parallelo ai completamenti, e se non arriva il riquadro
+    // semplicemente non compare — il resto dell'archivio non dipende da
+    // lui, quindi un errore qui non deve fermare la pagina.
+    if (window.HrModel) {
+      window.HrModel.loadProfile(sc, currentUser.id)
+        .then(function (p) { hrProfile = p; render(); })
+        .catch(function (e) { console.warn('Archivio: profilo cardiaco non disponibile', e); });
+    }
+
     fetchData();
   });
 
@@ -77,25 +90,84 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ── Fetch completamenti ───────────────────────────────────────
-  // gps_track e max_heart_rate esistono solo dopo migrations/001-gps-track.sql.
-  // Se la migrazione non è ancora stata eseguita, Postgres fa fallire l'INTERA
-  // query e l'archivio resterebbe vuoto. Quindi al primo errore riproviamo
-  // senza quelle due colonne: si perde la mappa, non l'intera pagina.
+  // Le colonne della scheda collegata vengono da migrazioni diverse, e le
+  // migrazioni si eseguono a mano: c'è sempre una finestra in cui il
+  // codice nuovo gira su un database vecchio. Senza ripiego, Postgres fa
+  // fallire l'INTERA query e l'archivio resta vuoto — non "senza mappa",
+  // proprio vuoto.
   var BASE_COLS = 'id,workout_id,completed_at,actual_duration,calories_burned,' +
                   'distance,heart_rate_avg,perceived_difficulty,rating,notes';
-  var COLS_WITH_MAP = BASE_COLS + ',workout_plans(name,activity_type,gps_track,max_heart_rate,temperature,weather,humidity)';
-  var COLS_LEGACY   = BASE_COLS + ',workout_plans(name,activity_type)';
 
+  // Colonne della scheda collegata, ognuna da una migrazione diversa.
+  // hr_series (008) porta il tracciato cardiaco: da qui esce il riquadro
+  // "Tempo in zona". Prima non veniva chiesta, e finché le schede
+  // completate restavano anche in dashboard non si notava — quel riquadro
+  // si vedeva di là. Da quando la dashboard tiene solo il da fare, senza
+  // questa colonna le zone reali e il carico TRIMP non sarebbero
+  // consultabili da nessuna parte.
+  var PLAN_COLS = ['name', 'activity_type', 'gps_track', 'max_heart_rate',
+                   'temperature', 'weather', 'humidity', 'hr_series'];
+
+  function isMissingColumnError(err) {
+    if (!err) return false;
+    if (err.code === 'PGRST204' || err.code === '42703') return true;
+    var m = String(err.message || '').toLowerCase();
+    return m.indexOf('could not find') !== -1 && m.indexOf('column') !== -1;
+  }
+
+  function missingColumnName(err) {
+    var msg = String((err && err.message) || '');
+    var m = msg.match(/could not find the '([^']+)' column/i);
+    if (m) return m[1];
+    m = msg.match(/column\s+(?:[\w.]*\.)?"?([\w]+)"?\s+does not exist/i);
+    return m ? m[1] : null;
+  }
+
+  /**
+   * Chiede le colonne togliendo UNA ALLA VOLTA solo quelle che il
+   * database dice di non conoscere.
+   *
+   * PRIMA ERA TUTTO-O-NIENTE: una lista "con mappa" e una "minima". Ma
+   * gps_track viene dalla 001, temperature dalla 003, humidity dalla 005 e
+   * hr_series dalla 008: bastava che ne mancasse UNA per ricadere sulla
+   * lista minima e perdere anche tutte le altre, che invece c'erano.
+   * È lo stesso difetto che in dashboard faceva sparire la mappa insieme a
+   * una colonna non correlata, ed è il motivo per cui il ripiego graduato
+   * esiste. Qui era ancora nella forma vecchia.
+   */
   function fetchData() {
-    query(COLS_WITH_MAP, function (res) {
-      if (res.error) {
-        console.warn('Archivio: colonne mappa non disponibili, ' +
-                     'eseguire migrations/001-gps-track.sql. Ripiego senza mappa.', res.error);
-        query(COLS_LEGACY, handle);
+    var plan = PLAN_COLS.slice();
+    var dropped = [];
+
+    function attempt(n) {
+      if (n > 8) {
+        handle({ error: new Error('Troppi tentativi di ripiego'), data: null });
         return;
       }
-      handle(res);
-    });
+      query(BASE_COLS + ',workout_plans(' + plan.join(',') + ')', function (res) {
+        if (!res.error) {
+          if (dropped.length) {
+            console.warn('Archivio: colonne non ancora presenti nel database, ' +
+                         'eseguire le migrazioni in migrations/. Ignorate: ' +
+                         dropped.join(', '));
+          }
+          handle(res);
+          return;
+        }
+        if (!isMissingColumnError(res.error)) { handle(res); return; }
+
+        var bad = missingColumnName(res.error);
+        // Senza sapere QUALE colonna manca non si può togliere alla
+        // cieca: meglio mostrare l'errore vero.
+        if (!bad || plan.indexOf(bad) === -1) { handle(res); return; }
+
+        plan = plan.filter(function (c) { return c !== bad; });
+        dropped.push(bad);
+        attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   function query(cols, cb) {
@@ -304,6 +376,14 @@ document.addEventListener('DOMContentLoaded', function () {
       '</div>' +
       (metrics.length ? '<div class="arc-entry-metrics">' + metrics.join('') + '</div>' : '') +
       mapHtml +
+      // Tempo in zona e carico TRIMP, dal tracciato cardiaco della
+      // sessione. Il markup lo genera hr-model.js, così dashboard e
+      // archivio non hanno due copie della formula di Karvonen.
+      // Restituisce stringa vuota se manca il profilo o il tracciato:
+      // le attività senza cardio non mostrano un riquadro vuoto.
+      (window.HrModel
+        ? window.HrModel.zoneBreakdownHtml(plan.hr_series, hrProfile, esc)
+        : '') +
       (c.notes ? '<div class="arc-entry-note">' + esc(c.notes) + '</div>' : '') +
       '</div>';
   }

@@ -209,8 +209,76 @@
             .catch(function () { return apply(null); });
     }
 
+    /**
+     * Il riquadro "Tempo in zona" con le barre e il carico TRIMP.
+     *
+     * PERCHÉ STA QUI E NON IN dashboard.js
+     * Ci è nato, ma da quando le schede completate lasciano la dashboard e
+     * vivono nell'Archivio, quel riquadro serve in due pagine. Copiarlo
+     * avrebbe significato due formule di Karvonen e due modi di calcolare
+     * il TRIMP che col tempo divergono — lo stesso motivo per cui questo
+     * file esiste.
+     *
+     * Restituisce stringa vuota, non un riquadro vuoto, quando manca il
+     * necessario: senza profilo cardiaco o senza tracciato non c'è niente
+     * di onesto da mostrare.
+     *
+     * @param {Array} series   [[secondi, bpm], ...] da workout_plans.hr_series
+     * @param {Object} profile { maxHr, restHr } da loadProfile
+     * @param {Function} esc   la funzione di escape della pagina chiamante
+     */
+    function zoneBreakdownHtml(series, profile, esc) {
+        if (!profile || !profile.maxHr) return '';
+        // jsonb di solito arriva già come array, ma non si dà per scontato
+        // il tipo: se fosse una stringa la si interpreta lo stesso.
+        var data = series;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { return ''; }
+        }
+        if (!Array.isArray(data) || data.length < 2) return '';
+
+        var tz = timeInZones(data, profile.maxHr, profile.restHr);
+        if (!tz) return '';
+        var load = trimp(data, profile.maxHr, profile.restHr);
+        var e = typeof esc === 'function' ? esc : function (s) { return String(s); };
+
+        function fmt(s) {
+            var m = Math.floor(s / 60), r = Math.round(s % 60);
+            return m ? m + 'm' + (r ? ' ' + r + 's' : '') : r + 's';
+        }
+
+        var rows = bounds(profile.maxHr, profile.restHr).map(function (z) {
+            var sec = tz.secs[z.n];
+            if (!sec) return '';
+            return '<div class="hrz-row">' +
+                '<span class="hrz-tag" style="background:' + z.color + '">Z' + z.n + '</span>' +
+                '<span class="hrz-name">' + e(z.name) + '</span>' +
+                '<span class="hrz-bar"><span class="hrz-fill" style="width:' + tz.pct[z.n] +
+                    '%;background:' + z.color + '"></span></span>' +
+                '<span class="hrz-time">' + e(fmt(sec)) + '</span>' +
+                '<span class="hrz-pct">' + tz.pct[z.n] + '%</span>' +
+            '</div>';
+        }).join('');
+
+        if (!rows) return '';
+
+        return '<div class="hrz-block">' +
+            '<div class="hrz-head">' +
+                '<h4><i class="fas fa-heart-pulse" aria-hidden="true"></i> Tempo in zona</h4>' +
+                (load !== null
+                    ? '<span class="hrz-load" title="Carico di allenamento (TRIMP), stimato da noi: ' +
+                      'non è il valore di Garmin, che non lo espone">carico ' + load + '</span>'
+                    : '') +
+            '</div>' + rows +
+            '<p class="hrz-note">Dal tracciato cardiaco della sessione, ' + data.length +
+            ' campioni. Il carico è una nostra stima con il metodo TRIMP: Garmin non ' +
+            'espone il proprio, quindi i due numeri non sono confrontabili.</p>' +
+        '</div>';
+    }
+
     window.HrModel = {
         ZONES: ZONES,
+        zoneBreakdownHtml: zoneBreakdownHtml,
         ageFromBirthdate: ageFromBirthdate,
         estimateMaxHr: estimateMaxHr,
         hrAt: hrAt,
