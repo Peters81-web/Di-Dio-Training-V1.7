@@ -196,6 +196,123 @@
     return isoDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
   }
 
+  // ─── Lettura della struttura del piano ───────────────────────────────
+  //
+  // IL BUG CHE CHIUDE
+  // Il parser pretendeva il formato ESATTO: "### " per il titolo del
+  // giorno e "#### " per le quattro sottosezioni. Qualunque scostamento
+  // dava ZERO schede, in silenzio: il testo si vedeva benissimo a schermo
+  // perché marked renderizza qualunque variante, ma "Salva" rispondeva
+  // "Nessun allenamento da salvare". Misurato: delle sei forme che un
+  // modello scrive comunemente, UNA sola veniva letta.
+  //
+  //   #### Riscaldamento     -> 1 scheda
+  //   **Riscaldamento**      -> 0
+  //   ### Riscaldamento      -> 0
+  //   Riscaldamento:         -> 0
+  //   ## Giorno 1 ...        -> 0
+  //   **### Giorno 1 ...**   -> 0
+  //
+  // Un formato rigido è ragionevole da CHIEDERE nel prompt; pretenderlo
+  // per leggere è un'altra cosa. Il modello non è un compilatore, e più
+  // istruzioni gli si danno più è probabile che ne lasci cadere una.
+
+  var SEZIONI = [
+    { key: 'warmup',    re: /^riscaldamento/i },
+    { key: 'mainPhase', re: /^fase\s+principale/i },
+    { key: 'cooldown',  re: /^defaticamento/i },
+    { key: 'notes',     re: /^note(\s+e\s+consigli)?/i }
+  ];
+
+  /**
+   * Toglie da una riga tutto ciò che la marca come intestazione —
+   * cancelletti, grassetto, due punti finali — lasciando il testo.
+   */
+  function headingText(line) {
+    return String(line || '')
+      .replace(/^\s*#{1,6}\s*/, '')
+      .replace(/\*\*/g, '')
+      .replace(/^\s*[-*]\s+/, '')
+      .replace(/\s*:\s*$/, '')
+      .trim();
+  }
+
+  /**
+   * Riconosce una riga che introduce una delle quattro sottosezioni.
+   * Ritorna la chiave, o null.
+   *
+   * Non basta che il nome compaia: deve essere all'INIZIO ed essere
+   * praticamente tutta la riga. Altrimenti "- 5 min di riscaldamento"
+   * dentro la fase principale verrebbe scambiato per un'intestazione e
+   * spezzerebbe il blocco.
+   */
+  function sectionOf(line) {
+    var t = headingText(line);
+    if (!t || t.length > 40) return null;
+    for (var i = 0; i < SEZIONI.length; i++) {
+      if (SEZIONI[i].re.test(t)) return SEZIONI[i].key;
+    }
+    return null;
+  }
+
+  /**
+   * È la riga che apre un giorno del piano?
+   *
+   * Un'intestazione che NON è una delle quattro sottosezioni, oppure una
+   * riga che nomina esplicitamente "Giorno N" anche senza cancelletti.
+   */
+  function isDayHeading(line) {
+    var s = String(line || '');
+    var haMarcatore = /^\s*#{1,6}\s/.test(s) || /^\s*\*\*.+\*\*\s*$/.test(s);
+    var nominaGiorno = /^\s*\**\s*#*\s*giorno\s*\d+/i.test(s);
+    if (!haMarcatore && !nominaGiorno) return false;
+    return sectionOf(line) === null;
+  }
+
+  /**
+   * Legge la struttura del piano: un elemento per giorno, con il titolo e
+   * le quattro sezioni.
+   *
+   * @returns {Array} [{ title, warmup, mainPhase, cooldown, notes, isRest }]
+   */
+  function parsePlanBlocks(text) {
+    var righe = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+    var out = [];
+    var corrente = null;
+    var sezione = null;
+
+    righe.forEach(function (riga) {
+      if (isDayHeading(riga)) {
+        corrente = { title: headingText(riga), warmup: '', mainPhase: '',
+                     cooldown: '', notes: '', _libero: [] };
+        out.push(corrente);
+        sezione = null;
+        return;
+      }
+      if (!corrente) return;            // introduzione prima del primo giorno
+
+      var s = sectionOf(riga);
+      if (s) { sezione = s; return; }
+
+      if (sezione) corrente[sezione] += (corrente[sezione] ? '\n' : '') + riga;
+      else corrente._libero.push(riga);
+    });
+
+    return out.map(function (b) {
+      var libero = b._libero.join('\n').trim();
+      delete b._libero;
+      // Un giorno scritto senza sottosezioni: il testo libero diventa la
+      // fase principale, altrimenti la scheda verrebbe scartata pur
+      // contenendo l'allenamento.
+      if (!b.warmup && !b.mainPhase && libero) b.mainPhase = libero;
+      Object.keys(b).forEach(function (k) {
+        if (typeof b[k] === 'string') b[k] = b[k].trim();
+      });
+      b.isRest = /riposo/i.test(b.title);
+      return b;
+    });
+  }
+
   /**
    * Assegna una data a ogni blocco del piano, nell'ordine in cui il
    * modello li ha scritti.
@@ -356,11 +473,13 @@
     planDayNumbers: planDayNumbers,
     planDayNumbersById: planDayNumbersById,
     cleanTitle: cleanTitle,
+    parsePlanBlocks: parsePlanBlocks,
     parsePlanDate: parsePlanDate,
     schedulePlanDates: schedulePlanDates,
     addDays: addDays,
     _internals: {
       toUtcNoon: toUtcNoon, planKeyOf: planKeyOf, isoDate: isoDate,
+      headingText: headingText, sectionOf: sectionOf, isDayHeading: isDayHeading,
       inferYear: inferYear, DAY_MS: DAY_MS, MAX_DAY: MAX_DAY, MESI: MESI
     }
   };
