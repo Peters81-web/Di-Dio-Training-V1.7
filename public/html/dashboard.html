@@ -362,6 +362,11 @@
     <!-- exercise-log.js PRIMA di dashboard.js, che legge window.ExerciseLog
          mentre costruisce il modal del dettaglio -->
     <script src="/js/exercise-log.js"></script>
+    <!-- weather.js PRIMA di tcx-import.js: l'import lo usa per il meteo
+         storico dell'attività. tcx-import serve alla dashboard da quando
+         una scheda si può completare caricando il file del Garmin. -->
+    <script src="/js/weather.js"></script>
+    <script src="/js/tcx-import.js"></script>
     <script src="/js/md-lite.js"></script>
     <script src="/js/plan-days.js"></script>
     <script src="/js/dashboard.js"></script>

@@ -508,6 +508,119 @@
     }
   }
 
+  /**
+   * Come insertDroppingMissing, ma per un UPDATE.
+   *
+   * Serve al completamento di una scheda già esistente: tocca gps_track e
+   * max_heart_rate (001), temperature e weather (003), humidity (005),
+   * hr_series (008). Senza ripiego, una sola migrazione non eseguita farebbe
+   * fallire l'INTERO aggiornamento e l'allenamento non risulterebbe svolto —
+   * il file letto correttamente e il risultato perso.
+   */
+  async function updateDroppingMissing(sc, planId, userId, base, optional) {
+    let extra = Object.assign({}, optional);
+    const dropped = [];
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const res = await sc.from('workout_plans')
+        .update(Object.assign({}, base, extra))
+        .eq('id', planId)
+        .eq('user_id', userId);
+
+      if (!res.error) return { res: res, dropped: dropped };
+      if (!isMissingColumnError(res.error)) return { res: res, dropped: dropped };
+
+      const bad = missingColumnName(res.error);
+      if (!bad || !(bad in extra)) return { res: res, dropped: dropped };
+
+      delete extra[bad];
+      dropped.push(bad);
+      console.warn('Completamento da file: colonna "' + bad + '" non presente ' +
+                   'nel database, eseguire le migrazioni in migrations/. Salvo senza.');
+    }
+    return { res: { error: new Error('Troppi tentativi di ripiego') }, dropped: dropped };
+  }
+
+  /**
+   * Completa una scheda GIÀ ESISTENTE con i dati letti da un file Garmin.
+   *
+   * PERCHÉ NON BASTAVA saveImport
+   * Quella crea una scheda NUOVA. Importando il file della corsa che avevi
+   * pianificato ti ritrovavi con due voci: la scheda pianificata mai
+   * completata e l'attività Garmin. È il motivo per cui in archivio c'erano
+   * 27 attività importate accanto alle schede dell'AI, e per cui alcune
+   * schede risultavano "da fare" pur essendo state svolte.
+   *
+   * LA DATA LA DECIDE IL FILE, non il calendario.
+   * Se anticipi a oggi l'allenamento previsto per domani, la scheda si
+   * sposta a oggi: nel TCX la data sta in <Activity><Id> ed è obbligatoria,
+   * quindi è un fatto registrato dall'orologio, non una stima. L'utente può
+   * comunque correggerla a mano prima di confermare — da qui il parametro
+   * whenIso, che ha la precedenza su quella del file.
+   */
+  async function completeExistingPlan(data, userId, sc, target, whenIso) {
+    const iso = whenIso || data.startIso;
+    const dateOnly = iso.slice(0, 10);
+
+    // Lo stato di partenza, per rimettere le cose com'erano se la seconda
+    // scrittura fallisce. Senza, un errore a metà lascerebbe la scheda
+    // segnata come svolta ma senza il record del completamento: sparirebbe
+    // dalla dashboard e non comparirebbe nell'archivio.
+    const prevRes = await sc.from('workout_plans')
+      .select('completed, completed_at, scheduled_date')
+      .eq('id', target.planId).eq('user_id', userId).single();
+    const prev = prevRes.error ? null : prevRes.data;
+
+    const base = {
+      completed: true,
+      completed_at: iso,
+      scheduled_date: dateOnly,
+      average_heart_rate: data.avgHr
+    };
+    const optional = {
+      max_heart_rate: data.maxHr,       // 001
+      gps_track:      data.track,       // 001
+      temperature:    data.temperature, // 003
+      weather:        data.weather || null, // 003
+      humidity:       data.humidity,    // 005
+      hr_series:      data.hrSeries     // 008
+    };
+
+    const upd = await updateDroppingMissing(sc, target.planId, userId, base, optional);
+    if (upd.res.error) throw upd.res.error;
+
+    // Se la traccia c'era ma non è stata salvata, l'utente deve saperlo:
+    // altrimenti cerca la mappa, non la trova e non capisce perché.
+    if (data.track && upd.dropped.indexOf('gps_track') !== -1 && window.showToast) {
+      window.showToast('Allenamento completato, ma la traccia GPS non è stata ' +
+                       'salvata: manca una colonna nel database (vedi migrations/).',
+                       'warning', 7000);
+    }
+
+    const compRes = await sc.from('completed_workouts').insert({
+      user_id: userId,
+      workout_id: target.planId,
+      completed_at: iso,
+      actual_duration: data.durationMin,
+      calories_burned: data.calories,
+      distance: data.distanceKm,
+      heart_rate_avg: data.avgHr
+    });
+
+    if (compRes.error) {
+      if (prev) {
+        await sc.from('workout_plans')
+          .update({ completed: prev.completed,
+                    completed_at: prev.completed_at,
+                    scheduled_date: prev.scheduled_date })
+          .eq('id', target.planId).eq('user_id', userId);
+      }
+      throw compRes.error;
+    }
+
+    return { movedFrom: prev ? prev.scheduled_date : null, movedTo: dateOnly };
+  }
+
   async function isDuplicate(startIso, userId, sc) {
     const res = await sc.from('completed_workouts')
       .select('id').eq('user_id', userId).eq('completed_at', startIso).limit(1);
@@ -542,6 +655,12 @@
 .tcx-metric .l{font-size:.7rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .tcx-metric .v{font-size:1.1rem;font-weight:700;color:#1a1a2e;margin-top:2px}
 .tcx-warn{margin-top:12px;padding:10px 12px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:6px;font-size:.82rem;color:#92400e}
+.tcx-date{margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+.tcx-date label{display:flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#475569;margin-bottom:6px}
+.tcx-date input{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem;font-family:inherit;color:#1e293b;background:#fff}
+.tcx-date input:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
+.tcx-date-note{margin:6px 0 0;font-size:.76rem;line-height:1.45;color:#64748b}
+.tcx-date-note b{color:#1e293b}
 .tcx-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:#f9fafb;border-top:1px solid #e5e7eb}
 .tcx-btn{padding:10px 18px;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit}
 .tcx-btn--sec{background:#fff;border-color:#e5e7eb;color:#4b5563}
@@ -561,23 +680,85 @@
            '</div>';
   }
 
+  function escapeAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /** 'YYYY-MM-DDTHH:MM' nel fuso locale, per <input type="datetime-local">. */
+  function toLocalInput(iso) {
+    // new Date(null) NON è invalida: vale 0, cioè il 1º gennaio 1970. Senza
+    // questa riga un valore assente riempiva il campo con quella data, e
+    // confermando la si sarebbe salvata. Trovato da un controllo, non
+    // ragionandoci.
+    if (iso === null || iso === undefined || iso === '') return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  /**
+   * Il riquadro della data, mostrato solo quando si completa una scheda
+   * esistente.
+   *
+   * LA DATA DEL FILE VINCE SU QUELLA PIANIFICATA. Se anticipi a oggi
+   * l'allenamento previsto per domani, è oggi che l'hai fatto: nel TCX la
+   * data sta in <Activity><Id> ed è obbligatoria, quindi è un fatto
+   * registrato dall'orologio.
+   *
+   * Ma resta modificabile: un orologio con la data sbagliata, un file
+   * vecchio ricaricato, un fuso orario storto. Il campo è precompilato con
+   * la data del file, e quello che c'è dentro al momento della conferma è
+   * ciò che viene salvato.
+   */
+  function dateBox(fileIso, scheduledDate) {
+    const fileDay = String(fileIso).slice(0, 10);
+    const spostata = scheduledDate && scheduledDate !== fileDay;
+    const fmt = d => new Date(d + 'T12:00:00')
+      .toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+
+    return '<div class="tcx-date">' +
+      '<label for="tcxWhen"><i class="fas fa-calendar-day" aria-hidden="true"></i> ' +
+        'Data e ora dell\'allenamento</label>' +
+      '<input type="datetime-local" id="tcxWhen" value="' +
+        escapeAttr(toLocalInput(fileIso)) + '">' +
+      (spostata
+        ? '<p class="tcx-date-note">La scheda era in programma per <b>' +
+          escapeAttr(fmt(scheduledDate)) + '</b>. Il file dice <b>' +
+          escapeAttr(fmt(fileDay)) + '</b>: confermando, la scheda si sposta ' +
+          'a quel giorno. Se non è corretto, cambia il campo qui sopra.</p>'
+        : '<p class="tcx-date-note">Presa dal file. Modificala se l\'orologio ' +
+          'aveva la data sbagliata.</p>') +
+    '</div>';
+  }
+
   // ── Entry point ───────────────────────────────────────────────
   // onDone: callback chiamato dopo un import riuscito (per refresh)
   // preloadedText: contenuto file già disponibile (es. condivisione Android) →
   //                salta la drop-zone e mostra subito l'anteprima.
-  window.openTcxImport = function (onDone, preloadedText) {
+  // target: { planId, planName, scheduledDate } → invece di creare una
+  //         scheda nuova, COMPLETA quella indicata. Senza, comportamento
+  //         di sempre.
+  window.openTcxImport = function (onDone, preloadedText, target) {
     ensureStyles();
     const sc = window.supabaseClient;
     if (!sc) { if (window.showToast) window.showToast('Supabase non disponibile.', 'error'); return; }
 
     let parsed = null;
     let userId = null;
+    const completa = !!(target && target.planId);
 
     const ov = document.createElement('div');
     ov.className = 'tcx-ov';
     ov.innerHTML =
       '<div class="tcx-dlg" role="dialog" aria-modal="true">' +
-        '<div class="tcx-head"><i class="fas fa-file-import"></i><div><small>Importa da Garmin</small><h3>Carica attività (TCX)</h3></div></div>' +
+        (completa
+          ? '<div class="tcx-head"><i class="fas fa-file-import"></i><div><small>Completa da file Garmin</small><h3>' +
+            escapeAttr(target.planName || 'Allenamento') + '</h3></div></div>'
+          : '<div class="tcx-head"><i class="fas fa-file-import"></i><div><small>Importa da Garmin</small><h3>Carica attività (TCX)</h3></div></div>') +
         '<div class="tcx-body">' +
           '<div class="tcx-drop" id="tcxDrop">' +
             '<i class="fas fa-cloud-arrow-up"></i>' +
@@ -588,7 +769,8 @@
         '</div>' +
         '<div class="tcx-foot">' +
           '<button class="tcx-btn tcx-btn--sec" id="tcxCancel">Annulla</button>' +
-          '<button class="tcx-btn tcx-btn--pri" id="tcxSave" disabled>Importa</button>' +
+          '<button class="tcx-btn tcx-btn--pri" id="tcxSave" disabled>' +
+            (completa ? 'Completa' : 'Importa') + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(ov);
@@ -641,7 +823,8 @@
         (gpsPoints === 0
           ? '<div class="tcx-warn"><i class="fas fa-map-location-dot"></i> Il file non contiene coordinate GPS: la mappa del percorso non sarà disponibile. Se l\'attività è stata registrata all\'aperto, prova a esportarla da Garmin Connect in formato <strong>GPX</strong> invece che TCX.</div>'
           : '') +
-        (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '');
+        (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '') +
+        (completa ? dateBox(parsed.startIso, target.scheduledDate) : '');
       preview.classList.add('show');
       drop.style.display = 'none';
       saveBtn.disabled = false;
@@ -699,18 +882,41 @@
 
     saveBtn.addEventListener('click', async function () {
       if (!parsed || !userId) return;
+      const etichetta = completa ? 'Completa' : 'Importa';
       saveBtn.disabled = true;
-      saveBtn.textContent = 'Importo...';
+      saveBtn.textContent = completa ? 'Salvo...' : 'Importo...';
       try {
-        await saveImport(parsed, userId, sc);
-        if (window.showToast) window.showToast('Attività importata con successo!', 'success');
+        if (completa) {
+          // Il campo della data ha la precedenza sul file: è lì che
+          // l'utente corregge un orologio con la data sbagliata.
+          const campo = ov.querySelector('#tcxWhen');
+          let quando = parsed.startIso;
+          if (campo && campo.value) {
+            const d = new Date(campo.value);
+            // Una data illeggibile non deve diventare "Invalid Date" nel
+            // database: in quel caso vince quella del file.
+            if (!isNaN(d.getTime())) quando = d.toISOString();
+          }
+
+          const esito = await completeExistingPlan(parsed, userId, sc, target, quando);
+          if (window.showToast) {
+            window.showToast(
+              esito.movedFrom && esito.movedFrom !== esito.movedTo
+                ? 'Allenamento completato e spostato al ' +
+                  new Date(esito.movedTo + 'T12:00:00').toLocaleDateString('it-IT')
+                : 'Allenamento completato dal file!', 'success');
+          }
+        } else {
+          await saveImport(parsed, userId, sc);
+          if (window.showToast) window.showToast('Attività importata con successo!', 'success');
+        }
         close();
         if (typeof onDone === 'function') onDone();
       } catch (err) {
         console.error('Errore import TCX:', err);
-        if (window.showToast) window.showToast('Errore import: ' + (err.message || 'riprova'), 'error');
+        if (window.showToast) window.showToast('Errore: ' + (err.message || 'riprova'), 'error');
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Importa';
+        saveBtn.textContent = etichetta;
       }
     });
   };
@@ -741,6 +947,8 @@
     _internals: {
       buildHrSeries: buildHrSeries,
       buildTrack: buildTrack,
+      toLocalInput: toLocalInput,
+      dateBox: dateBox,
       MAX_TRACK_POINTS: MAX_TRACK_POINTS
     }
   };

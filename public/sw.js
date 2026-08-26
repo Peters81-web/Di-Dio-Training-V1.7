@@ -143,7 +143,14 @@
 //         chiede anche hr_series e mostra il tempo in zona: senza,
 //         togliendole dalla dashboard quel riquadro sarebbe sparito.
 //         Il ripiego dell'Archivio passa da tutto-o-niente a graduale.
-const CACHE_NAME  = 'didio-v59';
+//   v60 -> Una scheda si puo' completare caricando il file .tcx/.gpx
+//         dell'attivita' registrata col Garmin, invece di digitare i
+//         dati. Prima l'import creava una scheda NUOVA: la corsa
+//         pianificata e la corsa fatta restavano due voci diverse.
+//         La data la decide il file (nel TCX e' obbligatoria), quindi
+//         anticipando un allenamento la scheda si sposta al giorno
+//         giusto; resta correggibile a mano prima di confermare.
+const CACHE_NAME  = 'didio-v60';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -163,6 +170,7 @@ const PRECACHE = [
   '/js/app-nav.js',
   '/js/archivio.js',
   '/js/tcx-import.js',
+  '/js/weather.js',
   '/js/exercise-log.js',
   '/js/hr-model.js',
   '/js/ai-context.js',

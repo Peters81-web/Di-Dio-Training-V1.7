@@ -74,7 +74,13 @@ const MIGRATION_TABLES = [
 // mancando così proprio il bug segnalato dall'utente.
 const FALLBACK_HINTS = [
   /(?<!function\s)isMissingColumnError\s*\(/,   // chiamata, non dichiarazione
-  /COLS_LEGACY|WORKOUT_COLS|PROFILE_COLS_LEGACY|selectWorkouts|insertDroppingMissing/,
+  /COLS_LEGACY|WORKOUT_COLS|PROFILE_COLS_LEGACY|selectWorkouts/,
+  // Gli aiutanti che tolgono una colonna alla volta. Come sopra: la
+  // CHIAMATA, non la dichiarazione. Cercandoli per sottostringa, il file
+  // che li DEFINISCE risulterebbe coperto anche per una scrittura che non
+  // li usa — ed è proprio tcx-import.js, che definisce entrambi e scrive
+  // in due punti diversi.
+  /(?<!function\s)(insert|update)DroppingMissing\s*\(/,
   /delete\s+\w+\.(source|temperature|weather|gps_track|max_heart_rate)/
 ];
 
