@@ -1773,3 +1773,19 @@
     letter-spacing: .06em;
 }
 .overdue-badge i { font-size: .58rem; }
+
+/* =============================================
+   COMPLETA DA FILE GARMIN
+   Sta accanto a "Completa": stessa azione, strada diversa. Colore
+   distinto dal verde perche' non e' la conferma di qualcosa gia' fatto
+   ma l'apertura di un file, e perche' porta con se' cio' che a mano non
+   si puo' inserire: traccia GPS e tracciato cardiaco.
+   ============================================= */
+
+.btn-garmin {
+    background: #0369a1;
+    color: #fff;
+    border: none;
+}
+.btn-garmin:hover  { background: #075985; }
+.btn-garmin:active { background: #0c4a6e; }

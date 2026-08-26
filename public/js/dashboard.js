@@ -755,6 +755,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <span>Elimina</span>
                 </button>
                 ${isImported(workout) ? '' : `
+                <button class="btn btn-garmin import-btn" onclick="completeFromFile('${workout.id}')"
+                        title="Completa caricando il file dell'attività registrata col Garmin">
+                    <i class="fas fa-file-import"></i>
+                    <span>Da file</span>
+                </button>
                 <button class="btn btn-success complete-btn" onclick="completeWorkout('${workout.id}')">
                     <i class="fas fa-check"></i>
                     <span>Completa</span>
@@ -1222,8 +1227,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <button class="btn btn-primary" onclick="editWorkout('${workout.id}')">
                         <i class="fas fa-edit"></i> Modifica
                     </button>
+                    <button class="btn btn-garmin" onclick="completeFromFile('${workout.id}')">
+                        <i class="fas fa-file-import"></i> Completa da file
+                    </button>
                     <button class="btn btn-success" onclick="completeWorkout('${workout.id}')">
-                        <i class="fas fa-check"></i> Completa
+                        <i class="fas fa-check"></i> A mano
                     </button>`}
                 </div>
             </div>
@@ -1649,6 +1657,40 @@ document.addEventListener('DOMContentLoaded', async function() {
         openModal('completeWorkoutModal');
     };
     
+    /**
+     * Completa una scheda leggendo il file di un'attività registrata col
+     * Garmin, invece di digitare i dati a mano.
+     *
+     * PERCHÉ NON BASTA L'IMPORT CHE C'ERA GIÀ
+     * Quello, dalla pagina Statistiche, crea una scheda NUOVA. Importando
+     * il file della corsa che avevi pianificato ti ritrovavi con due voci:
+     * la scheda mai completata e l'attività Garmin. Qui invece le due cose
+     * diventano una sola.
+     *
+     * E porta con sé quello che a mano non si può inserire: la traccia
+     * GPS, quindi la mappa, e il tracciato cardiaco, quindi il tempo reale
+     * in zona e il carico TRIMP.
+     */
+    window.completeFromFile = function (workoutId) {
+        const workout = workouts.find(w => w.id === workoutId);
+        if (!workout) { showToast('Allenamento non trovato', 'error'); return; }
+
+        if (typeof window.openTcxImport !== 'function') {
+            showToast('Import non disponibile: ricarica la pagina.', 'error');
+            return;
+        }
+
+        // Il dettaglio, se aperto, coprirebbe la finestra dell'import.
+        closeModal('workoutDetailsModal');
+
+        window.openTcxImport(
+            function () { loadDashboardData(); },
+            null,
+            { planId: workout.id,
+              planName: workout.name,
+              scheduledDate: workout.scheduled_date });
+    };
+
     /**
      * Gestisce il submit del form di completamento
      */
