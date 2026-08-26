@@ -216,6 +216,220 @@ checkTrue('weather.js è nel precache', /'\/js\/weather\.js'/.test(SW));
 checkTrue('la versione della cache è stata alzata',
   Number((SW.match(/CACHE_NAME\s*=\s*'didio-v(\d+)'/) || [0, 0])[1]) >= 60);
 
+// ─── Piu' registrazioni per una sola scheda ─────────────────────────
+//
+// Il caso dell'utente: "ho suddiviso il lavoro" — corsa, pesi e
+// camminata registrati come tre attivita' distinte dall'orologio, per una
+// sola sessione pianificata. Caricando un file per volta gli altri due
+// andrebbero persi.
+//
+// LA COSA DA VERIFICARE PRIMA DI SCRIVERE LA FUSIONE erano le PAUSE: i
+// venti minuti fra la corsa e i pesi non devono diventare tempo in zona.
+// hr-model.js li tratta gia' con "if (!(d > 0) || d > 60) d = 1", quindi
+// contano 1 secondo. I controlli qui sotto lo verificano davvero,
+// eseguendo timeInZones sulla serie unita.
+console.log('\n— tre registrazioni diventano una sessione —');
+
+const { mergeActivities, partsSummary, blocksList, paceOf } = I;
+
+/**
+ * Campioni ogni 6 secondi, come esce davvero dal parser: 500 punti su
+ * ~52 minuti.
+ *
+ * IL PASSO NON E' UN DETTAGLIO. La prima versione di questi controlli
+ * usava campioni distanti 600 secondi, e l'assunzione "il totale non
+ * gonfia" passava per il motivo sbagliato: hr-model azzera gli intervalli
+ * sopra i 60 secondi, quindi il tempo in zona collassava a 8 secondi
+ * invece dei 3360 attesi. Il controllo era verde su un dato inutilizzabile.
+ */
+function campioni(durSec, bpm) {
+  const o = [];
+  for (let t = 0; t <= durSec; t += 6) o.push([t, bpm]);
+  return o;
+}
+
+// Tre blocchi come li registrerebbe l'orologio, con le pause in mezzo.
+const CORSA = {
+  activityType: 'running', activityLabel: 'Corsa',
+  startIso: '2026-08-24T14:00:00.000Z',
+  durationMin: 25, distanceKm: 3.5, calories: 300, avgHr: 141, maxHr: 165,
+  temperature: 24, weather: 'sereno', humidity: 60,
+  track: [[45.1, 9.1], [45.2, 9.2], [45.3, 9.3]],
+  hrSeries: campioni(25 * 60, 141)
+};
+const PESI = {
+  activityType: 'gym', activityLabel: 'Altro',
+  startIso: '2026-08-24T14:45:00.000Z',   // 20 minuti dopo la fine della corsa
+  durationMin: 18, distanceKm: null, calories: 120, avgHr: 127, maxHr: 150,
+  temperature: null, track: null,
+  hrSeries: campioni(18 * 60, 127)
+};
+const CAMMINATA = {
+  activityType: 'walking', activityLabel: 'Camminata',
+  startIso: '2026-08-24T15:10:00.000Z',
+  durationMin: 13, distanceKm: 1.1, calories: 60, avgHr: 100, maxHr: 115,
+  temperature: null, track: [[45.4, 9.4], [45.5, 9.5]],
+  hrSeries: campioni(13 * 60, 100)
+};
+
+const uniti = mergeActivities([PESI, CORSA, CAMMINATA]);   // ordine sparso
+
+check('la durata si somma',   uniti.durationMin, 25 + 18 + 13);
+check('la distanza si somma', uniti.distanceKm, 4.6);
+check('le calorie si sommano', uniti.calories, 480);
+check('la FC massima e il massimo dei blocchi', uniti.maxHr, 165);
+// Media PESATA sulla durata, non media delle medie: (141*25+127*18+100*13)/56
+check('la FC media e pesata sulla durata', uniti.avgHr,
+  Math.round((141 * 25 + 127 * 18 + 100 * 13) / 56));
+checkTrue('e NON e la media delle medie',
+  uniti.avgHr !== Math.round((141 + 127 + 100) / 3),
+  'la media delle medie darebbe ' + Math.round((141 + 127 + 100) / 3));
+check('l inizio e quello del blocco piu mattiniero',
+  uniti.startIso, '2026-08-24T14:00:00.000Z');
+
+console.log('\n— la mappa tiene la traccia del blocco piu lungo —');
+// Scelta dell'utente: meglio un percorso vero e incompleto che uno
+// completo e falso. Attaccando le tracce, route-map disegnerebbe una
+// riga dritta fra la fine di un blocco e l'inizio del successivo.
+check('e quella della corsa, non della camminata', uniti.track, CORSA.track);
+checkTrue('non e la concatenazione delle due',
+  uniti.track.length === CORSA.track.length,
+  'concatenandole sarebbero ' + (CORSA.track.length + CAMMINATA.track.length) + ' punti');
+check('e il meteo arriva dallo stesso blocco', uniti.temperature, 24);
+
+console.log('\n— il tracciato cardiaco e riportato a un origine comune —');
+const serie = uniti.hrSeries;
+checkTrue('contiene campioni di tutti e tre', serie.length > 100,
+  serie.length + ' campioni');
+check('parte da zero', serie[0][0], 0);
+// I pesi iniziano 45 minuti dopo la corsa: 2700 secondi.
+checkTrue('i campioni dei pesi sono spostati di 45 minuti',
+  serie.some(function (p) { return p[0] >= 2700 && p[1] === 127; }));
+checkTrue('ed e in ordine di tempo',
+  serie.every(function (p, i) { return i === 0 || p[0] >= serie[i - 1][0]; }));
+// Il totale resta sotto il tetto: si sottocampiona PER BLOCCO, non
+// sull'insieme, quindi il passo dentro un blocco non dipende dalle pause.
+checkTrue('non supera il tetto dei punti salvati', serie.length <= 500,
+  serie.length + ' punti');
+/**
+ * L'intervallo massimo FRA CAMPIONI DELLO STESSO BLOCCO.
+ *
+ * Con n blocchi ci sono esattamente n-1 salti di confine, ed e' giusto
+ * che siano grandi: sono le pause. Si tolgono i piu' grandi in quel
+ * numero preciso, invece di filtrare per soglia — la prima versione usava
+ * "d < 600" e contava come intervallo interno la pausa di 420 secondi fra
+ * i pesi e la camminata, facendo fallire il controllo per il motivo
+ * sbagliato.
+ */
+function maxGapInterno(serie, nBlocchi) {
+  const gaps = [];
+  for (let i = 1; i < serie.length; i++) gaps.push(serie[i][0] - serie[i - 1][0]);
+  gaps.sort(function (a, b) { return b - a; });
+  return gaps.slice(nBlocchi - 1)[0] || 0;
+}
+
+checkTrue('e dentro un blocco i campioni restano fitti',
+  maxGapInterno(serie, 3) <= 60,
+  'intervallo massimo ' + maxGapInterno(serie, 3) + ' s, il limite di hr-model e 60');
+
+console.log('\n— e le pause NON diventano tempo in zona —');
+// Il controllo che rende onesta tutta la fusione, eseguito davvero.
+// hr-model.js si aspetta un window: gli si passa il contesto che abbiamo
+// gia' costruito per tcx-import.js, come fa test-recovery-load.js.
+new Function('window', 'document',
+  fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'hr-model.js'), 'utf8')
+)(sandbox.window, sandbox.document);
+const HrModel = sandbox.window.HrModel;
+const tz = HrModel.timeInZones(serie, 185, 53);
+checkTrue('il tempo totale e calcolabile', !!tz);
+// La sessione dura 56 minuti = 3360 s. Dall'inizio della corsa alla fine
+// della camminata sono 83 minuti: se le pause venissero contate, il
+// totale ci si avvicinerebbe.
+//
+// L'assunzione e' STRETTA di proposito: "<= 3360" passerebbe anche con un
+// totale di 8 secondi, ed e' esattamente l'errore in cui ero caduto.
+checkTrue('il totale coincide con la somma dei blocchi',
+  Math.abs(tz.total - 3360) <= 30,
+  tz.total + ' s contro i 3360 s attesi (scarto ' + (tz.total - 3360) + ' s)');
+checkTrue('e NON con la durata a orologio',
+  Math.abs(tz.total - 83 * 60) > 600,
+  'le pause conterebbero ' + (83 * 60) + ' s');
+
+console.log('\n— anche se i blocchi sono a dodici ore di distanza —');
+// Corsa la mattina, palestra la sera.
+//
+// DICHIARO IL LIMITE DI QUESTO CONTROLLO: non distingue il
+// sottocampionamento per blocco da quello sull'insieme. L'ho verificato
+// rompendo il codice, e le due strade danno 4501 e 4495 secondi sui 4500
+// attesi — sei secondi. Il sottocampionamento sceglie per indice, e gli
+// indici sono fitti dentro i blocchi, quindi anche spalmando 500 punti su
+// 12 ore il passo interno resta di 12 secondi.
+//
+// Quello che questo controllo protegge davvero e' il RISULTATO: se un
+// giorno la fusione perdesse tempo per via delle pause, qui si vedrebbe.
+const MATTINA = Object.assign({}, CORSA, {
+  startIso: '2026-08-24T07:00:00.000Z', durationMin: 30,
+  hrSeries: campioni(30 * 60, 141), track: null
+});
+const SERA = Object.assign({}, PESI, {
+  startIso: '2026-08-24T19:00:00.000Z', durationMin: 45,
+  hrSeries: campioni(45 * 60, 127)
+});
+const lontani = mergeActivities([MATTINA, SERA]);
+checkTrue('i campioni dentro un blocco restano fitti',
+  maxGapInterno(lontani.hrSeries, 2) <= 60,
+  'intervallo massimo ' + maxGapInterno(lontani.hrSeries, 2) + ' s');
+const tzL = HrModel.timeInZones(lontani.hrSeries, 185, 53);
+checkTrue('e il tempo in zona regge', Math.abs(tzL.total - 75 * 60) <= 30,
+  tzL.total + ' s contro i ' + (75 * 60) + ' s attesi');
+
+console.log('\n— un blocco solo non viene toccato —');
+const solo = mergeActivities([CORSA]);
+check('e lo stesso oggetto di partenza', solo, CORSA);
+check('elenco vuoto', mergeActivities([]), null);
+check('argomento non valido', mergeActivities(null), null);
+
+console.log('\n— il riepilogo per blocco —');
+const riepilogo = partsSummary(uniti);
+checkTrue('una riga per registrazione', riepilogo.split('\n').length === 3, riepilogo);
+checkTrue('con il ritmo della corsa', /7:0\d\/km/.test(riepilogo), riepilogo);
+checkTrue('e la FC dei pesi', /FC 127/.test(riepilogo));
+checkTrue('i pesi non hanno un ritmo inventato',
+  riepilogo.split('\n')[1].indexOf('/km') === -1,
+  'senza distanza il ritmo non e calcolabile: ' + riepilogo.split('\n')[1]);
+check('con un blocco solo non c e riepilogo', partsSummary(CORSA), '');
+
+check('il ritmo di 25 min su 3.5 km', paceOf(25, 3.5), '7:09');
+check('senza distanza niente ritmo', paceOf(25, null), null);
+check('ne con distanza zero', paceOf(25, 0), null);
+
+console.log('\n— l elenco dei blocchi nell anteprima —');
+const lista = blocksList([CORSA, PESI, CAMMINATA]);
+checkTrue('dichiara quante sono', /3 registrazioni unite/.test(lista));
+checkTrue('con un pulsante per toglierne una', /data-rimuovi="1"/.test(lista));
+check('con un blocco solo non compare', blocksList([CORSA]), '');
+
+console.log('\n— le note del riepilogo arrivano al completamento —');
+checkTrue('completeExistingPlan accetta le note',
+  /completeExistingPlan\(data, userId, sc, target, whenIso, note\)/.test(TCX));
+checkTrue('e le scrive nel record',
+  /notes: \(note && note\.trim\(\)\) \|\| partsSummary\(data\) \|\| null/.test(COMPLETA));
+checkTrue('il campo e modificabile prima di confermare', /id="tcxNotes"/.test(TCX));
+checkTrue('e il salvataggio lo legge', /ov\.querySelector\('#tcxNotes'\)/.test(TCX));
+
+console.log('\n— i file multipli solo dove ha senso —');
+checkTrue('il campo accetta piu file quando si completa una scheda',
+  /completa \? ' multiple' : ''/.test(TCX));
+checkTrue('i blocchi si accumulano',
+  /if \(completa\) nuovi\.forEach\(function \(a\) \{ blocchi\.push\(a\); \}\)/.test(TCX));
+checkTrue('mentre l import classico sostituisce, come sempre',
+  /else \{ blocchi\.length = 0; blocchi\.push\(nuovi\[nuovi\.length - 1\]\); \}/.test(TCX));
+checkTrue('la zona di scelta resta aperta per aggiungerne altri',
+  /drop\.style\.display = completa \? '' : 'none'/.test(TCX));
+checkTrue('il campo file si svuota dopo la lettura',
+  /fileInput\.value = ''/.test(TCX),
+  'senza, riscegliendo lo stesso file l evento change non scatta');
+
 console.log('\n' + (fail === 0
   ? `  Tutti i ${pass} controlli del completamento da file superati.`
   : `  ${fail} FALLITI su ${pass + fail}.`));

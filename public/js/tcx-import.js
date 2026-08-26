@@ -150,6 +150,186 @@
     return out;
   }
 
+  // ── Fusione di più registrazioni in una sessione sola ──────────
+  //
+  // PERCHÉ ESISTE
+  // Una scheda può corrispondere a più registrazioni separate: l'utente
+  // suddivide il lavoro e l'orologio salva tre attività distinte —
+  // corsa, pesi, camminata — per una sola sessione pianificata. Caricando
+  // un file per volta si perderebbero gli altri due.
+  //
+  // LE PAUSE NON FALSANO I NUMERI, ed è la cosa che andava verificata
+  // prima di scrivere questa funzione: hr-model.js, sia in timeInZones
+  // sia in trimp, tratta un intervallo fra due campioni con
+  //     if (!(d > 0) || d > 60) d = 1;
+  // quindi i venti minuti fra la corsa e i pesi contano 1 secondo, non
+  // venti minuti. Senza quel limite, unire le serie avrebbe gonfiato il
+  // tempo in zona e il carico senza che nulla lo segnalasse.
+
+  /** Somma ignorando i valori assenti; null se non ce n'è nessuno. */
+  function sumOrNull(list, key) {
+    var tot = null;
+    list.forEach(function (a) {
+      var v = a[key];
+      if (typeof v === 'number' && !isNaN(v)) tot = (tot === null ? 0 : tot) + v;
+    });
+    return tot;
+  }
+
+  /** Ritmo "m:ss" al chilometro, o null se non calcolabile. */
+  function paceOf(durationMin, distanceKm) {
+    if (!(distanceKm > 0) || !(durationMin > 0)) return null;
+    var sec = Math.round((durationMin * 60) / distanceKm);
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /** Sottocampiona coppie [secondi, bpm] già costruite, a max punti. */
+  function downsamplePairs(pts, max) {
+    var lim = max || MAX_TRACK_POINTS;
+    if (!Array.isArray(pts) || pts.length <= lim) return pts || [];
+    var step = (pts.length - 1) / (lim - 1);
+    var out = [];
+    for (var i = 0; i < lim; i++) out.push(pts[Math.round(i * step)]);
+    // L'ultimo campionato può non essere l'ultimo reale, e su quello si
+    // chiude il conto della durata del blocco: forziamolo.
+    out[out.length - 1] = pts[pts.length - 1];
+    return out;
+  }
+
+  /**
+   * Unisce più attività parsate in una sola.
+   *
+   * Con un solo elemento restituisce quello, senza toccarlo: la strada a
+   * file singolo resta identica a prima.
+   *
+   * LA MAPPA TIENE UNA SOLA TRACCIA, quella del blocco più lungo.
+   * Attaccandole di seguito, route-map.js — che disegna UNA polilinea —
+   * traccerebbe una riga dritta dalla fine della corsa all'inizio della
+   * camminata: un tratto mai percorso e indistinguibile dagli altri.
+   * Meglio un percorso vero e incompleto che uno completo e falso.
+   */
+  function mergeActivities(list) {
+    var acts = (list || []).filter(Boolean);
+    if (acts.length === 0) return null;
+    if (acts.length === 1) return acts[0];
+
+    // In ordine cronologico: l'offset del tracciato cardiaco si calcola
+    // dal primo, e il riepilogo va letto nell'ordine in cui è successo.
+    var ord = acts.slice().sort(function (a, b) {
+      return new Date(a.startIso) - new Date(b.startIso);
+    });
+
+    var t0 = new Date(ord[0].startIso).getTime();
+
+    // FC media pesata sulla DURATA dei blocchi, non media delle medie:
+    // venti minuti a 150 e cinque a 110 non fanno 130.
+    var hrNum = 0, hrDen = 0;
+    ord.forEach(function (a) {
+      if (typeof a.avgHr === 'number' && a.durationMin > 0) {
+        hrNum += a.avgHr * a.durationMin;
+        hrDen += a.durationMin;
+      }
+    });
+
+    // Il blocco con la traccia più lunga in distanza. A parità (o senza
+    // distanza) vince quello con più punti registrati.
+    var conTraccia = ord.filter(function (a) {
+      return Array.isArray(a.track) && a.track.length > 1;
+    });
+    var principale = null;
+    conTraccia.forEach(function (a) {
+      if (!principale) { principale = a; return; }
+      var da = a.distanceKm || 0, dp = principale.distanceKm || 0;
+      if (da > dp || (da === dp && a.track.length > principale.track.length)) principale = a;
+    });
+
+    // Tracciato cardiaco: ogni serie riportata all'origine comune.
+    //
+    // IL SOTTOCAMPIONAMENTO È PER BLOCCO, non sulla serie unita.
+    //
+    // NON perché l'altra strada sbagli: l'ho misurata, e su corsa la
+    // mattina più palestra la sera (12 ore di distanza) dà 4495 secondi
+    // di tempo in zona contro i 4501 di questa, sui 4500 attesi. Sei
+    // secondi di differenza. Il motivo per cui regge è che il
+    // sottocampionamento sceglie per INDICE, e gli indici sono fitti
+    // dentro i blocchi: il passo interno resta di 12 secondi anche
+    // spalmando 500 punti su 12 ore.
+    //
+    // Si fa per blocco perché quella proprietà è una coincidenza su cui
+    // non conviene poggiare. Per blocco il passo interno dipende solo
+    // dalla durata del blocco, e la pausa resta un salto isolato — che è
+    // ciò che hr-model si aspetta di trovare e sa già trattare.
+    var conSerie = ord.filter(function (a) { return Array.isArray(a.hrSeries); });
+    var quota = conSerie.length
+      ? Math.max(2, Math.floor(MAX_TRACK_POINTS / conSerie.length))
+      : 0;
+
+    var serie = [];
+    conSerie.forEach(function (a) {
+      var off = Math.round((new Date(a.startIso).getTime() - t0) / 1000);
+      downsamplePairs(a.hrSeries, quota).forEach(function (p) {
+        serie.push([Math.max(0, off + Number(p[0])), Number(p[1])]);
+      });
+    });
+    serie.sort(function (a, b) { return a[0] - b[0]; });
+
+    var maxHr = null;
+    ord.forEach(function (a) {
+      if (typeof a.maxHr === 'number' && (maxHr === null || a.maxHr > maxHr)) maxHr = a.maxHr;
+    });
+
+    // Meteo e temperatura dal blocco che porta la traccia: è quello di
+    // cui conosciamo il luogo. Altrimenti dal primo che ne ha.
+    var meteoDa = principale || ord.find(function (a) {
+      return a.temperature !== null && a.temperature !== undefined;
+    }) || ord[0];
+
+    return {
+      activityType:  (principale || ord[0]).activityType,
+      activityLabel: ord.map(function (a) { return a.activityLabel; })
+                        .filter(function (v, i, arr) { return arr.indexOf(v) === i; })
+                        .join(' + '),
+      startIso:    ord[0].startIso,
+      durationMin: sumOrNull(ord, 'durationMin') || 1,
+      distanceKm:  sumOrNull(ord, 'distanceKm'),
+      calories:    sumOrNull(ord, 'calories'),
+      avgHr:       hrDen ? Math.round(hrNum / hrDen) : null,
+      maxHr:       maxHr,
+      temperature: meteoDa.temperature,
+      weather:     meteoDa.weather,
+      weatherLabel: meteoDa.weatherLabel,
+      humidity:    meteoDa.humidity,
+      track:       principale ? principale.track : null,
+      hrSeries:    serie.length > 1 ? serie : null,
+      // I singoli blocchi restano disponibili per il riepilogo: unendo
+      // attività diverse il ritmo medio non descrive nessuna delle due,
+      // e il dettaglio non deve andare perso.
+      parts: ord
+    };
+  }
+
+  /**
+   * Riepilogo testuale dei blocchi, una riga per registrazione.
+   *
+   * Va a finire nel campo note del completamento, che da poco arriva
+   * anche al prompt dell'AI: è lì che il dettaglio per blocco resta
+   * leggibile, mentre i totali della sessione lo appiattiscono.
+   */
+  function partsSummary(data) {
+    var parts = data && data.parts;
+    if (!Array.isArray(parts) || parts.length < 2) return '';
+
+    return parts.map(function (a) {
+      var bits = [a.activityLabel, a.durationMin + "'"];
+      if (a.distanceKm) bits.push(a.distanceKm + ' km');
+      var p = paceOf(a.durationMin, a.distanceKm);
+      if (p) bits.push(p + '/km');
+      if (a.avgHr) bits.push('FC ' + a.avgHr);
+      return bits.join(' · ');
+    }).join('\n');
+  }
+
   function parseTcx(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) {
@@ -558,7 +738,7 @@
    * comunque correggerla a mano prima di confermare — da qui il parametro
    * whenIso, che ha la precedenza su quella del file.
    */
-  async function completeExistingPlan(data, userId, sc, target, whenIso) {
+  async function completeExistingPlan(data, userId, sc, target, whenIso, note) {
     const iso = whenIso || data.startIso;
     const dateOnly = iso.slice(0, 10);
 
@@ -604,7 +784,11 @@
       actual_duration: data.durationMin,
       calories_burned: data.calories,
       distance: data.distanceKm,
-      heart_rate_avg: data.avgHr
+      heart_rate_avg: data.avgHr,
+      // Il riepilogo per blocco quando le registrazioni erano piu' di
+      // una. E' l'unico posto in cui il dettaglio dentro la sessione
+      // sopravvive: i totali lo appiattiscono, e da qui arriva all'AI.
+      notes: (note && note.trim()) || partsSummary(data) || null
     });
 
     if (compRes.error) {
@@ -660,6 +844,20 @@
 .tcx-date input{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem;font-family:inherit;color:#1e293b;background:#fff}
 .tcx-date input:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
 .tcx-date-note{margin:6px 0 0;font-size:.76rem;line-height:1.45;color:#64748b}
+.tcx-blocks{margin-top:12px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px}
+.tcx-blocks-h{margin:0 0 8px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#1e40af}
+.tcx-blocks ul{list-style:none;margin:0;padding:0}
+.tcx-blocks li{display:flex;align-items:center;gap:.5rem;padding:5px 0;border-top:1px solid #dbeafe;font-size:.82rem}
+.tcx-blocks li:first-child{border-top:none}
+.tcx-blk-t{font-variant-numeric:tabular-nums;color:#64748b;flex-shrink:0}
+.tcx-blk-n{font-weight:600;color:#1e293b;flex-shrink:0}
+.tcx-blk-d{color:#475569;flex:1;min-width:0}
+.tcx-blk-x{border:none;background:none;color:#94a3b8;font-size:1.15rem;line-height:1;cursor:pointer;padding:0 4px;flex-shrink:0}
+.tcx-blk-x:hover{color:#dc2626}
+.tcx-notes{margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+.tcx-notes label{display:flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#475569;margin-bottom:6px}
+.tcx-notes textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;font-family:inherit;line-height:1.5;color:#1e293b;background:#fff;resize:vertical}
+.tcx-notes textarea:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
 .tcx-date-note b{color:#1e293b}
 .tcx-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:#f9fafb;border-top:1px solid #e5e7eb}
 .tcx-btn{padding:10px 18px;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit}
@@ -735,6 +933,57 @@
     '</div>';
   }
 
+  /**
+   * L'elenco dei blocchi caricati, con il pulsante per toglierne uno.
+   *
+   * Con un blocco solo non compare: sarebbe una riga che ripete i totali
+   * mostrati appena sopra.
+   */
+  function blocksList(blocchi) {
+    if (!Array.isArray(blocchi) || blocchi.length < 2) return '';
+
+    const righe = blocchi.map(function (a, i) {
+      const ora = new Date(a.startIso)
+        .toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      const bits = [a.durationMin + " min"];
+      if (a.distanceKm) bits.push(a.distanceKm + ' km');
+      if (a.avgHr) bits.push('FC ' + a.avgHr);
+      return '<li><span class="tcx-blk-t">' + escapeAttr(ora) + '</span>' +
+             '<span class="tcx-blk-n">' + escapeAttr(a.activityLabel) + '</span>' +
+             '<span class="tcx-blk-d">' + escapeAttr(bits.join(' · ')) + '</span>' +
+             '<button type="button" class="tcx-blk-x" data-rimuovi="' + i +
+             '" aria-label="Togli questo blocco" title="Togli">&times;</button></li>';
+    }).join('');
+
+    return '<div class="tcx-blocks"><p class="tcx-blocks-h">' +
+           blocchi.length + ' registrazioni unite in questa sessione</p>' +
+           '<ul>' + righe + '</ul></div>';
+  }
+
+  /**
+   * Il riepilogo per blocco, precompilato e modificabile.
+   *
+   * Unendo attività diverse alcuni numeri perdono senso — il ritmo medio
+   * fra una corsa e una camminata non descrive nessuna delle due — ma il
+   * dettaglio non deve andare perso. Finisce nelle note del
+   * completamento, che da poco arrivano anche al prompt dell'AI: è lì che
+   * il dettaglio per blocco resta leggibile.
+   *
+   * Precompilato e non imposto: resta testo dell'utente, che può
+   * riscriverlo come preferisce prima di confermare.
+   */
+  function notesBox(riepilogo) {
+    if (!riepilogo) return '';
+    return '<div class="tcx-notes">' +
+      '<label for="tcxNotes"><i class="fas fa-pen-to-square" aria-hidden="true"></i> ' +
+        'Note della sessione</label>' +
+      '<textarea id="tcxNotes" rows="4">' + escapeAttr(riepilogo) + '</textarea>' +
+      '<p class="tcx-date-note">Scritto dall\'app dai file caricati. ' +
+        'Modificalo come preferisci: finisce nelle note dell\'allenamento e ' +
+        'arriva all\'AI quando genera i prossimi piani.</p>' +
+    '</div>';
+  }
+
   // ── Entry point ───────────────────────────────────────────────
   // onDone: callback chiamato dopo un import riuscito (per refresh)
   // preloadedText: contenuto file già disponibile (es. condivisione Android) →
@@ -750,6 +999,13 @@
     let parsed = null;
     let userId = null;
     const completa = !!(target && target.planId);
+    // I blocchi caricati finora. Una scheda puo' corrispondere a piu'
+    // registrazioni separate — corsa, pesi, camminata per una sola
+    // sessione pianificata — e caricandone una per volta le altre
+    // andrebbero perse. Solo quando si completa una scheda esistente:
+    // l'import classico crea una scheda per attivita', quindi li' la
+    // fusione non avrebbe senso.
+    const blocchi = [];
 
     const ov = document.createElement('div');
     ov.className = 'tcx-ov';
@@ -764,7 +1020,8 @@
             '<i class="fas fa-cloud-arrow-up"></i>' +
             '<div><b>Scegli un file .TCX o .GPX</b><br>esportato da Garmin Connect</div>' +
           '</div>' +
-          '<input type="file" id="tcxFile" accept=".tcx,.gpx,application/xml,text/xml,application/gpx+xml" style="display:none">' +
+          '<input type="file" id="tcxFile"' + (completa ? ' multiple' : '') +
+          ' accept=".tcx,.gpx,application/xml,text/xml,application/gpx+xml" style="display:none">' +
           '<div class="tcx-preview" id="tcxPreview"></div>' +
         '</div>' +
         '<div class="tcx-foot">' +
@@ -788,13 +1045,40 @@
     ov.querySelector('#tcxCancel').addEventListener('click', close);
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
 
-    async function processText(text) {
-      try {
-        parsed = parseActivity(text);
-      } catch (err) {
-        if (window.showToast) window.showToast(err.message || 'File non valido.', 'error');
-        return;
+    async function processText(testi) {
+      const nuovi = [];
+      for (const t of (Array.isArray(testi) ? testi : [testi])) {
+        try {
+          nuovi.push(parseActivity(t));
+        } catch (err) {
+          if (window.showToast) window.showToast(err.message || 'File non valido.', 'error');
+        }
       }
+      if (!nuovi.length) return;
+
+      // In modalita' "completa" i blocchi si ACCUMULANO: si possono
+      // aggiungere in piu' riprese, perche' l'utente potrebbe esportarli
+      // dal Garmin uno alla volta. Nell'import classico ogni attivita' e'
+      // una scheda a se', quindi l'ultimo file scelto sostituisce il
+      // precedente come e' sempre stato.
+      if (completa) nuovi.forEach(function (a) { blocchi.push(a); });
+      else { blocchi.length = 0; blocchi.push(nuovi[nuovi.length - 1]); }
+
+      await redraw();
+    }
+
+    /**
+     * Ridisegna l'anteprima da quello che c'e' nei blocchi.
+     *
+     * Separata dal caricamento perche' serve anche quando si TOGLIE un
+     * blocco: chiamando processText con un elenco vuoto, quella uscirebbe
+     * subito senza aggiornare nulla, e la riga rimossa resterebbe in
+     * pagina come se ci fosse ancora.
+     */
+    async function redraw() {
+      if (!blocchi.length) return;
+      parsed = mergeActivities(blocchi);
+
       const sess = await sc.auth.getSession();
       userId = sess.data && sess.data.session ? sess.data.session.user.id : null;
       if (!userId) { if (window.showToast) window.showToast('Sessione scaduta, rifai login.', 'error'); return; }
@@ -824,10 +1108,30 @@
           ? '<div class="tcx-warn"><i class="fas fa-map-location-dot"></i> Il file non contiene coordinate GPS: la mappa del percorso non sarà disponibile. Se l\'attività è stata registrata all\'aperto, prova a esportarla da Garmin Connect in formato <strong>GPX</strong> invece che TCX.</div>'
           : '') +
         (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '') +
-        (completa ? dateBox(parsed.startIso, target.scheduledDate) : '');
+        (completa ? blocksList(blocchi) : '') +
+        (completa ? dateBox(parsed.startIso, target.scheduledDate) : '') +
+        (completa ? notesBox(partsSummary(parsed)) : '');
       preview.classList.add('show');
-      drop.style.display = 'none';
+      // In modalita' "completa" la zona di scelta resta visibile: si
+      // aggiunge un altro blocco senza ricominciare da capo.
+      drop.style.display = completa ? '' : 'none';
       saveBtn.disabled = false;
+
+      if (completa) {
+        preview.querySelectorAll('[data-rimuovi]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            blocchi.splice(Number(b.dataset.rimuovi), 1);
+            if (!blocchi.length) {
+              parsed = null;
+              preview.classList.remove('show');
+              preview.innerHTML = '';
+              saveBtn.disabled = true;
+              return;
+            }
+            redraw();
+          });
+        });
+      }
 
       // Meteo: serve una posizione, quindi solo per le attività con traccia.
       // Il recupero è asincrono e NON blocca il salvataggio: se il servizio
@@ -870,15 +1174,25 @@
 
     drop.addEventListener('click', function () { fileInput.click(); });
     fileInput.addEventListener('change', function () {
-      const f = fileInput.files && fileInput.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = function () { processText(String(reader.result)); };
-      reader.readAsText(f);
+      const files = Array.prototype.slice.call(fileInput.files || []);
+      if (!files.length) return;
+      // Il campo si svuota: senza, riscegliendo lo STESSO file l'evento
+      // change non scatta e sembra che l'app non risponda.
+      Promise.all(files.map(function (f) {
+        return new Promise(function (res) {
+          const reader = new FileReader();
+          reader.onload = function () { res(String(reader.result)); };
+          reader.onerror = function () { res(null); };
+          reader.readAsText(f);
+        });
+      })).then(function (testi) {
+        fileInput.value = '';
+        processText(testi.filter(Boolean));
+      });
     });
 
     // Se arriva un file già pronto (condivisione Android), parsalo subito
-    if (preloadedText) processText(preloadedText);
+    if (preloadedText) processText([preloadedText]);
 
     saveBtn.addEventListener('click', async function () {
       if (!parsed || !userId) return;
@@ -898,7 +1212,10 @@
             if (!isNaN(d.getTime())) quando = d.toISOString();
           }
 
-          const esito = await completeExistingPlan(parsed, userId, sc, target, quando);
+          const campoNote = ov.querySelector('#tcxNotes');
+          const note = campoNote ? campoNote.value.trim() : '';
+
+          const esito = await completeExistingPlan(parsed, userId, sc, target, quando, note);
           if (window.showToast) {
             window.showToast(
               esito.movedFrom && esito.movedFrom !== esito.movedTo
@@ -949,6 +1266,11 @@
       buildTrack: buildTrack,
       toLocalInput: toLocalInput,
       dateBox: dateBox,
+      mergeActivities: mergeActivities,
+      partsSummary: partsSummary,
+      blocksList: blocksList,
+      paceOf: paceOf,
+      downsamplePairs: downsamplePairs,
       MAX_TRACK_POINTS: MAX_TRACK_POINTS
     }
   };
