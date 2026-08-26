@@ -150,7 +150,15 @@
 //         La data la decide il file (nel TCX e' obbligatoria), quindi
 //         anticipando un allenamento la scheda si sposta al giorno
 //         giusto; resta correggibile a mano prima di confermare.
-const CACHE_NAME  = 'didio-v60';
+//   v61 -> Piu' file .tcx/.gpx sulla stessa scheda: chi suddivide il
+//         lavoro (corsa, pesi, camminata) registra tre attivita' per
+//         una sola sessione pianificata. Durata, distanza e calorie si
+//         sommano, la FC media si pesa sulla durata, i tracciati
+//         cardiaci si uniscono. La mappa tiene la traccia del blocco
+//         piu' lungo: attaccandole si disegnerebbe un tratto mai
+//         percorso. Le note si precompilano con il dettaglio per
+//         blocco, che da li' arriva all'AI.
+const CACHE_NAME  = 'didio-v61';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
