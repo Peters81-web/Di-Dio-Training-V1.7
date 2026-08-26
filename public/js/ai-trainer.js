@@ -56,13 +56,34 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   let workoutContext = null;
 
+  // PERCHÉ QUESTE DUE VARIABILI ESISTONO
+  //
+  // Lo storico è ciò che rende il piano personale, ma il suo caricamento
+  // era invisibile in entrambe le direzioni: se falliva nessuno lo diceva,
+  // e il pulsante "Genera" era cliccabile prima che finisse. In tutti e due
+  // i casi il piano partiva con workoutContext ancora null, il server non
+  // riceveva nulla da mettere nel prompt, e il modello — che il prompt
+  // istruisce a dichiararlo — scriveva "piano costruito senza dati storici
+  // perché non sono stati forniti". Dal di fuori sembrava che l'AI non
+  // leggesse il database.
+  //
+  // contextReady: la promessa dell'ultimo caricamento, da attendere PRIMA
+  //               di generare.
+  // contextError: l'errore dell'ultima lettura, o null. Serve a distinguere
+  //               "non hai allenamenti" da "non sono riuscito a leggerli",
+  //               che per chi guarda la pagina sono la stessa schermata
+  //               vuota ma per chi deve capire il guasto no.
+  let contextReady = null;
+  let contextError = null;
+
   async function init() {
     try {
       const session = await checkAuth();
       if (session) {
         currentUser = session.user;
         setupEventListeners();
-        await loadWorkoutContext();
+        contextReady = loadWorkoutContext();
+        await contextReady;
       }
     } catch (error) {
       console.error('Initialization error:', error);
@@ -116,27 +137,30 @@ document.addEventListener('DOMContentLoaded', async function () {
                        'eseguire le migrazioni in migrations/. Ignorate: ' +
                        dropped.join(', '));
         }
-        return { data: data || [], dropped };
+        return { data: data || [], dropped, error: null };
       }
       if (!isMissingColumnError(error)) {
         console.warn('AI Trainer: contesto non disponibile.', error);
-        return { data: [], dropped };
+        return { data: [], dropped, error };
       }
 
       const bad = missingColumnName(error);
       // Nome non estraibile: meglio rinunciare al contesto che togliere
       // colonne alla cieca fino a svuotare la query.
-      if (!bad) return { data: [], dropped };
+      if (!bad) return { data: [], dropped, error };
 
       const inBase = base.indexOf(bad);
       const inPlan = plan.indexOf(bad);
-      if (inBase === -1 && inPlan === -1) return { data: [], dropped };
+      if (inBase === -1 && inPlan === -1) return { data: [], dropped, error };
 
       if (inBase !== -1) base.splice(inBase, 1);
       if (inPlan !== -1) plan.splice(inPlan, 1);
       dropped.push(bad);
     }
-    return { data: [], dropped };
+    // Otto tentativi esauriti: restituire un elenco vuoto SENZA errore
+    // direbbe "nessun allenamento", che è un'altra cosa.
+    return { data: [], dropped,
+             error: new Error('troppe colonne mancanti (' + dropped.join(', ') + ')') };
   }
 
   /**
@@ -229,8 +253,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         loadGymProgress(sinceIso)
       ]);
 
+      contextError = ctxRes.error || null;
+
       const completed = ctxRes.data;
-      if (!completed.length) return;
+      if (!completed.length) {
+        workoutContext = null;
+        renderNoContextCard(contextError);
+        return;
+      }
 
       const totalCompleted = completed.length;
       const avgDuration = Math.round(
@@ -299,7 +329,59 @@ document.addEventListener('DOMContentLoaded', async function () {
       renderContextCard(workoutContext);
     } catch (err) {
       console.warn('Context load error:', err);
+      contextError = err;
+      workoutContext = null;
+      renderNoContextCard(err);
     }
+  }
+
+  /**
+   * La card quando lo storico NON c'è.
+   *
+   * Prima in questo caso non compariva niente: la card restava
+   * display:none e la pagina sembrava semplicemente più corta. Ma "non
+   * hai allenamenti" e "non sono riuscito a leggerli" portano a due
+   * azioni diverse — nel primo caso si va ad allenarsi, nel secondo c'è
+   * un guasto da guardare — e nasconderli entrambi dietro la stessa
+   * assenza è il motivo per cui è servita mezza giornata per capire
+   * perché l'AI diceva di non avere dati.
+   */
+  function renderNoContextCard(err) {
+    const card  = document.getElementById('contextCard');
+    const stats = document.getElementById('contextStats');
+    const badge = document.getElementById('contextBadge');
+    const box   = document.getElementById('contextDetail');
+    const sugg  = document.getElementById('contextSuggestions');
+    if (!card || !stats) return;
+
+    if (badge) badge.textContent = '';
+    // I suggerimenti rapidi si costruiscono sui numeri dello storico:
+    // senza, sarebbero frasi con dei buchi.
+    if (sugg) sugg.style.display = 'none';
+
+    if (err) {
+      const msg = String((err && err.message) || err || 'errore sconosciuto');
+      stats.innerHTML =
+        '<div class="ctx-empty is-error">' +
+          '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i>' +
+          '<strong>Storico non letto.</strong> ' +
+          'Il piano verrà generato SENZA i tuoi dati. ' +
+          'Ricarica la pagina; se il problema resta, il dettaglio è: ' +
+          '<code>' + esc(msg) + '</code>' +
+        '</div>';
+    } else {
+      stats.innerHTML =
+        '<div class="ctx-empty">' +
+          '<i class="fas fa-circle-info" aria-hidden="true"></i>' +
+          '<strong>Nessun allenamento completato negli ultimi 30 giorni.</strong> ' +
+          'Il piano sarà tarato solo su obiettivo e livello. ' +
+          'Completa qualche sessione (o incolla i tuoi dati qui sopra) ' +
+          'e il prossimo piano userà anche quelli.' +
+        '</div>';
+    }
+
+    if (box) box.innerHTML = '';
+    card.style.display = 'block';
   }
 
 
@@ -314,6 +396,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     const badge = document.getElementById('contextBadge');
     const quickPrompts = document.getElementById('quickPrompts');
     if (!card) return;
+
+    // La card può essere già stata disegnata nello stato "storico assente"
+    // da un caricamento precedente: quello nascondeva i suggerimenti.
+    const sugg = document.getElementById('contextSuggestions');
+    if (sugg) sugg.style.display = '';
 
     badge.textContent = ctx.streak > 0 ? `🔥 ${ctx.streak} giorni di fila` : '';
 
@@ -363,6 +450,17 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     const rows = [];
     const fmtPace = s => (window.AiContext ? window.AiContext.formatPace(s) : null);
+
+    // La prima riga è la più importante e prima non c'era: dice se lo
+    // storico arriva davvero al prompt. Tutte le righe sotto descrivono
+    // COSA c'è dentro, ma nessuna diceva SE c'è — e quando mancava, la
+    // card semplicemente non compariva.
+    rows.push({
+      ok: true,
+      label: 'Storico',
+      value: `${ctx.totalCompleted} session${ctx.totalCompleted === 1 ? 'e' : 'i'} ` +
+             'degli ultimi 30 giorni'
+    });
 
     (ctx.activityStats || []).forEach(s => {
       const bits = [];
@@ -595,6 +693,32 @@ document.addEventListener('DOMContentLoaded', async function () {
     generatedWorkouts = [];
 
     try {
+      // ASPETTA LO STORICO PRIMA DI GENERARE.
+      //
+      // setupEventListeners() rende cliccabile "Genera" prima che
+      // loadWorkoutContext() abbia finito: su rete lenta, un clic svelto
+      // spediva il piano con workoutContext ancora null e il modello
+      // rispondeva di non avere dati. Un secondo tentativo funzionava, il
+      // che rendeva il difetto difficile da riconoscere.
+      //
+      // Se il caricamento era fallito si RIPROVA qui: è passato del tempo
+      // dall'apertura della pagina, e la rete può essere tornata.
+      if (contextReady) {
+        try { await contextReady; } catch (e) { /* già segnalato nella card */ }
+      }
+      if (!workoutContext && contextError) {
+        contextReady = loadWorkoutContext();
+        try { await contextReady; } catch (e) { /* idem */ }
+      }
+      // Un piano generato senza storico è legittimo (chi comincia non ne
+      // ha), ma se lo storico c'è e non si è riusciti a leggerlo l'utente
+      // deve saperlo PRIMA di credere che il piano sia tarato su di lui.
+      if (!workoutContext && contextError) {
+        window.showToast(
+          'Storico non disponibile: il piano sarà generato senza i tuoi dati.',
+          'warning');
+      }
+
       // Il server ora richiede un token valido: senza, l'endpoint AI sarebbe
       // aperto a chiunque e la quota Groq bruciabile dall'esterno.
       const { data: { session } } = await supabaseClient.auth.getSession();
