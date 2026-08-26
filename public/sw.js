@@ -158,7 +158,14 @@
 //         piu' lungo: attaccandole si disegnerebbe un tratto mai
 //         percorso. Le note si precompilano con il dettaglio per
 //         blocco, che da li' arriva all'AI.
-const CACHE_NAME  = 'didio-v61';
+//   v62 -> Fix: caricando piu' file la finestra dell'import non
+//         scorreva piu' e il pulsante Completa finiva fuori schermo.
+//         .tcx-dlg aveva overflow:hidden e nessun max-height, il
+//         corpo nessun overflow-y. Con un file solo il contenuto ci
+//         stava, con due no. Corretto anche l'elenco dei blocchi, che
+//         era in ordine di caricamento mentre le note sotto erano in
+//         ordine di orologio: due elenchi che si contraddicevano.
+const CACHE_NAME  = 'didio-v62';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

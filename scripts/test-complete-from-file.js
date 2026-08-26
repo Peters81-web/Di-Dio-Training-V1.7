@@ -409,6 +409,43 @@ checkTrue('dichiara quante sono', /3 registrazioni unite/.test(lista));
 checkTrue('con un pulsante per toglierne una', /data-rimuovi="1"/.test(lista));
 check('con un blocco solo non compare', blocksList([CORSA]), '');
 
+console.log('\n— la finestra scorre quando il contenuto cresce —');
+// Bug segnalato dall'utente: caricando piu' file la finestra non scorreva
+// piu' e il pulsante "Completa" finiva fuori schermo, irraggiungibile.
+// .tcx-dlg aveva overflow:hidden e nessun max-height, .tcx-body nessun
+// overflow-y: il contenuto cresceva oltre lo schermo e veniva tagliato.
+// Con un file solo ci stava, con due no.
+checkTrue('la finestra non supera lo schermo',
+  /\.tcx-dlg\{[^}]*max-height:calc\(100vh - 40px\)/.test(TCX));
+checkTrue('con il ripiego per le barre del browser sul telefono',
+  /\.tcx-dlg\{[^}]*max-height:calc\(100dvh - 40px\)/.test(TCX),
+  '100vh su mobile include la barra degli indirizzi, e il piede resta sotto');
+checkTrue('ed e una colonna flessibile',
+  /\.tcx-dlg\{[^}]*flex-direction:column/.test(TCX));
+checkTrue('il corpo scorre', /\.tcx-body\{[^}]*overflow-y:auto/.test(TCX));
+checkTrue('e puo davvero rimpicciolirsi',
+  /\.tcx-body\{[^}]*min-height:0/.test(TCX),
+  'senza min-height:0 un figlio flex non scende sotto la sua altezza naturale e lo scorrimento non si attiva mai');
+checkTrue('intestazione e piede non si schiacciano',
+  /\.tcx-head\{[^}]*flex-shrink:0/.test(TCX) && /\.tcx-foot\{[^}]*flex-shrink:0/.test(TCX),
+  'il piede contiene il pulsante Completa: se si schiaccia sparisce');
+
+console.log('\n— i blocchi si leggono in ordine di orologio —');
+// Caricando prima le 06:55 e poi le 06:29, l'elenco li mostrava in
+// quell'ordine mentre il riepilogo nelle note li mostrava al contrario:
+// due elenchi della stessa sessione che si contraddicono nella stessa
+// finestra.
+const TARDI  = Object.assign({}, CORSA, { startIso: '2026-08-26T06:55:00.000Z', durationMin: 5 });
+const PRESTO = Object.assign({}, CORSA, { startIso: '2026-08-26T06:29:00.000Z', durationMin: 21 });
+const listaOrd = blocksList([TARDI, PRESTO]);   // caricati al contrario
+checkTrue('il piu mattiniero compare per primo',
+  listaOrd.indexOf('06:29') < listaOrd.indexOf('06:55'), listaOrd);
+// E l'indice di rimozione resta quello dell'array, non della vista:
+// ordinando senza portarselo dietro si cancellerebbe il blocco sbagliato.
+checkTrue('ma il pulsante toglie il blocco giusto',
+  listaOrd.indexOf('data-rimuovi="1"') < listaOrd.indexOf('data-rimuovi="0"'),
+  'il primo mostrato e PRESTO, che in blocchi[] sta in posizione 1');
+
 console.log('\n— le note del riepilogo arrivano al completamento —');
 checkTrue('completeExistingPlan accetta le note',
   /completeExistingPlan\(data, userId, sc, target, whenIso, note\)/.test(TCX));
