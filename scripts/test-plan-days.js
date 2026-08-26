@@ -322,6 +322,108 @@ checkTrue('anche per i giorni di riposo',
 checkTrue('e spiega che la data viene usata davvero',
   /l'applicazione ci programma sopra/.test(SERVER));
 
+// ─── La struttura del piano, letta con tolleranza ───────────────────
+//
+// IL BUG: il parser pretendeva "### " per il titolo e "#### " per le
+// sottosezioni. Qualunque altra forma dava ZERO schede IN SILENZIO — il
+// piano si vedeva a schermo perché marked renderizza tutto, ma "Salva"
+// rispondeva "Nessun allenamento da salvare" e l'utente non aveva modo
+// di collegare le due cose. Misurato prima della correzione: delle sei
+// forme che un modello scrive comunemente ne veniva letta UNA.
+//
+// Un formato rigido è ragionevole da CHIEDERE nel prompt; pretenderlo
+// per LEGGERE è un'altra cosa.
+console.log('\n— la struttura si legge in tutte le forme che il modello usa —');
+
+const { parsePlanBlocks } = PlanDays;
+const CORPO = '\n- 10 min\n';
+
+const FORME = {
+  '#### Riscaldamento (il formato chiesto)':
+    '### Giorno 1 — 27/08/2026: Corsa\n#### Riscaldamento' + CORPO + '#### Fase Principale\n- 30 min\n',
+  'sottosezioni in grassetto':
+    '### Giorno 1 — 27/08/2026: Corsa\n**Riscaldamento**' + CORPO + '**Fase Principale**\n- 30 min\n',
+  'sottosezioni con tre cancelletti':
+    '### Giorno 1 — 27/08/2026: Corsa\n### Riscaldamento' + CORPO + '### Fase Principale\n- 30 min\n',
+  'sottosezioni con i due punti':
+    '### Giorno 1 — 27/08/2026: Corsa\nRiscaldamento:' + CORPO + 'Fase Principale:\n- 30 min\n',
+  'titolo con due cancelletti':
+    '## Giorno 1 — 27/08/2026: Corsa\n#### Riscaldamento' + CORPO + '#### Fase Principale\n- 30 min\n',
+  'titolo in grassetto senza cancelletti':
+    '**Giorno 1 — 27/08/2026: Corsa**\n#### Riscaldamento' + CORPO + '#### Fase Principale\n- 30 min\n'
+};
+
+Object.keys(FORME).forEach(function (nome) {
+  const b = parsePlanBlocks(FORME[nome]);
+  checkTrue(nome, b.length === 1 && !!b[0].mainPhase,
+    b.length + ' blocchi, fase principale ' + (b[0] && b[0].mainPhase ? 'letta' : 'VUOTA'));
+});
+
+console.log('\n— e un giorno scritto senza sottosezioni non va perso —');
+const libero = parsePlanBlocks('### Giorno 1 — 27/08/2026: Corsa\n30 min a 6:50/km in zona 2.\n');
+check('il testo libero diventa la fase principale',
+  libero[0].mainPhase, '30 min a 6:50/km in zona 2.');
+
+console.log('\n— ma senza confondere il testo con le intestazioni —');
+// "- 5 min di riscaldamento" DENTRO la fase principale non deve essere
+// scambiato per l'inizio di una sezione, o spezzerebbe il blocco.
+const insidia = parsePlanBlocks(
+  '### Giorno 1 — 27/08/2026: Corsa\n#### Fase Principale\n' +
+  '- 5 min di riscaldamento leggero prima delle ripetute\n- 8 x 400 m\n');
+checkTrue('una riga che NOMINA una sezione non la apre',
+  /8 x 400 m/.test(insidia[0].mainPhase) && /riscaldamento leggero/.test(insidia[0].mainPhase),
+  JSON.stringify(insidia[0].mainPhase));
+check('e il riscaldamento resta vuoto', insidia[0].warmup, '');
+
+// IL CASO CHE SERVE DAVVERO IL LIMITE DI LUNGHEZZA.
+// Quello sopra era protetto dall'ancora ^ — "- 5 min di riscaldamento"
+// non COMINCIA per "riscaldamento". Una frase che invece comincia
+// proprio così passerebbe l'ancora, e senza il tetto sui caratteri
+// verrebbe scambiata per un'intestazione: la fase principale finirebbe
+// dentro il riscaldamento. Verificato rompendo il codice: senza il
+// limite questo controllo fallisce.
+const prosa = parsePlanBlocks(
+  '### Giorno 1 — 27/08/2026: Corsa\n#### Fase Principale\n' +
+  'Riscaldamento e defaticamento sono obbligatori, non saltarli mai.\n- 8 x 400 m\n');
+checkTrue('una FRASE che comincia col nome di una sezione non la apre',
+  prosa[0].warmup === '' && /8 x 400 m/.test(prosa[0].mainPhase),
+  'riscaldamento=' + JSON.stringify(prosa[0].warmup));
+
+console.log('\n— l introduzione prima del primo giorno non diventa una scheda —');
+const conIntro = parsePlanBlocks(
+  'Ecco il tuo piano, calibrato sui tuoi ritmi.\n\n' +
+  '### Giorno 1 — 27/08/2026: Corsa\n#### Fase Principale\n- 30 min\n');
+check('un solo blocco', conIntro.length, 1);
+
+console.log('\n— i riposi restano riconoscibili —');
+const conRiposo = parsePlanBlocks('### Giorno 2 — 28/08/2026: Riposo attivo\nCamminata.\n');
+check('il blocco e marcato come riposo', conRiposo[0].isRest, true);
+
+console.log('\n— casi limite —');
+check('testo vuoto', parsePlanBlocks(''), []);
+check('null', parsePlanBlocks(null), []);
+check('testo senza nessuna intestazione', parsePlanBlocks('solo prosa'), []);
+
+console.log('\n— e il parser di ai-trainer usa questo, non il suo —');
+checkTrue('parseAIResponse chiama parsePlanBlocks',
+  /PlanDays\.parsePlanBlocks\(text\)/.test(AI));
+checkTrue('lo split rigido sui tre cancelletti e sparito',
+  !/text\.split\(\/\(\?=\^###/.test(AI),
+  'era la riga che scartava cinque forme su sei');
+checkTrue('e non c e piu un extractSection locale',
+  !/function extractSection\(sectionName\)/.test(AI));
+
+console.log('\n— e se non si capisce niente, lo dice SUBITO —');
+// Prima il fallimento era muto: il piano compariva, e solo premendo
+// Salva — magari minuti dopo — arrivava "Nessun allenamento da salvare".
+checkTrue('avvisa quando non ha riconosciuto nessuna scheda',
+  /if \(!generatedWorkouts\.length\)/.test(AI));
+checkTrue('spiegando che il pulsante Salva non funzionera',
+  /Il pulsante Salva non/.test(AI));
+checkTrue('e senza nascondere il piano, che resta copiabile a mano',
+  /elements\.aiResponse\.prepend\(avviso\)/.test(AI),
+  'prepend, non innerHTML: il testo generato non va buttato');
+
 console.log('\n— il service worker serve i file nuovi —');
 checkTrue('plan-days.js è nel precache', /'\/js\/plan-days\.js'/.test(SW));
 checkTrue('la versione della cache è stata alzata',

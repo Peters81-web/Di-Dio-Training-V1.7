@@ -632,6 +632,30 @@ document.addEventListener('DOMContentLoaded', async function () {
         elements.aiResponseContainer.style.display = 'block';
         generatedWorkouts = parseAIResponse(data.text);
         console.log('Allenamenti parsati:', generatedWorkouts.length, generatedWorkouts);
+
+        // SE NON SI È CAPITO NIENTE, DIRLO ORA.
+        //
+        // Prima il fallimento era silenzioso: il piano compariva a
+        // schermo, sembrava tutto a posto, e solo premendo "Salva" —
+        // magari minuti dopo — arrivava "Nessun allenamento da salvare",
+        // senza spiegare perché. L'utente non aveva modo di collegare le
+        // due cose.
+        //
+        // Il piano NON viene nascosto: resta leggibile e si può copiare a
+        // mano. Si dichiara solo che non è salvabile, e perché.
+        if (!generatedWorkouts.length) {
+          const avviso = document.createElement('div');
+          avviso.className = 'error-message';
+          avviso.innerHTML =
+            '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i> ' +
+            "Il piano è qui sotto, ma non sono riuscito a riconoscerne la " +
+            'struttura in schede: il modello non ha usato le sezioni ' +
+            'Riscaldamento / Fase Principale. <strong>Il pulsante Salva non ' +
+            'funzionerà.</strong> Prova a rigenerare, oppure copia il testo a mano.';
+          elements.aiResponse.prepend(avviso);
+          window.showToast('Piano generato ma non salvabile: struttura non riconosciuta.',
+                           'warning', 8000);
+        }
       }
     } catch (error) {
       console.error('Error generating plan:', error);
@@ -665,15 +689,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     const todayIso = new Date(Date.UTC(
       now.getFullYear(), now.getMonth(), now.getDate(), 12)).toISOString().split('T')[0];
 
-    const dayBlocks = text.split(/(?=^###\s)/m).filter(function (block) {
-      return block.trim().startsWith('###');
-    });
+    // LA LETTURA DELLA STRUTTURA STA IN plan-days.js.
+    //
+    // Qui c'era uno split che pretendeva "### " per il titolo e "#### "
+    // per le sottosezioni. Qualunque altra forma dava ZERO schede in
+    // silenzio: il piano si vedeva a schermo — marked renderizza tutto —
+    // ma "Salva" rispondeva "Nessun allenamento da salvare". Delle sei
+    // forme che un modello scrive comunemente ne veniva letta UNA.
+    const blocks = window.PlanDays
+      ? window.PlanDays.parsePlanBlocks(text)
+      : [];
 
-    console.log('Blocchi giorno trovati:', dayBlocks.length);
+    console.log('Blocchi giorno trovati:', blocks.length);
 
-    const titles = dayBlocks.map(function (day) {
-      return day.split('\n')[0].replace(/^#+\s*/, '').trim();
-    });
+    const titles = blocks.map(function (b) { return b.title; });
 
     // LA DATA LA DECIDE L'UTENTE, NON L'OROLOGIO.
     //
@@ -691,20 +720,14 @@ document.addEventListener('DOMContentLoaded', async function () {
       ? window.PlanDays.schedulePlanDates(titles, todayIso)
       : titles.map(function () { return todayIso; });
 
-    dayBlocks.forEach(function (day, idx) {
+    blocks.forEach(function (day, idx) {
       const firstLine = titles[idx];
-      const isRest = /riposo/i.test(firstLine);
+      const isRest = day.isRest;
 
-      function extractSection(sectionName) {
-        const regex = new RegExp('####\\s*' + sectionName + '[^\\n]*\\n([\\s\\S]*?)(?=####|$)', 'i');
-        const match = day.match(regex);
-        return match ? match[1].trim() : '';
-      }
-
-      const warmup = extractSection('Riscaldamento');
-      const mainPhase = extractSection('Fase Principale');
-      const cooldown = extractSection('Defaticamento');
-      const notes = extractSection('Note e Consigli');
+      const warmup = day.warmup;
+      const mainPhase = day.mainPhase;
+      const cooldown = day.cooldown;
+      const notes = day.notes;
 
       if (!isRest && (warmup || mainPhase)) {
         workouts.push({
@@ -723,7 +746,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             main_phase: mainPhase,
             cooldown,
             notes,
-            rawText: day
+            rawText: day.title + '\n' + mainPhase
           })
         });
       }

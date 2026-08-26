@@ -173,7 +173,14 @@
 //         dichiara .toast{color:white}: nessuno sfondo colorato,
 //         sfondo chiaro, testo bianco. Bianco su bianco, su OGNI
 //         messaggio di window.showToast in dashboard.
-const CACHE_NAME  = 'didio-v63';
+//   v64 -> Fix: i piani generati non si salvavano. Il parser pretendeva
+//         il formato ESATTO (### per il titolo, #### per le sezioni) e
+//         qualunque altra forma dava ZERO schede IN SILENZIO: il piano
+//         si vedeva a schermo ma Salva rispondeva "nessun allenamento".
+//         Delle sei forme che un modello scrive comunemente ne veniva
+//         letta UNA. Ora si leggono tutte, e se non si capisce niente
+//         l'app lo dice subito invece che al salvataggio.
+const CACHE_NAME  = 'didio-v64';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
