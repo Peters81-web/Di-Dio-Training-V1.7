@@ -458,9 +458,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             // renderToday PRIMA di displayWorkouts: se quest'ultima
             // sollevasse un errore, il riquadro "Oggi" resterebbe bloccato
             // sullo spinner per sempre. Ogni render è isolato dagli altri.
+            // LA DASHBOARD MOSTRA SOLO CIÒ CHE C'È DA FARE.
+            //
+            // Prima l'elenco teneva tutto: 28 completate e 9 da fare nella
+            // stessa griglia, e delle 28 ben 27 erano attività importate da
+            // Garmin — cioè cose già fatte, in mezzo alle schede da fare.
+            // Le completate non spariscono: vivono nell'Archivio, che le
+            // legge da completed_workouts e le mostra sul calendario.
+            //
+            // renderToday riceve invece l'elenco COMPLETO: nel riquadro
+            // "Oggi" una sessione già fatta va mostrata con la spunta,
+            // altrimenti la giornata sembrerebbe vuota proprio quando
+            // l'hai portata a termine.
             safe(function () { renderToday(workouts); });
-            safe(function () { renderSourceFilters(workouts); });
-            safe(function () { displayWorkouts(filterBySource(workouts)); });
+            safe(function () { renderSourceFilters(pending()); });
+            safe(function () { displayWorkouts(filterBySource(pending())); });
             safe(function () { loadProgressionHints(workouts); });
 
         } catch (error) {
@@ -634,18 +646,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div class="empty-state-icon">
                         <i class="fas fa-dumbbell"></i>
                     </div>
-                    <h3>Nessun allenamento trovato</h3>
-                    <p>Inizia creando il tuo primo allenamento personalizzato</p>
+                    <h3>Niente da fare, per ora</h3>
+                    <p>Qui restano solo gli allenamenti ancora da svolgere.
+                       Quelli completati sono nell'<a href="/archivio">Archivio</a>.</p>
                     <a href="/workout" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Crea il tuo primo allenamento
+                        <i class="fas fa-plus"></i> Crea un allenamento
                     </a>
                 </div>
             `;
             const clear = document.getElementById('clearSourceFilter');
             if (clear) clear.addEventListener('click', () => {
                 activeSource = 'all';
-                renderSourceFilters(workouts);
-                displayWorkouts(workouts);
+                renderSourceFilters(pending());
+                displayWorkouts(pending());
             });
             return;
         }
@@ -702,6 +715,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         card.innerHTML = `
             <div class="workout-header">
                 <div class="workout-header-text">
+                    ${overdueBadge(workout)}
                     ${dayBadge(workout)}
                     <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
                     ${sourceBadge(workout)}
@@ -770,6 +784,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     function isImported(workout) {
         if (workout.source) return workout.source === 'garmin';
         return workout.objective === 'Attività importata da Garmin';
+    }
+
+    /**
+     * Segnala una scheda la cui data è passata e che non risulta svolta.
+     *
+     * PERCHÉ SERVE: finché l'elenco conteneva anche le completate, una
+     * scheda vecchia mai svolta si perdeva nel mucchio. Adesso che restano
+     * solo le cose da fare, quattro schede ferme a giugno sono le prime
+     * che si notano — ed è giusto che si notino, ma è altrettanto giusto
+     * che si distinguano da quelle di questa settimana.
+     *
+     * Non fa niente di automatico: non le nasconde, non le cancella, non
+     * le sposta. Dice solo che sono in ritardo, e la decisione resta
+     * all'utente.
+     */
+    function overdueBadge(workout) {
+        if (workout.completed) return '';
+        const d = workout.scheduled_date;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d || ''))) return '';
+
+        // Il confronto è fra stringhe 'YYYY-MM-DD', che si ordinano
+        // correttamente da sole: costruire due Date per confrontarle
+        // rischia lo scivolone di fuso che abbiamo già visto altrove.
+        const oggi = new Date();
+        const oggiIso = oggi.getFullYear() + '-' +
+            String(oggi.getMonth() + 1).padStart(2, '0') + '-' +
+            String(oggi.getDate()).padStart(2, '0');
+        if (d >= oggiIso) return '';
+
+        return '<span class="overdue-badge"><i class="fas fa-clock-rotate-left" ' +
+               'aria-hidden="true"></i> Non svolta</span>';
     }
 
     /**
@@ -844,10 +889,22 @@ document.addEventListener('DOMContentLoaded', async function() {
         box.querySelectorAll('.source-chip').forEach(btn => {
             btn.addEventListener('click', () => {
                 activeSource = btn.dataset.source;
-                renderSourceFilters(workouts);
-                displayWorkouts(filterBySource(workouts));
+                renderSourceFilters(pending());
+                displayWorkouts(filterBySource(pending()));
             });
         });
+    }
+
+    /**
+     * Le schede ancora da fare: l'unico elenco che la dashboard mostra.
+     *
+     * Una funzione e non una variabile di proposito: l'elenco cambia
+     * quando completi o elimini qualcosa, e cinque copie prese in cinque
+     * momenti diversi sarebbero cinque occasioni di mostrare uno stato
+     * vecchio.
+     */
+    function pending() {
+        return (workouts || []).filter(w => !w.completed);
     }
 
     function filterBySource(list) {
@@ -903,13 +960,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         // per DATA DELL'ATTIVITÀ: la query le ordina per created_at, che per
         // gli import è l'ordine in cui li hai caricati, non quello in cui li
         // hai svolti.
+        // ORDINE CRESCENTE: la più imminente in cima.
+        //
+        // Prima era decrescente, ed è il motivo per cui un piano si
+        // leggeva al contrario: Giorno 7, 6, 5, 3, 2, 1. Aveva senso
+        // quando qui dentro c'erano anche le attività già fatte, dove la
+        // domanda è "cosa ho fatto per ultimo". Ora l'elenco contiene solo
+        // ciò che c'è da fare, e la domanda è "cosa mi tocca adesso":
+        // la risposta va in cima, non in fondo.
         map.forEach(group => {
             group.items.sort((a, b) => {
                 const da = activityDateOf(a), db = activityDateOf(b);
                 if (!da && !db) return 0;
-                if (!da) return 1;
+                if (!da) return 1;   // senza data in fondo, in entrambi i versi
                 if (!db) return -1;
-                return db - da;
+                return da - db;
             });
         });
 
@@ -1339,49 +1404,14 @@ document.addEventListener('DOMContentLoaded', async function() {
      * Si calcola qui e non si salva perché dipende da FC massima e a
      * riposo: cambiando il profilo, tutto lo storico si riallinea da solo.
      */
+    // Il riquadro vive in hr-model.js: da quando le schede completate
+    // lasciano la dashboard e si consultano dall'Archivio, serve in due
+    // pagine, e due copie avrebbero significato due formule di Karvonen
+    // che col tempo divergono.
     function zoneBreakdown(workout) {
-        if (!window.HrModel || !hrProfile || !hrProfile.maxHr) return '';
-        const series = workout.hr_series;
-        if (!Array.isArray(series) || series.length < 2) return '';
-
-        const tz = window.HrModel.timeInZones(series, hrProfile.maxHr, hrProfile.restHr);
-        if (!tz) return '';
-        const load = window.HrModel.trimp(series, hrProfile.maxHr, hrProfile.restHr);
-
-        const fmt = s => {
-            const m = Math.floor(s / 60), r = Math.round(s % 60);
-            return m ? m + 'm' + (r ? ' ' + r + 's' : '') : r + 's';
-        };
-
-        const rows = window.HrModel.bounds(hrProfile.maxHr, hrProfile.restHr)
-            .map(z => {
-                const sec = tz.secs[z.n];
-                if (!sec) return '';
-                return `
-                    <div class="hrz-row">
-                        <span class="hrz-tag" style="background:${z.color}">Z${z.n}</span>
-                        <span class="hrz-name">${escapeHtml(z.name)}</span>
-                        <span class="hrz-bar"><span class="hrz-fill" style="width:${tz.pct[z.n]}%;background:${z.color}"></span></span>
-                        <span class="hrz-time">${escapeHtml(fmt(sec))}</span>
-                        <span class="hrz-pct">${tz.pct[z.n]}%</span>
-                    </div>`;
-            }).join('');
-
-        if (!rows) return '';
-
-        return `
-            <div class="hrz-block">
-                <div class="hrz-head">
-                    <h4><i class="fas fa-heart-pulse" aria-hidden="true"></i> Tempo in zona</h4>
-                    ${load !== null ? `<span class="hrz-load" title="Carico di allenamento (TRIMP), stimato da noi: non è il valore di Garmin, che non lo espone">carico ${load}</span>` : ''}
-                </div>
-                ${rows}
-                <p class="hrz-note">
-                    Dal tracciato cardiaco della sessione, ${series.length} campioni.
-                    Il carico è una nostra stima con il metodo TRIMP: Garmin non
-                    espone il proprio, quindi i due numeri non sono confrontabili.
-                </p>
-            </div>`;
+        return window.HrModel
+            ? window.HrModel.zoneBreakdownHtml(workout.hr_series, hrProfile, escapeHtml)
+            : '';
     }
 
     /**
@@ -1584,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Rimuovi dall'array locale e aggiorna UI
             workouts = workouts.filter(w => w.id !== workoutId);
-            displayWorkouts(workouts);
+            displayWorkouts(filterBySource(pending()));
             
             showToast('Allenamento eliminato con successo', 'success');
             
@@ -1691,8 +1721,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 3. UI aggiornata solo dopo che entrambe le operazioni DB sono complete
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
-            workouts = workouts.filter(w => w.id !== formData.workoutId);
-            displayWorkouts(workouts);
+            const fatta = workouts.find(w => w.id === formData.workoutId);
+            if (fatta) {
+                fatta.completed = true;
+                fatta.completed_at = completedWorkoutData.completed_at;
+            }
+            displayWorkouts(filterBySource(pending()));
+            renderToday(workouts);
             await loadWeeklyStats();
 
             // LO SPINNER VA TOLTO PRIMA DELLA DOMANDA, non nel finally.

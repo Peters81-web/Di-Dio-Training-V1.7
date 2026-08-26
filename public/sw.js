@@ -138,7 +138,12 @@
 //         FC media, difficolta e gradimento, ma non le note - dove
 //         finisce il dettaglio DENTRO la sessione (ritmi per tratto,
 //         fondo, FC per blocco) che le medie appiattiscono.
-const CACHE_NAME  = 'didio-v58';
+//   v59 -> La dashboard tiene solo cio' che c'e' da fare, in ordine
+//         crescente. Le completate si consultano dall'Archivio, che ora
+//         chiede anche hr_series e mostra il tempo in zona: senza,
+//         togliendole dalla dashboard quel riquadro sarebbe sparito.
+//         Il ripiego dell'Archivio passa da tutto-o-niente a graduale.
+const CACHE_NAME  = 'didio-v59';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
@@ -152,6 +157,7 @@ const PRECACHE = [
   '/css/notifications.css',
   '/css/app-nav.css',
   '/css/archivio.css',
+  '/css/hr-zones.css',
   '/js/utils.js',
   '/js/app-core.js',
   '/js/app-nav.js',
