@@ -819,13 +819,13 @@
     s.textContent = `
 .tcx-ov{position:fixed;inset:0;z-index:3200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;transition:opacity .2s}
 .tcx-ov.is-open{opacity:1}
-.tcx-dlg{background:#fff;border-radius:18px;max-width:440px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,.35);transform:translateY(12px) scale(.97);transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.tcx-dlg{background:#fff;border-radius:18px;max-width:440px;width:100%;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);box-shadow:0 24px 60px rgba(15,23,42,.35);transform:translateY(12px) scale(.97);transition:transform .25s cubic-bezier(.16,1,.3,1)}
 .tcx-ov.is-open .tcx-dlg{transform:none}
-.tcx-head{display:flex;align-items:center;gap:12px;padding:18px 22px;background:linear-gradient(135deg,#1e3a5f,#e0524d);color:#fff}
+.tcx-head{display:flex;align-items:center;gap:12px;padding:18px 22px;background:linear-gradient(135deg,#1e3a5f,#e0524d);color:#fff;flex-shrink:0}
 .tcx-head i{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.1rem}
 .tcx-head h3{margin:0;font-size:1.05rem;font-weight:700}
 .tcx-head small{opacity:.85;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
-.tcx-body{padding:22px}
+.tcx-body{padding:22px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0}
 .tcx-drop{border:2px dashed #cdd5e3;border-radius:12px;padding:26px 16px;text-align:center;color:#6b7280;cursor:pointer;transition:border-color .15s,background .15s}
 .tcx-drop:hover{border-color:#4361ee;background:#f7f9ff}
 .tcx-drop i{font-size:1.8rem;color:#4361ee;margin-bottom:8px;display:block}
@@ -859,7 +859,7 @@
 .tcx-notes textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;font-family:inherit;line-height:1.5;color:#1e293b;background:#fff;resize:vertical}
 .tcx-notes textarea:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
 .tcx-date-note b{color:#1e293b}
-.tcx-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:#f9fafb;border-top:1px solid #e5e7eb}
+.tcx-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:#f9fafb;border-top:1px solid #e5e7eb;flex-shrink:0}
 .tcx-btn{padding:10px 18px;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit}
 .tcx-btn--sec{background:#fff;border-color:#e5e7eb;color:#4b5563}
 .tcx-btn--sec:hover{background:#f3f4f6}
@@ -942,18 +942,33 @@
   function blocksList(blocchi) {
     if (!Array.isArray(blocchi) || blocchi.length < 2) return '';
 
-    const righe = blocchi.map(function (a, i) {
-      const ora = new Date(a.startIso)
-        .toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-      const bits = [a.durationMin + " min"];
-      if (a.distanceKm) bits.push(a.distanceKm + ' km');
-      if (a.avgHr) bits.push('FC ' + a.avgHr);
-      return '<li><span class="tcx-blk-t">' + escapeAttr(ora) + '</span>' +
-             '<span class="tcx-blk-n">' + escapeAttr(a.activityLabel) + '</span>' +
-             '<span class="tcx-blk-d">' + escapeAttr(bits.join(' · ')) + '</span>' +
-             '<button type="button" class="tcx-blk-x" data-rimuovi="' + i +
-             '" aria-label="Togli questo blocco" title="Togli">&times;</button></li>';
-    }).join('');
+    // IN ORDINE DI OROLOGIO, non di caricamento.
+    //
+    // Caricando prima il blocco delle 06:55 e poi quello delle 06:29,
+    // l'elenco li mostrava in quell'ordine mentre il riepilogo nelle note
+    // — che passa da mergeActivities, che ordina — li mostrava al
+    // contrario. Due elenchi della stessa sessione che si contraddicono
+    // nella stessa finestra.
+    //
+    // L'indice per la rimozione resta quello ORIGINALE: è la posizione in
+    // blocchi[] che splice deve togliere, e ordinando senza portarselo
+    // dietro si cancellerebbe il blocco sbagliato.
+    const righe = blocchi
+      .map(function (a, i) { return { a: a, i: i }; })
+      .sort(function (x, y) { return new Date(x.a.startIso) - new Date(y.a.startIso); })
+      .map(function (e) {
+        const a = e.a;
+        const ora = new Date(a.startIso)
+          .toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const bits = [a.durationMin + " min"];
+        if (a.distanceKm) bits.push(a.distanceKm + ' km');
+        if (a.avgHr) bits.push('FC ' + a.avgHr);
+        return '<li><span class="tcx-blk-t">' + escapeAttr(ora) + '</span>' +
+               '<span class="tcx-blk-n">' + escapeAttr(a.activityLabel) + '</span>' +
+               '<span class="tcx-blk-d">' + escapeAttr(bits.join(' · ')) + '</span>' +
+               '<button type="button" class="tcx-blk-x" data-rimuovi="' + e.i +
+               '" aria-label="Togli questo blocco" title="Togli">&times;</button></li>';
+      }).join('');
 
     return '<div class="tcx-blocks"><p class="tcx-blocks-h">' +
            blocchi.length + ' registrazioni unite in questa sessione</p>' +
