@@ -1863,6 +1863,34 @@ textarea:focus {
   opacity: 0.85;
 }
 
+/* Pulsante di appoggio, accanto a uno principale.
+   Prima qui si usava .btn-secondary, che su questo tema e' un grigio
+   ferro pieno: accanto al blu di "Nuovo Allenamento" diventava una
+   seconda macchia scura, pesante quanto l'azione principale e per di
+   piu' spenta. Questo dice "c'e' anche questa strada" senza gridare.
+
+   La doppia classe .btn.btn-ghost non e' un vezzo: la regola di base
+   .btn arriva da workout.css e rich-text.css, caricati DOPO styles.css,
+   e una di quelle dichiara "border: none". A parita' di specificita'
+   vincerebbe l'ultima e il bordo sparirebbe. */
+.btn.btn-ghost {
+  background: #ffffff;
+  border: 1.5px solid #d7dcf5;
+  color: var(--primary-color, #4361ee);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.btn.btn-ghost:hover {
+  background: #eef1fe;
+  border-color: var(--primary-color, #4361ee);
+  color: var(--primary-color, #4361ee);
+}
+
+.btn.btn-ghost i {
+  color: inherit;
+}
+
 /* La scorciatoia "Importa da file" in cima al modulo di /workout.
    Deve leggersi come un suggerimento, non come un passaggio obbligato:
    chi non ha il file deve poterla ignorare e scendere al modulo. */

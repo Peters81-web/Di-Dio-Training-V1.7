@@ -204,7 +204,14 @@
 //         col collegamento all'Archivio: l'attivita' importata nasce
 //         completata, quindi la dashboard resta identica e senza avviso
 //         il pulsante sembrerebbe rotto.
-const CACHE_NAME  = 'didio-v67';
+//   v68 -> Il pulsante "Da file" era impilato sopra "+ Nuovo
+//         Allenamento" invece che accanto: .section-actions non aveva
+//         nessuna regola, e .btn di workout.css dichiara display:flex,
+//         che fa di ogni pulsante un blocco a se'. Finche' il pulsante
+//         era uno solo non si vedeva. Ed era grigio ferro pieno
+//         (.btn-secondary): una seconda macchia scura accanto all'azione
+//         principale. Ora stanno in riga e quello di appoggio e' chiaro.
+const CACHE_NAME  = 'didio-v68';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
