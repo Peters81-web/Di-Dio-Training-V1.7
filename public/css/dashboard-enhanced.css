@@ -98,6 +98,20 @@
   position: relative;
 }
 
+/* I pulsanti in testa alla sezione, in RIGA.
+   Finche' ce n'era uno solo il contenitore poteva essere un div
+   qualunque. Con due, no: workout.css dichiara .btn { display: flex },
+   che rende ogni pulsante un blocco a se', e i due si sono impilati uno
+   sopra l'altro contro il bordo destro invece di affiancarsi. */
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  /* Senza, il titolo lungo schiaccia i pulsanti. */
+  flex-shrink: 0;
+}
+
 .section-header::after {
   content: '';
   position: absolute;

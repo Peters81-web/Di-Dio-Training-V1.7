@@ -35,6 +35,7 @@ const WORK_HTML = fs.readFileSync(p('public', 'html', 'workout.html'), 'utf8');
 const UTILS     = fs.readFileSync(p('public', 'js', 'utils.js'), 'utf8');
 const TCX       = fs.readFileSync(p('public', 'js', 'tcx-import.js'), 'utf8');
 const CSS       = fs.readFileSync(p('public', 'css', 'styles.css'), 'utf8');
+const DASHCSS   = fs.readFileSync(p('public', 'css', 'dashboard-enhanced.css'), 'utf8');
 const SW        = fs.readFileSync(p('public', 'sw.js'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -194,9 +195,41 @@ checkTrue('.toast-action e definito',  /\.toast-action \{/.test(CSS));
 checkTrue('.import-hint pure',         /\.import-hint \{/.test(CSS));
 checkTrue('la riga va a capo sul telefono',
   /\.import-hint \{[\s\S]{0,300}?flex-wrap: wrap/.test(CSS));
+
+// I DUE PULSANTI IN RIGA.
+// Alla prima stesura il contenitore non aveva nessuna regola: finche' ci
+// stava un solo pulsante andava bene, ma .btn arriva da workout.css con
+// "display: flex", che ne fa un blocco a se'. Con due, si sono impilati
+// uno sopra l'altro contro il bordo destro.
+checkTrue('.section-actions mette i pulsanti in riga',
+  /\.section-actions \{[\s\S]{0,200}?display: flex/.test(DASHCSS),
+  'senza, .btn { display: flex } di workout.css li impila in colonna');
+checkTrue('con uno spazio fra i due',
+  /\.section-actions \{[\s\S]{0,200}?gap:/.test(DASHCSS));
+checkTrue('e non si lasciano schiacciare dal titolo',
+  /\.section-actions \{[\s\S]{0,260}?flex-shrink: 0/.test(DASHCSS));
+
+// IL COLORE.
+// .btn-secondary su questo tema e' un grigio ferro PIENO: accanto al blu
+// dell'azione principale faceva una seconda macchia scura, pesante
+// uguale e per giunta spenta.
+checkTrue('"Da file" non usa piu il grigio pieno',
+  !/id="importFromFileBtn" class="btn btn-secondary"/.test(DASH_HTML));
+checkTrue('ma il pulsante di appoggio',
+  /id="importFromFileBtn" class="btn btn-ghost"/.test(DASH_HTML));
+checkTrue('e lo stesso su /workout',
+  /id="workoutImportBtn" class="btn btn-ghost"/.test(WORK_HTML));
+checkTrue('.btn-ghost e definito con la classe doppia',
+  /\.btn\.btn-ghost \{/.test(CSS),
+  '.btn di workout.css dichiara "border: none" e arriva DOPO: a parita di specificita il bordo sparirebbe');
+checkTrue('ha uno sfondo chiaro, non una tinta piena',
+  /\.btn\.btn-ghost \{[\s\S]{0,200}?background: #ffffff/.test(CSS));
+checkTrue('e un bordo che lo rende leggibile',
+  /\.btn\.btn-ghost \{[\s\S]{0,200}?border: 1\.5px solid/.test(CSS));
+
 const ver = /const CACHE_NAME  = 'didio-v(\d+)'/.exec(SW);
-checkTrue('CACHE_NAME bumpato oltre la v66',
-  ver && Number(ver[1]) > 66,
+checkTrue('CACHE_NAME bumpato oltre la v67',
+  ver && Number(ver[1]) > 67,
   ver ? 'v' + ver[1] : 'non trovato');
 
 console.log('\n' + (fail === 0
