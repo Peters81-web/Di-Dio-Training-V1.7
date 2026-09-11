@@ -5,7 +5,19 @@
  */
 
 // Mostra un toast di notifica
-function showToast(message, type = 'info', duration = 3000) {
+//
+// action (facoltativo): { label, href } aggiunge un COLLEGAMENTO accanto al
+// messaggio. Serve quando l'esito dell'azione si trova altrove: importando
+// un'attività dalla dashboard, la scheda nasce già completata e finisce in
+// Archivio, quindi la dashboard non cambia di una virgola e sembra che non
+// sia successo niente. Senza un modo di portarcisi, l'avviso dice "fatto"
+// ma non dove.
+//
+// Il messaggio resta escapato (contiene spesso testo che non controlliamo:
+// errori dal server, nomi di allenamenti letti da un file). L'etichetta la
+// scriviamo noi, ma passa dallo stesso escape: costa nulla e non c'è motivo
+// di avere due regole.
+function showToast(message, type = 'info', duration = 3000, action = null) {
     // Rimuovi i toast esistenti
     document.querySelectorAll('.toast').forEach(toast => toast.remove());
     
@@ -67,9 +79,22 @@ function showToast(message, type = 'info', duration = 3000) {
     // Costruisci il contenuto.
     // message va escapato: spesso contiene testo che non controlliamo
     // (error.message dal server, nomi di allenamenti inseriti dall'utente).
+    //
+    // Il collegamento si accetta SOLO se punta a un percorso interno che
+    // inizia per "/". Escapare l'indirizzo non basterebbe: "javascript:..."
+    // supera l'escape indenne, perché non contiene nessun carattere da
+    // escapare. Oggi chi chiama siamo noi, ma questa funzione la usano
+    // dodici file e la prossima chiamata potrebbe passare un indirizzo che
+    // arriva da fuori.
+    const azioneOk = action && action.label && typeof action.href === 'string' &&
+                     action.href.charAt(0) === '/' && action.href.charAt(1) !== '/';
+    const azioneHtml = azioneOk
+        ? `<a class="toast-action" href="${escapeHtml(String(action.href))}">${escapeHtml(String(action.label))}</a>`
+        : '';
+
     toast.innerHTML = `
         <div class="toast-icon" aria-hidden="true">${icon}</div>
-        <div class="toast-message">${escapeHtml(String(message ?? ''))}</div>
+        <div class="toast-message">${escapeHtml(String(message ?? ''))}${azioneHtml}</div>
         <button class="toast-close" aria-label="Chiudi notifica">&times;</button>
     `;
     

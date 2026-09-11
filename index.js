@@ -422,6 +422,96 @@ function sanitizeWorkoutContext(raw) {
   };
 }
 
+// ─── Limite di frequenza di Groq (429) ────────────────────────────────────────
+//
+// PERCHÉ QUESTE DUE FUNZIONI ESISTONO
+// Groq risponde 429 quando si supera la quota, e finora l'app inoltrava il
+// suo messaggio così com'era: un muro di inglese con l'id
+// dell'organizzazione, il nome del service tier e un link al billing, che
+// all'utente diceva soltanto "qualcosa è andato storto".
+//
+// Il messaggio però contiene tre numeri utili — il tetto, quanto è già
+// stato usato e quanto chiedeva questa richiesta — più i secondi da
+// aspettare. Sono FATTI, dichiarati da Groq: si estraggono e si
+// rimontano in italiano, invece di inventare una spiegazione o di
+// nasconderla.
+//
+// Il tetto NON viene scritto a mano da nessuna parte qui: cambia per
+// modello e per piano, e un numero cablato diventerebbe una bugia il
+// giorno che si cambia modello.
+
+/**
+ * Secondi da aspettare prima di riprovare.
+ * Prima l'intestazione standard, poi il "try again in 18.884999999s" del
+ * messaggio. Arrotondati per ECCESSO: riproporre a 18,88 secondi su un
+ * limite che scade a 18,88 significa sbatterci di nuovo.
+ */
+function parseRetryAfter(header, message) {
+  let sec = null;
+  const h = Number.parseFloat(header);
+  if (!Number.isNaN(h) && h >= 0) sec = h;
+  if (sec === null) {
+    const m = /try again in ([\d.]+)\s*s/i.exec(String(message || ''));
+    if (m) {
+      const v = Number.parseFloat(m[1]);
+      if (!Number.isNaN(v) && v >= 0) sec = v;
+    }
+  }
+  if (sec === null) return null;
+  sec = Math.ceil(sec);
+  // Oltre l'ora non è più un'attesa: è un limite giornaliero, e dire
+  // "riprova fra 4200 secondi" non aiuterebbe nessuno.
+  if (sec < 1) sec = 1;
+  return sec > 3600 ? null : sec;
+}
+
+/**
+ * "8.000" invece di "8000": in un messaggio da leggere in fretta conta.
+ *
+ * Il separatore si mette a mano e NON con toLocaleString('it-IT'): Node
+ * compilato con small-icu ignora la lingua e restituisce "8000", quindi
+ * il messaggio cambierebbe a seconda di com'è costruito l'eseguibile —
+ * ed è già successo di scrivere un controllo che passava qui e sarebbe
+ * fallito altrove.
+ */
+function itNum(n) {
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return String(n);
+  return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/**
+ * Il messaggio in italiano, costruito sui numeri che Groq ha dichiarato.
+ * Se non sono estraibili si resta sul generico: meglio poco e vero che
+ * una cifra inventata.
+ */
+function rateLimitMessage(raw, retryAfter) {
+  const s = String(raw || '');
+  const lim = /Limit (\d+)/i.exec(s);
+  const use = /Used (\d+)/i.exec(s);
+  const req = /Requested (\d+)/i.exec(s);
+  const perMinuto = /tokens per minute/i.test(s);
+
+  let out = 'Limite di Groq raggiunto';
+  if (lim && req) {
+    out += `: il tetto è di ${itNum(lim[1])} token` +
+           (perMinuto ? ' al minuto' : '') +
+           `, questa richiesta ne chiedeva ${itNum(req[1])}` +
+           (use ? ` e ne erano già stati usati ${itNum(use[1])}` : '') + '.';
+  } else {
+    out += '.';
+  }
+
+  if (retryAfter !== null && retryAfter !== undefined) {
+    out += retryAfter >= 60
+      ? ` Riprova fra circa ${Math.ceil(retryAfter / 60)} minuti.`
+      : ` Riprova fra ${retryAfter} second${retryAfter === 1 ? 'o' : 'i'}.`;
+  } else {
+    out += ' Riprova fra qualche istante.';
+  }
+  return out;
+}
+
 // ─── Digital Asset Links (TWA / app Android Vortex Stride) ────────────────────
 // Necessario per far aprire l'app Android a schermo intero (senza barra Chrome).
 // Express di default ignora i file dotfile (.well-known), quindi lo serviamo
@@ -499,8 +589,22 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
   // token di ragionamento, che con llama-3.1-8b-instant non esistevano.
   // Se quei token rientrano nel tetto (la documentazione Groq non è
   // raggiungibile da qui per confermarlo), un budget tarato sul solo
-  // testo finale troncherebbe il piano a metà. Un tetto più alto non
-  // costa nulla se non viene usato: il limite vero resta il timeout.
+  // testo finale troncherebbe il piano a metà.
+  //
+  // CORREZIONE. Qui prima c'era scritto "un tetto più alto non costa
+  // nulla se non viene usato: il limite vero resta il timeout". È
+  // FALSO, e lo dimostra un rifiuto arrivato da Groq:
+  //
+  //   TPM: Limit 8000, Used 5289, Requested 5229
+  //
+  // "Requested" non è quello che il piano ha consumato: è il prompt PIÙ
+  // il max_tokens qui sotto, prenotato contro la quota al minuto anche
+  // se la risposta ne usa la metà. Quindi un tetto più alto costa
+  // eccome — riduce quante generazioni entrano in un minuto — e questi
+  // tre numeri andrebbero tarati sul consumo reale invece che a occhio.
+  // Non l'ho ancora fatto: servirebbe misurare i token davvero prodotti
+  // (usage.completion_tokens nella risposta di Groq), che da qui non
+  // posso osservare.
   const tokenBudgetMap = {
     weekly:  2500,
     monthly: 5000,
@@ -833,7 +937,26 @@ Sii specifico, concreto e adatto al livello ${levelText}.`;
     if (!groqRes.ok) {
       const errData = await groqRes.json().catch(() => ({}));
       logErr('Groq API error:', errData);
-      return res.status(502).json({ error: errData.error?.message || 'Errore nella chiamata a Groq.' });
+      const raw = errData.error?.message || '';
+
+      // Il 429 NON è un guasto: è una quota. Va distinto, perché la cosa
+      // da fare è aspettare — e per aspettare bisogna sapere quanto.
+      // Inoltrarlo come 502 "errore del server" mandava l'utente a
+      // cercare un problema che non c'era.
+      if (groqRes.status === 429) {
+        const retryAfter = parseRetryAfter(groqRes.headers.get('retry-after'), raw);
+        return res.status(429).json({
+          code: 'rate_limit',
+          retryAfter,
+          error: rateLimitMessage(raw, retryAfter),
+          // Il testo originale di Groq resta disponibile: serve a capire
+          // QUALE limite è scattato (token al minuto, richieste al
+          // giorno) quando i numeri non sono estraibili.
+          detail: raw
+        });
+      }
+
+      return res.status(502).json({ error: raw || 'Errore nella chiamata a Groq.' });
     }
 
     const data    = await groqRes.json();

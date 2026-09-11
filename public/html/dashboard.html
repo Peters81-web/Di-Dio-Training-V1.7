@@ -87,6 +87,22 @@
                     <!-- Qui c'era "Cancella Dati": l'azione più distruttiva
                          dell'app occupava il posto di quella principale.
                          Spostata nel Profilo, sezione Zona Pericolosa. -->
+
+                    <!-- "Da file" PRIMA del modulo a mano, non dentro.
+                         Se hai il file dell'attività, il modulo di /workout
+                         — nome, tipo, durata, distanza, calorie, note — non
+                         lo vuoi nemmeno vedere: caricarlo per poi uscirne
+                         subito è lavoro sprecato.
+                         Serve soprattutto per la SECONDA attività dello
+                         stesso giorno: la prima si carica completando una
+                         scheda in programma, ma per quella dopo non c'è
+                         nessuna scheda da completare, e l'unica porta
+                         d'ingresso stava sulla pagina Statistiche — dove
+                         non sei quando hai appena finito di correre. -->
+                    <button type="button" id="importFromFileBtn" class="btn btn-secondary">
+                        <i class="fas fa-file-import"></i>
+                        <span>Da file</span>
+                    </button>
                     <a href="/workout" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         <span>Nuovo Allenamento</span>

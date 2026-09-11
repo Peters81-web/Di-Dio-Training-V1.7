@@ -508,6 +508,23 @@ body.ai-page h1, body.ai-page h2, body.ai-page h3, body.ai-page h4 { line-height
     color: #92400e;
 }
 
+/* Il limite di quota di Groq. Volutamente NON rosso: non è un guasto, è
+   un'attesa. Il rosso manderebbe a cercare un problema che non c'è. */
+.rate-limit-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+    padding: 1rem 1.1rem;
+    border-radius: 10px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #78350f;
+    line-height: 1.5;
+}
+.rate-limit-note i      { color: #d97706; font-size: 1.1rem; margin-top: .15rem; flex-shrink: 0; }
+.rate-limit-note strong { display: block; margin-bottom: .35rem; }
+.rate-limit-note p      { margin: 0; font-size: .85rem; color: #92400e; }
+
 .quick-prompts { display: flex; flex-direction: column; gap: .4rem; }
 .quick-prompt-btn {
     text-align: left;

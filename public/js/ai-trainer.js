@@ -676,6 +676,72 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 
+  // Il conto alla rovescia in corso, se c'è. Uno solo alla volta: due
+  // rifiuti ravvicinati lascerebbero due timer a contendersi il pulsante.
+  let rateLimitTimer = null;
+
+  /**
+   * Il limite di quota di Groq, detto in modo utilizzabile.
+   *
+   * PERCHÉ NON BASTA MOSTRARE L'ERRORE
+   * Groq risponde con un testo come "Rate limit reached for model
+   * openai/gpt-oss-120b in organization org_01kq... service tier
+   * on_demand on tokens per minute (TPM): Limit 8000, Used 5289,
+   * Requested 5229. Please try again in 18.884999999s." — inglese, con
+   * l'id dell'organizzazione e un link al billing. L'app lo inoltrava
+   * di peso, e quello che l'utente doveva fare (aspettare venti secondi)
+   * era l'unica cosa che non si capiva.
+   *
+   * Qui l'attesa diventa l'elemento principale: il pulsante si spegne,
+   * conta alla rovescia e si riaccende da solo. Non si riprova in
+   * automatico — una rigenerazione consuma quota e va decisa dall'utente,
+   * non innescata da un timer che nessuno sta guardando.
+   */
+  function showRateLimit(data) {
+    const msg = (data && data.error) ||
+                'Limite di Groq raggiunto. Riprova fra qualche istante.';
+    let sec = Number(data && data.retryAfter);
+    if (!Number.isFinite(sec) || sec < 1) sec = 0;
+
+    if (elements.aiResponse) {
+      elements.aiResponse.innerHTML =
+        '<div class="rate-limit-note">' +
+          '<i class="fas fa-hourglass-half" aria-hidden="true"></i>' +
+          '<div>' +
+            '<strong>' + esc(msg) + '</strong>' +
+            '<p>Non è un guasto dell\'app: è la quota del piano gratuito di ' +
+            'Groq, contata al minuto sull\'intero account. Una generazione ne ' +
+            'prenota una fetta grossa, quindi due di fila nello stesso minuto ' +
+            'non ci stanno.</p>' +
+          '</div>' +
+        '</div>';
+      elements.aiResponseContainer.style.display = 'block';
+    }
+    window.showToast(msg, 'warning', 8000);
+
+    const btn = elements.generatePlanBtn;
+    if (!btn || !sec) return;
+
+    clearInterval(rateLimitTimer);
+    const etichetta = btn.innerHTML;
+    btn.disabled = true;
+
+    const tick = () => {
+      if (sec <= 0) {
+        clearInterval(rateLimitTimer);
+        rateLimitTimer = null;
+        btn.disabled = false;
+        btn.innerHTML = etichetta;
+        return;
+      }
+      btn.innerHTML = '<i class="fas fa-hourglass-half" aria-hidden="true"></i> ' +
+                      'Riprova fra ' + sec + 's';
+      sec--;
+    };
+    tick();
+    rateLimitTimer = setInterval(tick, 1000);
+  }
+
   async function generatePlan() {
     const prompt = elements.aiPrompt ? elements.aiPrompt.value.trim() : '';
     const planType = elements.planType ? elements.planType.value : 'weekly';
@@ -746,6 +812,13 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // La quota non è un guasto: si aspetta e si riprova. Trattarla
+        // come un errore qualunque mandava a cercare un problema che non
+        // c'è, per giunta leggendo l'inglese di Groq.
+        if (response.status === 429) {
+          showRateLimit(errorData);
+          return;
+        }
         throw new Error(errorData.error || 'HTTP ' + response.status);
       }
 

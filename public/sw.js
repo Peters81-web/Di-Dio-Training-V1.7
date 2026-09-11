@@ -189,7 +189,22 @@
 //         era cliccabile prima che lo storico fosse letto. Ora la card
 //         c'e' sempre e dichiara cosa manca e perche', e la generazione
 //         aspetta la lettura.
-const CACHE_NAME  = 'didio-v65';
+//   v66 -> Il rifiuto per quota di Groq (429) arrivava a schermo come
+//         "Errore:" seguito dal testo inglese di Groq, con l'id
+//         dell'organizzazione e un link al billing. Non e' un guasto ed
+//         era pure inoltrato come 502. Ora e' un 429, il messaggio e' in
+//         italiano coi numeri dichiarati da Groq, e il pulsante conta
+//         alla rovescia i secondi da aspettare e si riaccende da solo.
+//   v67 -> Pulsante "Da file" sulla dashboard: importa un'attivita' gia'
+//         svolta come scheda NUOVA. Serviva per la seconda attivita'
+//         dello stesso giorno, che non ha nessuna scheda da completare
+//         perche' la prima si e' presa quella in programma. L'app sapeva
+//         gia' farlo, ma l'unica porta era sulla pagina Statistiche.
+//         Stessa scorciatoia in cima al modulo di /workout, e un avviso
+//         col collegamento all'Archivio: l'attivita' importata nasce
+//         completata, quindi la dashboard resta identica e senza avviso
+//         il pulsante sembrerebbe rotto.
+const CACHE_NAME  = 'didio-v67';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

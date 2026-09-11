@@ -1846,6 +1846,54 @@ textarea:focus {
   flex-grow: 1;
 }
 
+/* Il collegamento dentro l'avviso (per esempio "Vai all'Archivio" dopo
+   aver importato un'attività). Va su una riga sua: accodato al testo si
+   confonde con il messaggio e non si capisce che è cliccabile.
+   currentColor perché l'avviso cambia colore col tipo, e un azzurro fisso
+   sparirebbe sullo sfondo di quello d'errore. */
+.toast-action {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: currentColor;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.toast-action:hover {
+  opacity: 0.85;
+}
+
+/* La scorciatoia "Importa da file" in cima al modulo di /workout.
+   Deve leggersi come un suggerimento, non come un passaggio obbligato:
+   chi non ha il file deve poterla ignorare e scendere al modulo. */
+.import-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px dashed var(--border-color, #d1d5db);
+  border-radius: 10px;
+  background: var(--bg-secondary, #f9fafb);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.import-hint > i {
+  color: var(--primary-color, #4f46e5);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.import-hint > span {
+  flex: 1 1 12rem;
+}
+
+.import-hint .btn {
+  flex-shrink: 0;
+}
+
 .toast-close {
   margin-left: 0.75rem;
   cursor: pointer;
