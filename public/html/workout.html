@@ -34,6 +34,25 @@
 
     <main id="mainContent" class="container" style="padding-top: 1.5rem; padding-bottom: 2rem;">
         <div class="card">
+            <!-- SCORCIATOIA PER CHI HA GIÀ IL FILE.
+                 Sotto c'è un modulo lungo — nome, tipo, durata, distanza,
+                 calorie, note — e se l'attività è già registrata
+                 dall'orologio compilarlo a mano è lavoro doppio, per giunta
+                 perdendo traccia GPS e tracciato cardiaco, che a mano non
+                 si possono inserire.
+                 Apre lo STESSO import della dashboard invece di rimandare
+                 altrove: una scorciatoia che ti rimbalza su un'altra
+                 pagina non è una scorciatoia. -->
+            <div class="import-hint" id="workoutImportHint" hidden>
+                <i class="fas fa-file-import" aria-hidden="true"></i>
+                <span>Hai il file dell'attività (.TCX o .GPX)?
+                      Importalo invece di compilare a mano: porta anche
+                      mappa e tracciato cardiaco.</span>
+                <button type="button" id="workoutImportBtn" class="btn btn-secondary">
+                    Importa da file
+                </button>
+            </div>
+
             <form id="workoutForm" style="display: grid; gap: 1.5rem;">
                 <!-- Sezione Info Base -->
                 <div class="form-section">
@@ -224,6 +243,38 @@
     <script src="/js/rich-text-editor.js"></script>
     <script src="/js/workout.js"></script>
     <script src="/js/workout-editor.js"></script>
+    <!-- weather.js PRIMA di tcx-import.js: l'import lo usa per il meteo
+         storico dell'attività. Stesso ordine della dashboard.
+         Servono qui da quando in cima al modulo c'è la scorciatoia
+         "Importa da file": senza, il pulsante ci sarebbe e non
+         funzionerebbe. -->
+    <script src="/js/weather.js"></script>
+    <script src="/js/tcx-import.js"></script>
+
+    <script>
+    // La scorciatoia si mostra SOLO se l'import è davvero disponibile.
+    // Se uno dei due script qui sopra non ha caricato, offrire il pulsante
+    // significherebbe promettere qualcosa che non succede: meglio non
+    // mostrarlo affatto e lasciare il modulo a mano, che funziona sempre.
+    document.addEventListener('DOMContentLoaded', function () {
+        var hint = document.getElementById('workoutImportHint');
+        var btn  = document.getElementById('workoutImportBtn');
+        if (!hint || !btn || typeof window.openTcxImport !== 'function') return;
+
+        hint.hidden = false;
+        btn.addEventListener('click', function () {
+            // Nessun bersaglio: l'import crea una scheda nuova, che è
+            // esattamente ciò che si stava per fare a mano.
+            window.openTcxImport(function () {
+                // L'attività importata nasce completata e finisce in
+                // Archivio, non fra le schede da fare. Restare su questo
+                // modulo mezzo compilato non avrebbe senso: si torna alla
+                // dashboard, dove l'avviso dice dov'è andata.
+                window.location.href = '/dashboard?imported=1';
+            });
+        });
+    });
+    </script>
 
 
 

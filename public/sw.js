@@ -195,7 +195,16 @@
 //         era pure inoltrato come 502. Ora e' un 429, il messaggio e' in
 //         italiano coi numeri dichiarati da Groq, e il pulsante conta
 //         alla rovescia i secondi da aspettare e si riaccende da solo.
-const CACHE_NAME  = 'didio-v66';
+//   v67 -> Pulsante "Da file" sulla dashboard: importa un'attivita' gia'
+//         svolta come scheda NUOVA. Serviva per la seconda attivita'
+//         dello stesso giorno, che non ha nessuna scheda da completare
+//         perche' la prima si e' presa quella in programma. L'app sapeva
+//         gia' farlo, ma l'unica porta era sulla pagina Statistiche.
+//         Stessa scorciatoia in cima al modulo di /workout, e un avviso
+//         col collegamento all'Archivio: l'attivita' importata nasce
+//         completata, quindi la dashboard resta identica e senza avviso
+//         il pulsante sembrerebbe rotto.
+const CACHE_NAME  = 'didio-v67';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

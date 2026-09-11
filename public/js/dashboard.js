@@ -57,7 +57,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Setup della dashboard
             setupEventListeners();
             await loadDashboardData();
-            
+
+            // Ritorno da un import avviato dalla pagina /workout: l'avviso
+            // va dato QUI, dopo il caricamento, perché è qui che l'utente
+            // atterra e perché è questa la schermata che resta identica —
+            // l'attività importata è già completata e sta in Archivio.
+            // Darlo prima del caricamento lo farebbe scomparire sotto il
+            // ridisegno della pagina.
+            if (new URLSearchParams(location.search).get('imported') === '1') {
+                history.replaceState({}, '', '/dashboard'); // pulisci l'indirizzo
+                showToast('Attività importata: la trovi in Archivio.', 'success', 8000,
+                          { label: 'Vai all\'Archivio', href: '/archivio' });
+            }
+
             console.log('Dashboard inizializzata con successo');
             
         } catch (error) {
@@ -1692,6 +1704,46 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
 
     /**
+     * Importa un'attività COME SCHEDA NUOVA, dal pulsante "Da file" della
+     * dashboard.
+     *
+     * PERCHÉ SERVE, ACCANTO A completeFromFile
+     * completeFromFile completa una scheda che esiste già. Ma la seconda
+     * attività della stessa giornata una scheda da completare non ce l'ha:
+     * la prima si è già presa quella in programma ed è finita in Archivio.
+     * L'unica porta d'ingresso per la seconda stava sulla pagina
+     * Statistiche — che non è dove ti trovi quando hai appena finito di
+     * allenarti.
+     *
+     * Qui non si passa nessun bersaglio: senza, l'import crea una scheda
+     * nuova. È la stessa funzione già usata da Statistiche, non una
+     * seconda strada di salvataggio da tenere allineata.
+     */
+    function importAsNewWorkout() {
+        if (typeof window.openTcxImport !== 'function') {
+            showToast('Import non disponibile: ricarica la pagina.', 'error');
+            return;
+        }
+
+        window.openTcxImport(function () {
+            loadDashboardData();
+
+            // L'ATTIVITÀ IMPORTATA NON COMPARE QUI.
+            //
+            // Nasce già completata — l'hai svolta, e il file lo dimostra —
+            // e da quando le schede fatte vivono in Archivio, è lì che va.
+            // Quindi la dashboard si ricarica IDENTICA, e senza questo
+            // avviso l'unica cosa visibile sarebbe che non è successo
+            // niente.
+            //
+            // Il collegamento non è un ornamento: è l'unico modo di vedere
+            // ciò che si è appena importato senza andarlo a cercare.
+            showToast('Attività importata: la trovi in Archivio.', 'success', 8000,
+                      { label: 'Vai all\'Archivio', href: '/archivio' });
+        });
+    }
+
+    /**
      * Gestisce il submit del form di completamento
      */
     async function handleCompleteWorkoutSubmit(e) {
@@ -1880,6 +1932,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Logout
         if (elements.logoutBtn) {
             elements.logoutBtn.addEventListener('click', logout);
+        }
+
+        // "Da file": importa un'attività già svolta come scheda nuova.
+        const importBtn = document.getElementById('importFromFileBtn');
+        if (importBtn) {
+            importBtn.addEventListener('click', importAsNewWorkout);
         }
     }
     
