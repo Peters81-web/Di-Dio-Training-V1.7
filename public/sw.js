@@ -211,6 +211,14 @@
 //         era uno solo non si vedeva. Ed era grigio ferro pieno
 //         (.btn-secondary): una seconda macchia scura accanto all'azione
 //         principale. Ora stanno in riga e quello di appoggio e' chiaro.
+//   v69 -> Finestra di import: il campo note compariva solo caricando
+//         DUE o piu' file, perche' era legato al riepilogo dei blocchi
+//         (partsSummary torna vuoto sotto i due) e con un file solo
+//         non veniva disegnato affatto. Ora c'e' sempre, in entrambi i
+//         percorsi. Aggiunti i dati del mattino - variabilita', VO2max,
+//         FC a riposo - richiudibili e precompilati dal giorno
+//         dell'attivita': si scrivono con un'unione, quindi un campo
+//         lasciato vuoto NON azzera quello inserito dalla dashboard.
 const CACHE_NAME  = 'didio-v68';
 const OFFLINE_URL = '/offline.html';
 

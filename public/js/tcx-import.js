@@ -597,7 +597,7 @@
   }
 
   // ── Salvataggio su Supabase ───────────────────────────────────
-  async function saveImport(data, userId, sc) {
+  async function saveImport(data, userId, sc, note) {
     const d = new Date(data.startIso);
     const dateLabel = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
     const timeLabel = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -678,7 +678,10 @@
       actual_duration: data.durationMin,
       calories_burned: data.calories,
       distance: data.distanceKm,
-      heart_rate_avg: data.avgHr
+      heart_rate_avg: data.avgHr,
+      // La nota scritta nella finestra di import. Stesso campo usato dal
+      // percorso "completa una scheda": e' quello che l'AI Trainer legge.
+      notes: note || null
     });
 
     if (compRes.error) {
@@ -859,6 +862,17 @@
 .tcx-notes textarea{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;font-family:inherit;line-height:1.5;color:#1e293b;background:#fff;resize:vertical}
 .tcx-notes textarea:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
 .tcx-date-note b{color:#1e293b}
+/* Dati del mattino: richiudibile, perche' la finestra e' gia' lunga e
+   chi li ha gia' inseriti non deve riscorrerla per arrivare al pulsante. */
+.tcx-morning{margin-top:12px;padding:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+.tcx-morning>summary{display:flex;align-items:center;gap:.4rem;cursor:pointer;padding:10px 12px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#475569;list-style:revert}
+.tcx-morning>summary small{text-transform:none;letter-spacing:0;font-weight:500;color:#94a3b8}
+.tcx-morning[open]>summary{border-bottom:1px solid #e2e8f0}
+.tcx-morning-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;padding:12px}
+.tcx-morning-grid label{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:600;color:#64748b}
+.tcx-morning-grid input{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem;font-family:inherit;color:#1e293b;background:#fff}
+.tcx-morning-grid input:focus{outline:2px solid #4361ee;outline-offset:1px;border-color:#4361ee}
+.tcx-morning>.tcx-date-note{padding:0 12px 12px;margin:0}
 .tcx-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;background:#f9fafb;border-top:1px solid #e5e7eb;flex-shrink:0}
 .tcx-btn{padding:10px 18px;border-radius:10px;font-size:.92rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:inherit}
 .tcx-btn--sec{background:#fff;border-color:#e5e7eb;color:#4b5563}
@@ -988,15 +1002,100 @@
    * riscriverlo come preferisce prima di confermare.
    */
   function notesBox(riepilogo) {
-    if (!riepilogo) return '';
+    // IL CAMPO C'È SEMPRE, ANCHE SENZA RIEPILOGO.
+    //
+    // Prima qui c'era "if (!riepilogo) return ''", e partsSummary
+    // restituisce una stringa vuota quando i blocchi sono meno di due.
+    // Effetto: caricando UN file solo il campo note non veniva nemmeno
+    // disegnato, e quello è il caso normale. Il riquadro era nato per
+    // contenere il riepilogo dei blocchi multipli e si era portato
+    // dietro quella condizione.
+    //
+    // Ma la nota non serve a riassumere i blocchi: è l'unico posto dove
+    // finiscono i ritmi per tratto, il fondo e le sensazioni, ed è il
+    // campo che l'AI Trainer legge per calibrare i piani successivi.
+    // Deve esserci sempre; il riepilogo, quando c'è, è solo un punto di
+    // partenza già scritto.
     return '<div class="tcx-notes">' +
       '<label for="tcxNotes"><i class="fas fa-pen-to-square" aria-hidden="true"></i> ' +
         'Note della sessione</label>' +
-      '<textarea id="tcxNotes" rows="4">' + escapeAttr(riepilogo) + '</textarea>' +
-      '<p class="tcx-date-note">Scritto dall\'app dai file caricati. ' +
-        'Modificalo come preferisci: finisce nelle note dell\'allenamento e ' +
-        'arriva all\'AI quando genera i prossimi piani.</p>' +
+      '<textarea id="tcxNotes" rows="4" placeholder="Com\'è andata? Ritmi per tratto, ' +
+        'fondo, sensazioni, FC per blocco: è quello che l\'AI non ricava dalle medie.">' +
+        escapeAttr(riepilogo || '') + '</textarea>' +
+      '<p class="tcx-date-note">' +
+        (riepilogo
+          ? 'Scritto dall\'app dai file caricati. Modificalo come preferisci: finisce '
+          : 'Finisce ') +
+        'nelle note dell\'allenamento e arriva all\'AI quando genera i prossimi piani.</p>' +
     '</div>';
+  }
+
+  /**
+   * I dati del risveglio: variabilità cardiaca, VO2max, FC a riposo.
+   *
+   * PERCHÉ STANNO QUI E NON SOLO SULLA DASHBOARD
+   * La striscia del recupero, sulla dashboard, esiste da un pezzo. Ma il
+   * momento in cui quei numeri li hai davvero sotto gli occhi è questo:
+   * hai appena esportato l'attività e l'orologio è ancora in mano. Fuori
+   * da questo momento ci si ricorda di rado — tre giorni registrati in
+   * tutto, contro decine di attività importate.
+   *
+   * RICHIUDIBILE, e aperto solo quando per quel giorno non c'è ancora
+   * niente: la finestra è già lunga, e chi ha già inserito i dati al
+   * mattino non deve riscorrerli.
+   *
+   * NON è una seconda casa per questi dati: scrivono nella stessa riga
+   * di daily_metrics, una per giorno, condivisa con la dashboard.
+   */
+  function morningBox() {
+    return '<details class="tcx-morning" id="tcxMorning">' +
+      '<summary><i class="fas fa-bed" aria-hidden="true"></i> ' +
+        'Dati del mattino <small>(facoltativi)</small></summary>' +
+      '<div class="tcx-morning-grid">' +
+        '<label>Variabilità (HRV)' +
+          '<input type="number" id="tcxHrv" step="0.1" min="1" max="300" ' +
+                 'inputmode="decimal" placeholder="ms">' +
+        '</label>' +
+        '<label>VO2max' +
+          '<input type="number" id="tcxVo2" step="0.1" min="10" max="100" ' +
+                 'inputmode="decimal" placeholder="ml/kg/min">' +
+        '</label>' +
+        '<label>FC a riposo' +
+          '<input type="number" id="tcxRhr" step="1" min="30" max="120" ' +
+                 'inputmode="numeric" placeholder="bpm">' +
+        '</label>' +
+      '</div>' +
+      '<p class="tcx-date-note" id="tcxMorningNote">Riferiti al giorno ' +
+        'dell\'allenamento qui sopra. Quelli che lasci vuoti restano ' +
+        'come sono: non vengono azzerati.</p>' +
+    '</details>';
+  }
+
+  /** La data (solo giorno) dal campo modificabile, o quella del file. */
+  function giornoScelto(ov, parsed) {
+    const campo = ov.querySelector('#tcxWhen');
+    if (campo && campo.value) {
+      const d = new Date(campo.value);
+      if (!isNaN(d.getTime())) {
+        return d.getFullYear() + '-' +
+               String(d.getMonth() + 1).padStart(2, '0') + '-' +
+               String(d.getDate()).padStart(2, '0');
+      }
+    }
+    return String(parsed && parsed.startIso || '').slice(0, 10);
+  }
+
+  /** I tre valori compilati, già numerici. Vuoto resta vuoto. */
+  function datiMattino(ov) {
+    function num(id) {
+      const el = ov.querySelector(id);
+      if (!el) return null;
+      const t = String(el.value || '').trim();
+      if (!t) return null;
+      const n = Number(t.replace(',', '.'));
+      return isNaN(n) ? null : n;
+    }
+    return { hrv: num('#tcxHrv'), vo2max: num('#tcxVo2'), restingHr: num('#tcxRhr') };
   }
 
   // ── Entry point ───────────────────────────────────────────────
@@ -1125,7 +1224,13 @@
         (dup ? '<div class="tcx-warn"><i class="fas fa-triangle-exclamation"></i> Sembra che questa attività sia già stata importata (stessa data e ora). Importandola di nuovo creerai un duplicato.</div>' : '') +
         (completa ? blocksList(blocchi) : '') +
         (completa ? dateBox(parsed.startIso, target.scheduledDate) : '') +
-        (completa ? notesBox(partsSummary(parsed)) : '');
+        // La nota vale in ENTRAMBI i percorsi: anche l'attività importata
+        // come scheda nuova arriva all'AI, e senza campo non c'era modo
+        // di scriverle niente.
+        notesBox(partsSummary(parsed)) +
+        // I dati del mattino solo se daily-metrics.js è caricato: senza,
+        // i campi ci sarebbero e non avrebbero dove scrivere.
+        (window.DailyMetrics ? morningBox() : '');
       preview.classList.add('show');
       // In modalita' "completa" la zona di scelta resta visibile: si
       // aggiunge un altro blocco senza ricominciare da capo.
@@ -1146,6 +1251,53 @@
             redraw();
           });
         });
+      }
+
+      // PRECOMPILAZIONE DEI DATI DEL MATTINO.
+      //
+      // Si legge la riga di quel giorno e la si mostra: vedere che il
+      // dato c'è già evita di riscriverlo a occhio, e soprattutto evita
+      // di credere che il campo vuoto significhi "non l'ho mai inserito".
+      //
+      // Si rilegge anche quando cambi la data qui sopra, perché i valori
+      // appartengono a un GIORNO: se correggi la data di un orologio
+      // sbagliato, quelli di prima non sono più i suoi.
+      if (window.DailyMetrics) {
+        const morning = preview.querySelector('#tcxMorning');
+        const campoData = preview.querySelector('#tcxWhen');
+
+        const precompila = function () {
+          const giorno = giornoScelto(ov, parsed);
+          if (!giorno || !userId || !morning) return;
+          window.DailyMetrics.loadDay(userId, giorno).then(function (riga) {
+            if (!morning.isConnected) return;
+            // Tabella assente (migrazione 007 non eseguita): i campi
+            // spariscono invece di raccogliere dati che nessuno salva.
+            if (riga && riga.assente) { morning.remove(); return; }
+
+            const set = function (sel, v) {
+              const el = preview.querySelector(sel);
+              if (el) el.value = (v === null || v === undefined) ? '' : v;
+            };
+            set('#tcxHrv', riga && riga.hrv_rmssd);
+            set('#tcxVo2', riga && riga.vo2max);
+            set('#tcxRhr', riga && riga.resting_hr);
+
+            const gia = !!(riga && (riga.hrv_rmssd !== null || riga.vo2max !== null ||
+                                    riga.resting_hr !== null));
+            // Aperto solo se per quel giorno non c'è ancora niente: chi
+            // ha già inserito al mattino non deve riscorrere la finestra.
+            morning.open = !gia;
+            const nota = preview.querySelector('#tcxMorningNote');
+            if (nota && gia) {
+              nota.textContent = 'Già registrati per questo giorno. Correggili ' +
+                'se serve: quelli che lasci vuoti restano come sono.';
+            }
+          });
+        };
+
+        precompila();
+        if (campoData) campoData.addEventListener('change', precompila);
       }
 
       // Meteo: serve una posizione, quindi solo per le attività con traccia.
@@ -1215,6 +1367,22 @@
       saveBtn.disabled = true;
       saveBtn.textContent = completa ? 'Salvo...' : 'Importo...';
       try {
+        // VALIDAZIONE PRIMA DI TOCCARE QUALSIASI COSA.
+        // Un valore fuori scala lo rifiuta il vincolo del database, ma
+        // l'errore arriverebbe DOPO aver gia' salvato l'allenamento, e
+        // si perderebbe il dato senza capire perche'.
+        const mattino = datiMattino(ov);
+        if (window.DailyMetrics && window.DailyMetrics.validateFields) {
+          const problema = window.DailyMetrics.validateFields(
+            { hrv: mattino.hrv, restingHr: mattino.restingHr, vo2max: mattino.vo2max,
+              sleepMinutes: null, sleepDeep: null, sleepRem: null }, '', '', '');
+          if (problema) throw new Error(problema);
+        }
+
+        const campoNote = ov.querySelector('#tcxNotes');
+        const note = campoNote ? campoNote.value.trim() : '';
+        const giorno = giornoScelto(ov, parsed);
+
         if (completa) {
           // Il campo della data ha la precedenza sul file: è lì che
           // l'utente corregge un orologio con la data sbagliata.
@@ -1227,9 +1395,6 @@
             if (!isNaN(d.getTime())) quando = d.toISOString();
           }
 
-          const campoNote = ov.querySelector('#tcxNotes');
-          const note = campoNote ? campoNote.value.trim() : '';
-
           const esito = await completeExistingPlan(parsed, userId, sc, target, quando, note);
           if (window.showToast) {
             window.showToast(
@@ -1239,9 +1404,30 @@
                 : 'Allenamento completato dal file!', 'success');
           }
         } else {
-          await saveImport(parsed, userId, sc);
+          await saveImport(parsed, userId, sc, note);
           if (window.showToast) window.showToast('Attività importata con successo!', 'success');
         }
+
+        // I DATI DEL MATTINO SI SCRIVONO DOPO L'ALLENAMENTO, E A PARTE.
+        //
+        // Vivono in un'altra tabella, una riga per giorno, condivisa con
+        // la striscia della dashboard. Se la scrittura fallisce — vincolo,
+        // rete, migrazione 007 assente — l'allenamento è comunque salvato
+        // e non va perso: lo si dice e basta, invece di far fallire tutto
+        // e lasciare l'utente a ricaricare il file da capo.
+        if (window.DailyMetrics && giorno &&
+            (mattino.hrv !== null || mattino.vo2max !== null || mattino.restingHr !== null)) {
+          try {
+            await window.DailyMetrics.mergeDay(userId, giorno, mattino);
+          } catch (e) {
+            console.warn('Dati del mattino non salvati.', e);
+            if (window.showToast) {
+              window.showToast('Allenamento salvato, ma i dati del mattino no: ' +
+                               (e.message || 'riprova dalla dashboard'), 'warning', 7000);
+            }
+          }
+        }
+
         close();
         if (typeof onDone === 'function') onDone();
       } catch (err) {

@@ -203,7 +203,16 @@ checkTrue('openTcxImport accetta un target facoltativo',
   /window\.openTcxImport = function \(onDone, preloadedText, target\)/.test(TCX));
 checkTrue('e senza target crea la scheda come sempre',
   /const completa = !!\(target && target\.planId\)/.test(TCX));
-checkTrue('la strada vecchia è intatta', /await saveImport\(parsed, userId, sc\)/.test(TCX));
+// Il controllo verifica che senza destinazione si passi ancora da
+// saveImport — cioe' che si CREI una scheda invece di completarne una.
+// Non l'esatto numero di argomenti: pretendeva
+// "saveImport(parsed, userId, sc)" alla lettera ed e' saltato il giorno
+// in cui la funzione ha ricevuto anche la nota della sessione, pur
+// essendo la strada ancora quella giusta. Un controllo che si rompe
+// quando il codice MIGLIORA costringe a modificarlo ogni volta, e a
+// furia di modificarlo si smette di leggerlo.
+checkTrue('la strada vecchia è intatta',
+  /await saveImport\(parsed, userId, sc[,)]/.test(TCX));
 
 console.log('\n— la pagina carica cosa serve —');
 checkTrue('tcx-import.js è in dashboard.html', /\/js\/tcx-import\.js/.test(HTML));
