@@ -268,6 +268,102 @@
       });
   }
 
+  /**
+   * Legge la riga di UN solo giorno, per precompilare un modulo.
+   *
+   * Diversa da loadRecent, che serve a calcolare la linea di base su
+   * molti giorni: qui interessa solo sapere cosa c'è già scritto per
+   * quella data, così chi sta inserendo vede il dato esistente invece
+   * di riscriverlo a caso.
+   *
+   * Ritorna { assente: true } se la tabella non c'è (migrazione 007 non
+   * eseguita): chi chiama deve poter NASCONDERE i campi, che è una cosa
+   * diversa da "quel giorno non ha dati".
+   */
+  function loadDay(userId, date) {
+    if (tableAvailable === false) return Promise.resolve({ assente: true });
+
+    return sc().from(TABLE)
+      .select('hrv_rmssd, resting_hr, vo2max, sleep_minutes, ' +
+              'sleep_deep_minutes, sleep_rem_minutes')
+      .eq('user_id', userId)
+      .eq('metric_date', date)
+      .maybeSingle()
+      .then(function (r) {
+        if (r.error) {
+          markAvailability(r.error);
+          if (isMissingTableError(r.error)) return { assente: true };
+          console.warn('Metriche di recupero: lettura del giorno non riuscita.', r.error);
+          return null;
+        }
+        markAvailability(null);
+        return r.data || null;
+      })
+      .catch(function (e) {
+        console.warn('Metriche di recupero: lettura del giorno non riuscita.', e);
+        return null;
+      });
+  }
+
+  /**
+   * Aggiorna SOLO i campi compilati, lasciando intatti gli altri.
+   *
+   * PERCHÉ NON SI PUÒ USARE saveDay
+   * saveDay manda la riga intera, ed è giusto così dove sta: nella
+   * striscia della dashboard si vede tutta la giornata, e svuotare un
+   * campo significa davvero "cancella quel dato".
+   *
+   * Dall'import di un'attività il contesto è opposto. Lì si compila
+   * quello che si ha sott'occhio sull'orologio — magari solo la
+   * variabilità — e i campi lasciati vuoti non vogliono dire "azzera":
+   * vogliono dire "non lo so". Con saveDay, importare un'attività con
+   * la sola HRV avrebbe CANCELLATO il VO2max inserito quella mattina,
+   * senza dire niente a nessuno. Una riga per giorno, e quella riga è
+   * condivisa fra i due moduli.
+   *
+   * Qui i campi vuoti non entrano proprio nel payload, quindi PostgREST
+   * non li mette nella SET dell'ON CONFLICT e restano com'erano.
+   * Verificato sul database, non dedotto: con hrv 55 → 61 e il resto
+   * assente, vo2max e sonno sono rimasti ai valori di prima.
+   */
+  function mergeDay(userId, date, fields) {
+    var MAPPA = {
+      hrv:          'hrv_rmssd',
+      restingHr:    'resting_hr',
+      vo2max:       'vo2max',
+      sleepMinutes: 'sleep_minutes',
+      sleepDeep:    'sleep_deep_minutes',
+      sleepRem:     'sleep_rem_minutes'
+    };
+
+    var row = {
+      user_id:     userId,
+      metric_date: date,
+      source:      'manual',
+      updated_at:  new Date().toISOString()
+    };
+
+    var scritti = 0;
+    Object.keys(MAPPA).forEach(function (k) {
+      var v = fields ? fields[k] : null;
+      if (v === null || v === undefined || v === '') return;
+      row[MAPPA[k]] = v;
+      scritti++;
+    });
+
+    // Nessun campo compilato: non si scrive NIENTE. Senza questo si
+    // creerebbe una riga vuota per ogni attività importata, e la linea
+    // di base finirebbe per contare giorni che non contengono nulla.
+    if (!scritti) return Promise.resolve({ scritti: 0 });
+
+    return sc().from(TABLE)
+      .upsert(row, { onConflict: 'user_id,metric_date' })
+      .then(function (r) {
+        if (r.error) throw r.error;
+        return { scritti: scritti };
+      });
+  }
+
   // ── Stile ─────────────────────────────────────────────────────
   function ensureStyles() {
     if (document.getElementById('dm-styles')) return;
@@ -600,6 +696,11 @@
     render: render,
     openEditor: openEditor,
     loadRecent: loadRecent,
+    // Usate dall'import di un'attività, che raccoglie i dati del mattino
+    // nello stesso momento in cui carichi il file dell'orologio.
+    loadDay: loadDay,
+    mergeDay: mergeDay,
+    validateFields: validate,
     // esportate per i test in Node
     _internals: {
       isMissingTableError: isMissingTableError,

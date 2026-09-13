@@ -793,6 +793,11 @@
   <!-- weather.js PRIMA di tcx-import.js: l'import lo usa per
      recuperare il meteo storico dell'attività -->
 <script src="/js/weather.js"></script>
+    <!-- daily-metrics.js serve a tcx-import.js: la finestra di import
+         raccoglie anche i dati del mattino (variabilita', VO2max, FC a
+         riposo) nel momento in cui l'orologio e' ancora in mano. Senza,
+         quei campi non compaiono e il resto dell'import non cambia. -->
+    <script src="/js/daily-metrics.js"></script>
 <script src="/js/tcx-import.js"></script>
   <!-- hr-zones.js prima di stats-fixed.js: deve registrare window.hrZonesRender
        prima che renderAll() provi a chiamarla -->
