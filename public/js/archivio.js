@@ -15,7 +15,14 @@ document.addEventListener('DOMContentLoaded', function () {
   var viewYear, viewMonth;            // mese mostrato (0-11)
   var allCompleted = [];              // tutti i completamenti dell'utente
   var byDay = {};                     // 'YYYY-MM-DD' → [completion, ...]
+  var statusPlans = [];               // schede con stato riposo/saltato
+  var statusByDay = {};               // 'YYYY-MM-DD' → [plan, ...]
   var selectedDay = null;             // giorno aperto nel dettaglio
+
+  var STATUS_META = {
+    riposo:  { label: 'Riposo',  icon: 'fa-bed',     color: '#3b82f6' },
+    saltato: { label: 'Saltato', icon: 'fa-forward', color: '#ef4444' }
+  };
 
   var MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                 'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -66,23 +73,31 @@ document.addEventListener('DOMContentLoaded', function () {
     render();
   }
 
-  // ── Fetch completamenti ───────────────────────────────────────
+  // ── Fetch completamenti + schede riposo/saltato ───────────────
   function fetchData() {
-    sc.from('completed_workouts')
-      .select('id,workout_id,completed_at,actual_duration,calories_burned,distance,heart_rate_avg,perceived_difficulty,rating,notes,workout_plans(name,activity_type)')
-      .eq('user_id', currentUser.id)
-      .order('completed_at', { ascending: false })
-      .then(function (res) {
-        if (res.error) {
-          console.error('Archivio: errore caricamento', res.error);
-          document.getElementById('arcGrid').innerHTML =
-            '<div class="arc-loading" style="color:#dc2626;">Errore nel caricamento. Riprova.</div>';
-          return;
-        }
-        allCompleted = res.data || [];
-        indexByDay();
-        render();
-      });
+    ensureArcStatusStyles();
+    Promise.all([
+      sc.from('completed_workouts')
+        .select('id,workout_id,completed_at,actual_duration,calories_burned,distance,heart_rate_avg,perceived_difficulty,rating,notes,workout_plans(name,activity_type)')
+        .eq('user_id', currentUser.id)
+        .order('completed_at', { ascending: false }),
+      sc.from('workout_plans')
+        .select('id,name,activity_type,status,skip_reason,scheduled_date,created_at')
+        .eq('user_id', currentUser.id)
+        .in('status', ['riposo', 'saltato'])
+    ]).then(function (results) {
+      var compRes = results[0], statRes = results[1];
+      if (compRes.error) {
+        console.error('Archivio: errore caricamento', compRes.error);
+        document.getElementById('arcGrid').innerHTML =
+          '<div class="arc-loading" style="color:#dc2626;">Errore nel caricamento. Riprova.</div>';
+        return;
+      }
+      allCompleted = compRes.data || [];
+      statusPlans = (statRes && !statRes.error) ? (statRes.data || []) : [];
+      indexByDay();
+      render();
+    });
   }
 
   function indexByDay() {
@@ -92,6 +107,16 @@ document.addEventListener('DOMContentLoaded', function () {
       var key = toLocalDayKey(c.completed_at);
       if (!byDay[key]) byDay[key] = [];
       byDay[key].push(c);
+    });
+    // Riposo/saltato: giorno = scheduled_date, altrimenti created_at
+    statusByDay = {};
+    statusPlans.forEach(function (p) {
+      var key = p.scheduled_date
+        ? String(p.scheduled_date).slice(0, 10)
+        : (p.created_at ? toLocalDayKey(p.created_at) : null);
+      if (!key) return;
+      if (!statusByDay[key]) statusByDay[key] = [];
+      statusByDay[key].push(p);
     });
   }
 
@@ -126,12 +151,23 @@ document.addEventListener('DOMContentLoaded', function () {
       kcal += (c.calories_burned || 0);
       mins += (c.actual_duration || 0);
     });
+    // Conteggio riposo/saltato del mese
+    var rest = 0, skip = 0;
+    statusPlans.forEach(function (p) {
+      var key = p.scheduled_date ? String(p.scheduled_date).slice(0, 10) : (p.created_at ? toLocalDayKey(p.created_at) : '');
+      if (key.indexOf(prefix) !== 0) return;
+      if (p.status === 'riposo') rest++;
+      else if (p.status === 'saltato') skip++;
+    });
+
     var el = document.getElementById('arcMonthSummary');
     el.innerHTML =
       kpi('blue',   'fa-calendar-check', Object.keys(days).length, 'Giorni attivi') +
       kpi('green',  'fa-dumbbell',       monthEntries.length,      'Allenamenti') +
       kpi('orange', 'fa-fire',           kcal,                     'Calorie') +
-      kpi('blue',   'fa-clock',          mins + ' min',            'Tempo totale');
+      kpi('blue',   'fa-clock',          mins + ' min',            'Tempo totale') +
+      kpi('blue',   'fa-bed',            rest,                     'Riposi') +
+      kpi('orange', 'fa-forward',        skip,                     'Saltati');
   }
 
   function kpi(color, icon, val, lbl) {
@@ -159,7 +195,9 @@ document.addEventListener('DOMContentLoaded', function () {
     for (var d = 1; d <= daysInMonth; d++) {
       var key = viewYear + '-' + pad(viewMonth + 1) + '-' + pad(d);
       var entries = byDay[key] || [];
+      var stEntries = statusByDay[key] || [];
       var hasWork = entries.length > 0;
+      var hasStatus = stEntries.length > 0;
       var kcal = entries.reduce(function (s, c) { return s + (c.calories_burned || 0); }, 0);
 
       var cls = 'arc-day';
@@ -167,11 +205,24 @@ document.addEventListener('DOMContentLoaded', function () {
       if (key === todayKey) cls += ' arc-day--today';
       if (key === selectedDay) cls += ' arc-day--selected';
 
-      var attr = hasWork ? ' onclick="arcOpenDay(\'' + key + '\')" role="button" tabindex="0"' : '';
+      // Puntini stato (riposo blu / saltato rosso)
+      var dots = '';
+      if (hasStatus) {
+        var seen = {};
+        stEntries.forEach(function (p) {
+          if (seen[p.status]) return; seen[p.status] = true;
+          var m = STATUS_META[p.status];
+          if (m) dots += '<span class="arc-dot" title="' + m.label + '" style="background:' + m.color + '"></span>';
+        });
+      }
+
+      var clickable = hasWork || hasStatus;
+      var attr = clickable ? ' onclick="arcOpenDay(\'' + key + '\')" role="button" tabindex="0"' : '';
       html += '<div class="' + cls + '"' + attr + '>' +
         (hasWork ? '<span class="arc-day-count">' + entries.length + '</span>' : '') +
         '<span class="arc-day-num">' + d + '</span>' +
         (hasWork && kcal > 0 ? '<span class="arc-day-kcal">' + kcal + ' kcal</span>' : '') +
+        (dots ? '<span class="arc-day-dots">' + dots + '</span>' : '') +
         '</div>';
     }
     grid.innerHTML = html;
@@ -183,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var entries = (byDay[dayKey] || []).slice().sort(function (a, b) {
       return new Date(a.completed_at) - new Date(b.completed_at);
     });
+    var stEntries = statusByDay[dayKey] || [];
 
     var card = document.getElementById('arcDetailCard');
     var dateEl = document.getElementById('arcDetailDate');
@@ -190,10 +242,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     dateEl.textContent = formatLongDate(dayKey);
 
-    if (!entries.length) {
+    if (!entries.length && !stEntries.length) {
       body.innerHTML = '<div class="arc-empty"><i class="fas fa-inbox"></i><p>Nessun allenamento questo giorno</p></div>';
     } else {
-      body.innerHTML = entries.map(renderEntry).join('');
+      body.innerHTML = stEntries.map(renderStatusEntry).join('') + entries.map(renderEntry).join('');
     }
 
     card.style.display = 'block';
@@ -240,6 +292,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function metric(icon, val, lbl) {
     return '<span class="arc-metric"><i class="fas ' + icon + '"></i><strong>' + esc(String(val)) + '</strong> ' + esc(lbl) + '</span>';
+  }
+
+  // Voce di dettaglio per una scheda riposo/saltato
+  function renderStatusEntry(p) {
+    var m = STATUS_META[p.status] || { label: p.status, icon: 'fa-circle', color: '#94a3b8' };
+    var reason = (p.status === 'saltato' && p.skip_reason)
+      ? '<div class="arc-entry-note">Motivo: ' + esc(p.skip_reason) + '</div>' : '';
+    return '<div class="arc-entry arc-entry--status" style="border-left:4px solid ' + m.color + '">' +
+      '<div class="arc-entry-top"><div>' +
+        '<div class="arc-entry-name"><i class="fas ' + m.icon + '" style="color:' + m.color + '"></i>' + esc(p.name || 'Scheda') + '</div>' +
+        '<div class="arc-entry-time"><span style="color:' + m.color + ';font-weight:700">' + m.label + '</span></div>' +
+      '</div></div>' + reason +
+      '</div>';
+  }
+
+  // CSS puntini/voci stato (iniettato una volta)
+  function ensureArcStatusStyles() {
+    if (document.getElementById('arc-status-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'arc-status-styles';
+    s.textContent =
+      '.arc-day-dots{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);display:flex;gap:3px}' +
+      '.arc-dot{width:6px;height:6px;border-radius:50%;display:inline-block}' +
+      '.arc-day{position:relative}' +
+      '.arc-entry--status{background:#fafbfc}';
+    document.head.appendChild(s);
   }
 
   // ── AZIONI: Annulla + Modifica (pattern condiviso con /stats) ──

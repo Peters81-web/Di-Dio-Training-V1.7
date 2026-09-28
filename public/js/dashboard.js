@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             const { data, error } = await supabaseClient
                 .from('workout_plans')
-                .select('id, name, activity_id, activity_type, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at')
+                .select('id, name, activity_id, activity_type, total_duration, difficulty, objective, warmup, main_phase, cooldown, notes, created_at, status, skip_reason, completed, completed_at')
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
                 
@@ -407,12 +407,54 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Costruisce la card di un singolo allenamento (estratta per riuso nei gruppi)
+    // Metadati per ogni stato scheda (badge + colore card)
+    const STATUS_META = {
+        da_fare:    { label: 'Da fare',    cls: 'st-dafare',    icon: 'fa-clock' },
+        completato: { label: 'Completato', cls: 'st-completato', icon: 'fa-check-circle' },
+        riposo:     { label: 'Riposo',     cls: 'st-riposo',    icon: 'fa-bed' },
+        saltato:    { label: 'Saltato',    cls: 'st-saltato',   icon: 'fa-forward' }
+    };
+
     function buildWorkoutCard(workout, index) {
+        ensureStatusStyles();
         const iconClass = window.AppCore.getActivityIcon(workout.activity_id, workout.activity_type);
+        const status = STATUS_META[workout.status] ? workout.status : 'da_fare';
+        const meta = STATUS_META[status];
         const card = document.createElement('div');
-        card.className = 'card workout-card';
+        card.className = 'card workout-card status-' + status;
         card.dataset.id = workout.id;
         card.style.animationDelay = `${index * 0.08}s`;
+
+        // Badge stato (+ motivo se saltato)
+        const reason = (status === 'saltato' && workout.skip_reason)
+            ? `<span class="skip-reason" title="${escapeHtml(workout.skip_reason)}">· ${escapeHtml(workout.skip_reason)}</span>` : '';
+        const badge = `<span class="status-badge ${meta.cls}"><i class="fas ${meta.icon}"></i> ${meta.label}${reason}</span>`;
+
+        // Azioni contestuali in base allo stato
+        const id = workout.id;
+        const bView = `<button class="btn btn-primary view-btn" onclick="viewWorkout('${id}')"><i class="fas fa-eye"></i><span>Visualizza</span></button>`;
+        const bEdit = `<button class="btn btn-secondary edit-btn" onclick="editWorkout('${id}')"><i class="fas fa-edit"></i><span>Modifica</span></button>`;
+        const bDelete = `<button class="btn btn-danger delete-btn" onclick="confirmDeleteWorkout('${id}')"><i class="fas fa-trash"></i><span>Elimina</span></button>`;
+        const bComplete = `<button class="btn btn-success complete-btn" onclick="completeWorkout('${id}')"><i class="fas fa-check"></i><span>Completa</span></button>`;
+        const bReset = `<button class="btn btn-ghost reset-btn" onclick="resetWorkoutStatus('${id}')"><i class="fas fa-rotate-left"></i><span>Riporta a "Da fare"</span></button>`;
+        // Riga rapida riposo/salta (solo per schede da fare)
+        const quickRow = `
+            <div class="status-quick">
+                <button class="sq-btn sq-rest" onclick="markWorkoutRest('${id}')"><i class="fas fa-bed"></i> Riposo</button>
+                <button class="sq-btn sq-skip" onclick="markWorkoutSkipped('${id}')"><i class="fas fa-forward"></i> Salta</button>
+            </div>`;
+
+        let actions = '';
+        if (status === 'da_fare') {
+            actions = quickRow + `<div class="workout-actions">${bView}${bEdit}${bDelete}${bComplete}</div>`;
+        } else if (status === 'completato') {
+            actions = `<div class="workout-actions">${bView}${bEdit}${bDelete}${bReset}</div>`;
+        } else if (status === 'riposo') {
+            actions = `<div class="workout-actions">${bView}${bEdit}${bDelete}${bReset}</div>`;
+        } else { // saltato
+            actions = `<div class="workout-actions">${bView}${bEdit}${bComplete}${bReset}</div>`;
+        }
+
         card.innerHTML = `
             <div class="workout-header">
                 <h3 class="workout-title">${escapeHtml(workout.name || 'Allenamento')}</h3>
@@ -420,6 +462,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <i class="fas ${iconClass}"></i>
                 </div>
             </div>
+
+            ${badge}
 
             <div class="workout-details">
                 <div class="detail-row">
@@ -436,26 +480,36 @@ document.addEventListener('DOMContentLoaded', async function() {
                 </div>
             </div>
 
-            <div class="workout-actions">
-                <button class="btn btn-primary view-btn" onclick="viewWorkout('${workout.id}')">
-                    <i class="fas fa-eye"></i>
-                    <span>Visualizza</span>
-                </button>
-                <button class="btn btn-secondary edit-btn" onclick="editWorkout('${workout.id}')">
-                    <i class="fas fa-edit"></i>
-                    <span>Modifica</span>
-                </button>
-                <button class="btn btn-danger delete-btn" onclick="confirmDeleteWorkout('${workout.id}')">
-                    <i class="fas fa-trash"></i>
-                    <span>Elimina</span>
-                </button>
-                <button class="btn btn-success complete-btn" onclick="completeWorkout('${workout.id}')">
-                    <i class="fas fa-check"></i>
-                    <span>Completa</span>
-                </button>
-            </div>
+            ${actions}
         `;
         return card;
+    }
+
+    // CSS badge/stati iniettato una volta sola
+    function ensureStatusStyles() {
+        if (document.getElementById('workout-status-styles')) return;
+        const s = document.createElement('style');
+        s.id = 'workout-status-styles';
+        s.textContent = `
+.status-badge{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;font-weight:700;padding:4px 10px;border-radius:999px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.03em}
+.status-badge .skip-reason{font-weight:500;text-transform:none;letter-spacing:0;opacity:.85;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-badge.st-dafare{background:#eef2f7;color:#64748b}
+.status-badge.st-completato{background:#dcfce7;color:#15803d}
+.status-badge.st-riposo{background:#dbeafe;color:#1d4ed8}
+.status-badge.st-saltato{background:#fee2e2;color:#b91c1c}
+.workout-card{border-left:4px solid transparent}
+.workout-card.status-completato{border-left-color:#22c55e}
+.workout-card.status-riposo{border-left-color:#3b82f6}
+.workout-card.status-saltato{border-left-color:#ef4444}
+.workout-card.status-dafare{border-left-color:#cbd5e1}
+.status-quick{display:flex;gap:8px;margin-bottom:8px}
+.sq-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#fff;color:#475569;font-family:inherit;transition:background .15s,border-color .15s}
+.sq-btn:active{transform:scale(.97)}
+.sq-rest:hover{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8}
+.sq-skip:hover{background:#fef2f2;border-color:#ef4444;color:#b91c1c}
+.btn.btn-ghost{background:#f3f4f6;color:#64748b}
+.btn.btn-ghost:hover{background:#e5e7eb}`;
+        document.head.appendChild(s);
     }
 
     // Raggruppa gli allenamenti per mese-anno di created_at.
@@ -910,6 +964,90 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
+    // ── Cambio stato scheda: riposo / saltato / reset ────────────
+    // Aggiorna lo stato in DB e ri-renderizza la card senza ricaricare tutto.
+    async function updateWorkoutStatus(workoutId, patch, successMsg) {
+        try {
+            showLoading();
+            const { error } = await supabaseClient
+                .from('workout_plans')
+                .update(patch)
+                .eq('id', workoutId)
+                .eq('user_id', currentUser.id);
+            if (error) throw error;
+            const w = workouts.find(x => x.id === workoutId);
+            if (w) Object.assign(w, patch);
+            displayWorkouts(workouts);
+            if (successMsg) showToast(successMsg, 'success');
+        } catch (err) {
+            console.error('Errore aggiornamento stato:', err);
+            showToast('Errore nel cambio di stato', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    window.markWorkoutRest = async function(workoutId) {
+        const ok = await window.showConfirm({
+            title: 'Giorno di riposo',
+            message: 'Segnare questa scheda come giorno di riposo? Non servono dati e conterà come recupero pianificato.',
+            confirmText: 'Sì, è riposo', cancelText: 'Annulla'
+        });
+        if (!ok) return;
+        updateWorkoutStatus(workoutId, { status: 'riposo', completed: false, completed_at: null, skip_reason: null }, 'Segnato come riposo 😴');
+    };
+
+    window.markWorkoutSkipped = async function(workoutId) {
+        const reason = await promptSkipReason();
+        if (reason === null) return; // annullato
+        updateWorkoutStatus(workoutId, { status: 'saltato', completed: false, completed_at: null, skip_reason: reason || null }, 'Allenamento segnato come saltato');
+    };
+
+    window.resetWorkoutStatus = function(workoutId) {
+        updateWorkoutStatus(workoutId, { status: 'da_fare', completed: false, completed_at: null, skip_reason: null }, 'Riportato a "Da fare"');
+    };
+
+    // Popup elegante per il motivo (opzionale) del salto. Ritorna la stringa
+    // (anche vuota) se confermato, null se annullato.
+    function promptSkipReason() {
+        return new Promise(function (resolve) {
+            const ov = document.createElement('div');
+            ov.className = 'app-confirm-overlay';
+            if (window.showConfirm) { /* riusa gli stili di utils.js */ }
+            ov.innerHTML =
+                '<div class="app-confirm" role="dialog" aria-modal="true" style="max-width:400px">' +
+                    '<div class="app-confirm-icon"><i class="fas fa-forward"></i></div>' +
+                    '<h3 class="app-confirm-title">Allenamento saltato</h3>' +
+                    '<p class="app-confirm-msg">Vuoi indicare un motivo? (facoltativo)</p>' +
+                    '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-6px 0 14px">' +
+                        ['Malato','Impegni','Stanco','Infortunio','Maltempo'].map(function (r) {
+                            return '<button type="button" class="sr-chip" data-r="' + r + '" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e5e7eb;background:#fff;color:#475569;font-size:.82rem;font-weight:600;cursor:pointer">' + r + '</button>';
+                        }).join('') +
+                    '</div>' +
+                    '<input type="text" class="sr-input" maxlength="80" placeholder="Oppure scrivi un motivo..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;font-family:inherit;margin-bottom:16px">' +
+                    '<div class="app-confirm-actions">' +
+                        '<button class="app-confirm-btn app-confirm-cancel">Annulla</button>' +
+                        '<button class="app-confirm-btn app-confirm-ok">Conferma</button>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(ov);
+            requestAnimationFrame(function () { ov.classList.add('is-open'); });
+            const input = ov.querySelector('.sr-input');
+            ov.querySelectorAll('.sr-chip').forEach(function (c) {
+                c.addEventListener('click', function () { input.value = c.dataset.r; });
+            });
+            function done(val) {
+                ov.classList.remove('is-open');
+                setTimeout(function () { if (ov.parentNode) ov.remove(); }, 200);
+                resolve(val);
+            }
+            ov.querySelector('.app-confirm-cancel').addEventListener('click', function () { done(null); });
+            ov.querySelector('.app-confirm-ok').addEventListener('click', function () { done(input.value.trim()); });
+            ov.addEventListener('click', function (e) { if (e.target === ov) done(null); });
+            setTimeout(function () { input.focus(); }, 60);
+        });
+    }
+
     /**
      * Inizia il completamento di un allenamento
      */
@@ -974,6 +1112,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('workout_plans')
                 .update({
                     completed: true,
+                    status: 'completato',
+                    skip_reason: null,
                     completed_at: completedWorkoutData.completed_at,
                     average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
                 })
@@ -987,7 +1127,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 3. UI aggiornata solo dopo che entrambe le operazioni DB sono complete
             closeModal('completeWorkoutModal');
             showToast('Allenamento completato con successo!', 'success');
-            workouts = workouts.filter(w => w.id !== formData.workoutId);
+            const wc = workouts.find(w => w.id === formData.workoutId);
+            if (wc) { wc.status = 'completato'; wc.completed = true; wc.completed_at = completedWorkoutData.completed_at; wc.skip_reason = null; }
             displayWorkouts(workouts);
             await loadWeeklyStats();
 

@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
       sc.from('workout_plans')
         // created_at incluso per usarlo come fallback quando scheduled_date è NULL
         // (caso comune per le schede generate da AI Trainer / inserite manualmente)
-        .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty,created_at')
+        .select('id,name,scheduled_date,completed,completed_at,average_heart_rate,activity_type,total_duration,difficulty,created_at,status,skip_reason')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: true }),
       sc.from('completed_workouts')
@@ -121,7 +121,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function renderAll() {
     var w = getFiltered();
-    renderKPI(w); renderBpm(w); renderActivity(w); renderWeekly(w); renderTable(w);
+    renderKPI(w); renderAdherence(w); renderBpm(w); renderActivity(w); renderWeekly(w); renderTable(w);
+  }
+
+  // Aderenza: completati + riposo (recupero pianificato) vs saltati.
+  // Il riposo conta come positivo (giorno rispettato).
+  function renderAdherence(ws) {
+    var host = document.getElementById('adherenceCard');
+    if (!host) return;
+    var done = 0, rest = 0, skip = 0;
+    ws.forEach(function (w) {
+      var s = w.status || (w.completed ? 'completato' : 'da_fare');
+      if (s === 'completato') done++;
+      else if (s === 'riposo') rest++;
+      else if (s === 'saltato') skip++;
+    });
+    var decided = done + rest + skip;
+    if (decided === 0) {
+      host.innerHTML = '<div class="adh-empty">Nessun dato di aderenza per questo periodo.</div>';
+      return;
+    }
+    var pct = Math.round(((done + rest) / decided) * 100);
+    var pctColor = pct >= 80 ? '#16a34a' : (pct >= 50 ? '#f59e0b' : '#ef4444');
+
+    host.innerHTML =
+      '<div class="adh-head">' +
+        '<div class="adh-title"><i class="fas fa-bullseye" style="color:#4e54c8"></i> Aderenza al programma</div>' +
+        '<div class="adh-pct" style="color:' + pctColor + '">' + pct + '%</div>' +
+      '</div>' +
+      '<div class="adh-bar"><div class="adh-fill" style="width:' + pct + '%;background:' + pctColor + '"></div></div>' +
+      '<div class="adh-legend">' +
+        '<span class="adh-item"><b style="color:#16a34a">' + done + '</b> completati</span>' +
+        '<span class="adh-item"><b style="color:#2563eb">' + rest + '</b> riposi</span>' +
+        '<span class="adh-item"><b style="color:#dc2626">' + skip + '</b> saltati</span>' +
+      '</div>';
   }
 
   // Filtra allCompleted per lo stesso periodo selezionato (activePeriod).

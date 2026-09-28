@@ -129,7 +129,9 @@ function sanitizeWorkoutContext(raw) {
     avgDuration:    clampInt(raw.avgDuration,    0, 600,   0),
     topActivity:    clampStr(raw.topActivity, MAX_TOP_ACTIVITY_LENGTH),
     streak:         clampInt(raw.streak,         0, 3650,  0),
-    lastWorkouts:   lastWorkoutsArr
+    lastWorkouts:   lastWorkoutsArr,
+    restCount:      clampInt(raw.restCount,      0, 10000, 0),
+    skipCount:      clampInt(raw.skipCount,      0, 10000, 0)
   };
 }
 
@@ -218,8 +220,10 @@ Storico recente dell'utente (ultime settimane):
 - Durata media: ${workoutContext.avgDuration} minuti
 - Attività più frequente: ${workoutContext.topActivity || 'non specificata'}
 - Giorni di streak: ${workoutContext.streak}
+- Giorni di riposo (pianificati, ultimi 30gg): ${workoutContext.restCount}
+- Allenamenti saltati (ultimi 30gg): ${workoutContext.skipCount}
 ${workoutContext.lastWorkouts?.length ? `- Ultimi allenamenti: ${workoutContext.lastWorkouts.join(', ')}` : ''}
-Tieni conto di questo storico per calibrare il piano: non essere troppo conservativo se l'utente si allena già regolarmente.
+Tieni conto di questo storico per calibrare il piano: non essere troppo conservativo se l'utente si allena già regolarmente. Se ci sono molti allenamenti saltati, valuta un piano più sostenibile o indaga gli ostacoli; considera i giorni di riposo come recupero positivo già pianificato.
 ` : '';
 
   const userMessage = `Crea un piano di allenamento ${planTypeText} per un atleta di livello ${levelText}.

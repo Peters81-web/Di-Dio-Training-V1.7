@@ -88,7 +88,22 @@ document.addEventListener('DOMContentLoaded', async function () {
         .map(w => w.workout_plans?.name)
         .filter(Boolean);
 
-      workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak, lastWorkouts };
+      // Riposo/saltato ultimi 30 giorni (l'IA li usa per calibrare i consigli)
+      let restCount = 0, skipCount = 0;
+      try {
+        const { data: statusRows } = await supabaseClient
+          .from('workout_plans')
+          .select('status')
+          .eq('user_id', currentUser.id)
+          .in('status', ['riposo', 'saltato'])
+          .gte('created_at', thirtyDaysAgo.toISOString());
+        (statusRows || []).forEach(r => {
+          if (r.status === 'riposo') restCount++;
+          else if (r.status === 'saltato') skipCount++;
+        });
+      } catch (e) { /* non bloccante */ }
+
+      workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak, lastWorkouts, restCount, skipCount };
       renderContextCard(workoutContext);
     } catch (err) {
       console.warn('Context load error:', err);
