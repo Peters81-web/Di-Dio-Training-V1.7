@@ -219,7 +219,9 @@
 //         FC a riposo - richiudibili e precompilati dal giorno
 //         dell'attivita': si scrivono con un'unione, quindi un campo
 //         lasciato vuoto NON azzera quello inserito dalla dashboard.
-const CACHE_NAME  = 'didio-v68';
+//   v69 → Stati scheda: Riposo/Saltato (dashboard) + aderenza (stats)
+//         + puntini sul calendario (archivio) + contesto IA.
+const CACHE_NAME  = 'didio-v69';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [

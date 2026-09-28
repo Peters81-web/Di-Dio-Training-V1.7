@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
         'created_at', 'scheduled_date', 'completed', 'completed_at',
         'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source',
-        'hr_series'
+        'hr_series', 'status', 'skip_reason'
     ];
 
     function isMissingColumnError(err) {
@@ -777,8 +777,32 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <span>Completa</span>
                 </button>`}
             </div>
+            ${isImported(workout) ? '' : `
+            <div class="status-quick">
+                <button class="sq-btn sq-rest" onclick="markWorkoutRest('${workout.id}')" title="Segna come giorno di riposo (senza dati)">
+                    <i class="fas fa-bed"></i> Riposo
+                </button>
+                <button class="sq-btn sq-skip" onclick="markWorkoutSkipped('${workout.id}')" title="Segna come non svolto">
+                    <i class="fas fa-forward"></i> Salta
+                </button>
+            </div>`}
         `;
+        ensureStatusStyles();
         return card;
+    }
+
+    // CSS pulsanti rapidi riposo/salta (iniettato una volta sola)
+    function ensureStatusStyles() {
+        if (document.getElementById('workout-status-styles')) return;
+        const s = document.createElement('style');
+        s.id = 'workout-status-styles';
+        s.textContent = `
+.status-quick{display:flex;gap:8px;margin-top:8px}
+.sq-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;cursor:pointer;border:1.5px solid #e5e7eb;background:#fff;color:#475569;font-family:inherit;transition:background .15s,border-color .15s}
+.sq-btn:active{transform:scale(.97)}
+.sq-rest:hover{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8}
+.sq-skip:hover{background:#fef2f2;border-color:#ef4444;color:#b91c1c}`;
+        document.head.appendChild(s);
     }
 
     // ===== PROVENIENZA =====
@@ -921,7 +945,11 @@ document.addEventListener('DOMContentLoaded', async function() {
      * vecchio.
      */
     function pending() {
-        return (workouts || []).filter(w => !w.completed);
+        // Da fare = non completata E non segnata come riposo/saltato.
+        // Riposo e saltato escono dall'elenco (come le completate) e
+        // restano visibili nel calendario dell'Archivio.
+        return (workouts || []).filter(w =>
+            !w.completed && w.status !== 'riposo' && w.status !== 'saltato');
     }
 
     function filterBySource(list) {
@@ -1646,6 +1674,90 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
+    // ── Stato scheda: riposo / saltato ───────────────────────────
+    // Aggiorna lo stato in DB, aggiorna la copia in memoria e ri-renderizza.
+    // Una scheda riposo/saltato esce da pending() → sparisce dall'elenco e
+    // compare nel calendario dell'Archivio.
+    async function setWorkoutStatus(workoutId, patch, successMsg) {
+        try {
+            showLoading();
+            const { error } = await supabaseClient
+                .from('workout_plans')
+                .update(patch)
+                .eq('id', workoutId)
+                .eq('user_id', currentUser.id);
+            if (error) throw error;
+            const w = (workouts || []).find(x => x.id === workoutId);
+            if (w) Object.assign(w, patch);
+            safe(function () { displayWorkouts(filterBySource(pending())); });
+            safe(function () { renderSourceFilters(pending()); });
+            safe(function () { renderToday(workouts); });
+            if (successMsg) showToast(successMsg, 'success');
+        } catch (err) {
+            console.error('Errore cambio stato scheda:', err);
+            showToast('Errore nel cambio di stato', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    window.markWorkoutRest = async function(workoutId) {
+        const ok = await window.showConfirm({
+            title: 'Giorno di riposo',
+            message: 'Segnare questa scheda come giorno di riposo? Non servono dati e conterà come recupero pianificato.',
+            confirmText: 'Sì, è riposo', cancelText: 'Annulla'
+        });
+        if (!ok) return;
+        setWorkoutStatus(workoutId, { status: 'riposo', completed: false, completed_at: null, skip_reason: null }, 'Segnato come riposo 😴');
+    };
+
+    window.markWorkoutSkipped = async function(workoutId) {
+        const reason = await promptSkipReason();
+        if (reason === null) return; // annullato
+        setWorkoutStatus(workoutId, { status: 'saltato', completed: false, completed_at: null, skip_reason: reason || null }, 'Allenamento segnato come saltato');
+    };
+
+    // Popup elegante per il motivo (facoltativo) del salto. Riusa gli stili
+    // di .app-confirm (utils.js). Ritorna la stringa se confermato, null se annullato.
+    function promptSkipReason() {
+        return new Promise(function (resolve) {
+            if (window.showConfirm) { /* garantisce l'iniezione degli stili .app-confirm */ }
+            const ov = document.createElement('div');
+            ov.className = 'app-confirm-overlay';
+            ov.innerHTML =
+                '<div class="app-confirm" role="dialog" aria-modal="true" style="max-width:400px">' +
+                    '<div class="app-confirm-icon"><i class="fas fa-forward"></i></div>' +
+                    '<h3 class="app-confirm-title">Allenamento saltato</h3>' +
+                    '<p class="app-confirm-msg">Vuoi indicare un motivo? (facoltativo)</p>' +
+                    '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-6px 0 14px">' +
+                        ['Malato','Impegni','Stanco','Infortunio','Maltempo'].map(function (r) {
+                            return '<button type="button" class="sr-chip" data-r="' + r + '" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e5e7eb;background:#fff;color:#475569;font-size:.82rem;font-weight:600;cursor:pointer">' + r + '</button>';
+                        }).join('') +
+                    '</div>' +
+                    '<input type="text" class="sr-input" maxlength="80" placeholder="Oppure scrivi un motivo..." style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;font-family:inherit;margin-bottom:16px">' +
+                    '<div class="app-confirm-actions">' +
+                        '<button class="app-confirm-btn app-confirm-cancel">Annulla</button>' +
+                        '<button class="app-confirm-btn app-confirm-ok">Conferma</button>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(ov);
+            requestAnimationFrame(function () { ov.classList.add('is-open'); });
+            const input = ov.querySelector('.sr-input');
+            ov.querySelectorAll('.sr-chip').forEach(function (c) {
+                c.addEventListener('click', function () { input.value = c.dataset.r; input.focus(); });
+            });
+            function done(val) {
+                ov.classList.remove('is-open');
+                setTimeout(function () { if (ov.parentNode) ov.remove(); }, 200);
+                resolve(val);
+            }
+            ov.querySelector('.app-confirm-cancel').addEventListener('click', function () { done(null); });
+            ov.querySelector('.app-confirm-ok').addEventListener('click', function () { done(input.value.trim()); });
+            ov.addEventListener('click', function (e) { if (e.target === ov) done(null); });
+            setTimeout(function () { input.focus(); }, 60);
+        });
+    }
+
     /**
      * Inizia il completamento di un allenamento
      */
@@ -1782,6 +1894,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             // 2. Aggiornamento denormalizzato (non critico — completed_workouts è la fonte di verità)
             const planUpdate = {
                 completed: true,
+                status: 'completato',
+                skip_reason: null,
                 completed_at: completedWorkoutData.completed_at,
                 average_heart_rate: formData.heartRateAvg > 0 ? formData.heartRateAvg : null
             };
@@ -1818,6 +1932,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const fatta = workouts.find(w => w.id === formData.workoutId);
             if (fatta) {
                 fatta.completed = true;
+                fatta.status = 'completato';
                 fatta.completed_at = completedWorkoutData.completed_at;
             }
             displayWorkouts(filterBySource(pending()));

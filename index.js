@@ -400,6 +400,9 @@ function sanitizeWorkoutContext(raw) {
     avgDuration:    clampInt(raw.avgDuration,    0, 600,   0),
     topActivity:    clampStr(raw.topActivity, MAX_TOP_ACTIVITY_LENGTH),
     streak:         clampInt(raw.streak,         0, 3650,  0),
+    // Riposo/saltato (ultimi 30gg): aderenza al programma
+    restCount:      clampInt(raw.restCount,      0, 10000, 0),
+    skipCount:      clampInt(raw.skipCount,      0, 10000, 0),
     // Condizioni ambientali tipiche. null quando il dato non c'è: uno zero
     // finto direbbe all'AI "si allena a 0 gradi con 0% di umidità", che è
     // peggio del non saperlo.
@@ -835,6 +838,8 @@ app.post('/api/generate-plan', requireAuth, aiLimiter, async (req, res) => {
     `- Durata media: ${workoutContext.avgDuration} minuti`,
     `- Attività più frequente: ${workoutContext.topActivity || 'non specificata'}`,
     `- Giorni di streak: ${workoutContext.streak}`,
+    `- Giorni di riposo pianificati (30gg): ${workoutContext.restCount} — recupero positivo`,
+    `- Allenamenti saltati (30gg): ${workoutContext.skipCount}${workoutContext.skipCount >= 3 ? ' — valuta un piano più sostenibile o indaga gli ostacoli' : ''}`,
     workoutContext.lastWorkouts?.length ? `- Ultimi allenamenti: ${workoutContext.lastWorkouts.join(', ')}` : '',
     performanceSection(workoutContext),
     feedbackSection(workoutContext),

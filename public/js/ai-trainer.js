@@ -320,8 +320,25 @@ document.addEventListener('DOMContentLoaded', async function () {
       const sessionNotes  = window.AiContext
         ? window.AiContext.collectSessionNotes(completed) : [];
 
+      // Riposo/saltato ultimi 30 giorni: l'AI li usa per calibrare i consigli
+      // (molti salti → piano più sostenibile; riposi → recupero già pianificato).
+      let restCount = 0, skipCount = 0;
+      try {
+        const { data: statusRows } = await supabaseClient
+          .from('workout_plans')
+          .select('status')
+          .eq('user_id', currentUser.id)
+          .in('status', ['riposo', 'saltato'])
+          .gte('created_at', thirtyDaysAgo.toISOString());
+        (statusRows || []).forEach(r => {
+          if (r.status === 'riposo') restCount++;
+          else if (r.status === 'saltato') skipCount++;
+        });
+      } catch (e) { /* non bloccante */ }
+
       workoutContext = { totalCompleted, avgDuration, avgPerWeek, topActivity, streak,
                          lastWorkouts, avgTemperature, avgHumidity, sessionNotes,
+                         restCount, skipCount,
                          maxHr:         hrProfile ? hrProfile.maxHr  : null,
                          restHr:        hrProfile ? hrProfile.restHr : null,
                          maxIsMeasured: hrProfile ? !!hrProfile.maxIsMeasured : false,
