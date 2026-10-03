@@ -89,6 +89,24 @@
     return 'sera';
   }
 
+  // ── Cadenza ───────────────────────────────────────────────────
+  // Garmin salva la cadenza di corsa come CICLI al minuto (una gamba),
+  // tipicamente 85-95: il numero familiare in passi/min (~170-190) è il
+  // doppio. La bici è già in giri/min (rpm) e non va toccata.
+  //
+  // La soglia 130 distingue i due casi senza affidarsi a cosa dichiara il
+  // file: un valore di corsa sotto 130 è quasi certamente per-gamba (da
+  // raddoppiare), uno sopra è già in passi/min.
+  function normalizeCadence(type, raw) {
+    if (!(raw > 0)) return null;
+    var v = Math.round(raw);
+    if ((type === 'running' || type === 'walking') && v < 130) v = v * 2;
+    return v;
+  }
+  function cadenceUnit(type) {
+    return (type === 'cycling') ? 'rpm' : 'spm';
+  }
+
   // ── Traccia GPS ───────────────────────────────────────────────
   // Un'ora di registrazione a 1 punto/secondo fa 3600 coppie: ~70 KB per
   // riga, sprecati perché su una mappa larga qualche centinaio di pixel
@@ -279,6 +297,15 @@
       if (typeof a.maxHr === 'number' && (maxHr === null || a.maxHr > maxHr)) maxHr = a.maxHr;
     });
 
+    // Cadenza media pesata sulla durata (come la FC) + massimo tra i blocchi.
+    var cadNum = 0, cadDen = 0, cadMax = null;
+    ord.forEach(function (a) {
+      if (typeof a.cadence === 'number' && a.durationMin > 0) {
+        cadNum += a.cadence * a.durationMin; cadDen += a.durationMin;
+      }
+      if (typeof a.cadenceMax === 'number' && (cadMax === null || a.cadenceMax > cadMax)) cadMax = a.cadenceMax;
+    });
+
     // Meteo e temperatura dal blocco che porta la traccia: è quello di
     // cui conosciamo il luogo. Altrimenti dal primo che ne ha.
     var meteoDa = principale || ord.find(function (a) {
@@ -296,6 +323,8 @@
       calories:    sumOrNull(ord, 'calories'),
       avgHr:       hrDen ? Math.round(hrNum / hrDen) : null,
       maxHr:       maxHr,
+      cadence:     cadDen ? Math.round(cadNum / cadDen) : null,
+      cadenceMax:  cadMax,
       temperature: meteoDa.temperature,
       weather:     meteoDa.weather,
       weatherLabel: meteoDa.weatherLabel,
@@ -377,6 +406,7 @@
     const tps    = activity.getElementsByTagName('Trackpoint');
     const coords = [];
     const hrSamples = [];
+    let cadSum = 0, cadCount = 0, cadMax = 0;
 
     for (let i = 0; i < tps.length; i++) {
       const tp = tps[i];
@@ -397,6 +427,30 @@
         const hv = parseFloat(getText(hrEl, 'Value'));
         const tv = new Date(tEl.textContent.trim());
         if (hv > 0 && !isNaN(tv.getTime())) hrSamples.push({ t: tv.getTime(), hr: hv });
+      }
+
+      // Cadenza: la corsa la mette in <ns3:RunCadence> (estensione TPX),
+      // la bici in <Cadence> (figlio diretto del Trackpoint). Leggiamo la
+      // prima disponibile, indipendentemente dal namespace.
+      let cadEl = tp.getElementsByTagNameNS('*', 'RunCadence')[0] ||
+                  tp.getElementsByTagName('Cadence')[0];
+      if (cadEl) {
+        const cv = parseFloat(cadEl.textContent);
+        if (cv > 0) { cadSum += cv; cadCount++; if (cv > cadMax) cadMax = cv; }
+      }
+    }
+
+    // Ripiego sui lap quando i trackpoint non portano la cadenza: la media
+    // di corsa sta in <ns3:AvgRunCadence> dentro l'estensione del lap.
+    if (cadCount === 0) {
+      for (let i = 0; i < laps.length; i++) {
+        const la = laps[i].getElementsByTagNameNS('*', 'AvgRunCadence')[0];
+        if (la) {
+          const cv = parseFloat(la.textContent);
+          if (cv > 0) { cadSum += cv; cadCount++; }
+        }
+        const lm = laps[i].getElementsByTagNameNS('*', 'MaxRunCadence')[0];
+        if (lm) { const mv = parseFloat(lm.textContent); if (mv > cadMax) cadMax = mv; }
       }
     }
 
@@ -433,6 +487,8 @@
         ? Math.round(hrSamples.reduce(function (m, x) { return x.hr > m ? x.hr : m; }, 0))
         : (maxHr || null),
       temperature: tCount ? Math.round((tSum / tCount) * 10) / 10 : null,
+      cadence: normalizeCadence(m.type, cadCount ? cadSum / cadCount : 0),
+      cadenceMax: normalizeCadence(m.type, cadMax),
       track: buildTrack(coords),
       hrSeries: buildHrSeries(hrSamples)
     };
@@ -463,6 +519,7 @@
     if (typeEl && typeEl.textContent) sport = typeEl.textContent.trim();
 
     let dist = 0, hrSum = 0, hrCount = 0, tempSum = 0, tempCount = 0;
+    let cadSum = 0, cadCount = 0, cadMax = 0;
     let firstTime = null, lastTime = null, prevLat = null, prevLon = null;
     const coords = []; // le stesse coordinate usate per la distanza, ora conservate
     const hrSamples = [];
@@ -502,6 +559,14 @@
         // 0 è una temperatura legittima: si filtra solo su NaN e valori assurdi
         if (!isNaN(tv) && tv > -60 && tv < 60) { tempSum += tv; tempCount++; }
       }
+
+      // Cadenza: <gpxtpx:cad> dentro TrackPointExtension. Come per il TCX,
+      // per la corsa è per-gamba e va raddoppiata (lo fa normalizeCadence).
+      const cadEl = p.getElementsByTagNameNS('*', 'cad')[0];
+      if (cadEl) {
+        const cv = parseFloat(cadEl.textContent);
+        if (cv > 0) { cadSum += cv; cadCount++; if (cv > cadMax) cadMax = cv; }
+      }
     }
 
     const durationMin = (firstTime && lastTime)
@@ -522,6 +587,8 @@
         ? Math.round(hrSamples.reduce(function (m, x) { return x.hr > m ? x.hr : m; }, 0))
         : null,
       temperature: tempCount ? Math.round((tempSum / tempCount) * 10) / 10 : null,
+      cadence: normalizeCadence(m.type, cadCount ? cadSum / cadCount : 0),
+      cadenceMax: normalizeCadence(m.type, cadMax),
       track: buildTrack(coords),
       hrSeries: buildHrSeries(hrSamples)
     };
@@ -618,6 +685,7 @@
     summaryParts.push(data.durationMin + ' min');
     if (data.calories) summaryParts.push(data.calories + ' kcal' + (caloriesEstimated ? ' (stimate)' : ''));
     if (data.avgHr) summaryParts.push('FC ' + data.avgHr + ' bpm');
+    if (data.cadence) summaryParts.push(data.cadence + ' ' + cadenceUnit(data.activityType));
     if (data.temperature !== null && data.temperature !== undefined) {
       summaryParts.push(data.temperature + ' °C');
     }
@@ -655,7 +723,8 @@
       weather:        data.weather || null, // 003, dal servizio meteo
       humidity:       data.humidity,        // 005, dal servizio meteo
       source:         'garmin',        // 004
-      hr_series:      data.hrSeries    // 008, tracciato cardiaco
+      hr_series:      data.hrSeries,   // 008, tracciato cardiaco
+      cadence_avg:    data.cadence     // 009, cadenza media
     };
 
     const ins = await insertDroppingMissing(sc, basePlan, optional);
@@ -766,7 +835,8 @@
       temperature:    data.temperature, // 003
       weather:        data.weather || null, // 003
       humidity:       data.humidity,    // 005
-      hr_series:      data.hrSeries     // 008
+      hr_series:      data.hrSeries,    // 008
+      cadence_avg:    data.cadence      // 009
     };
 
     const upd = await updateDroppingMissing(sc, target.planId, userId, base, optional);
@@ -1213,6 +1283,7 @@
           metric('Distanza', parsed.distanceKm != null ? parsed.distanceKm + ' km' : '—') +
           metric('Calorie', parsed.calories != null ? parsed.calories + ' kcal' : '—') +
           metric('FC media', parsed.avgHr != null ? parsed.avgHr + ' bpm' : '—') +
+          metric('Cadenza', parsed.cadence != null ? parsed.cadence + ' ' + cadenceUnit(parsed.activityType) : '—') +
           metric('Temperatura', parsed.temperature != null ? parsed.temperature + ' °C' : '—') +
           metric('Punti GPS', gpsPoints > 0 ? gpsPoints + ' punti' : '—') +
           metric('Condizioni', gpsPoints > 0 ? '<i class="fas fa-spinner fa-spin"></i> cerco...' : '—') +

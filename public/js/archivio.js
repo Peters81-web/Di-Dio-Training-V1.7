@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // questa colonna le zone reali e il carico TRIMP non sarebbero
   // consultabili da nessuna parte.
   var PLAN_COLS = ['name', 'activity_type', 'gps_track', 'max_heart_rate',
-                   'temperature', 'weather', 'humidity', 'hr_series'];
+                   'temperature', 'weather', 'humidity', 'hr_series', 'cadence_avg'];
 
   function isMissingColumnError(err) {
     if (!err) return false;
@@ -413,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (c.distance)        metrics.push(metric('fa-route', c.distance + ' km', 'distanza'));
     if (c.heart_rate_avg)  metrics.push(metric('fa-heart-pulse', c.heart_rate_avg + ' bpm', 'FC media'));
     if (plan.max_heart_rate) metrics.push(metric('fa-arrow-up', plan.max_heart_rate + ' bpm', 'FC max'));
+    if (plan.cadence_avg)  metrics.push(metric('fa-shoe-prints', plan.cadence_avg + (plan.activity_type === 'cycling' ? ' rpm' : ' spm'), 'cadenza'));
     if (c.rating)          metrics.push(metric('fa-star', c.rating + '/5', 'voto'));
     // Temperatura: dagli import Garmin viene dal sensore al polso, che
     // legge anche il calore corporeo e segna qualche grado in più.

@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         'difficulty', 'objective', 'warmup', 'main_phase', 'cooldown', 'notes',
         'created_at', 'scheduled_date', 'completed', 'completed_at',
         'gps_track', 'max_heart_rate', 'temperature', 'weather', 'humidity', 'source',
-        'hr_series', 'status', 'skip_reason'
+        'hr_series', 'status', 'skip_reason', 'cadence_avg'
     ];
 
     function isMissingColumnError(err) {
@@ -1313,6 +1313,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (c.calories_burned) items.push(detailItem('fa-fire', 'Calorie', escapeHtml(String(c.calories_burned)) + ' kcal'));
             if (c.heart_rate_avg)  items.push(detailItem('fa-heart-pulse', 'FC media', escapeHtml(String(c.heart_rate_avg)) + ' bpm'));
             if (workout.max_heart_rate) items.push(detailItem('fa-arrow-up', 'FC massima', escapeHtml(String(workout.max_heart_rate)) + ' bpm'));
+            if (workout.cadence_avg) {
+                // spm (passi/min) per corsa/camminata, rpm (giri/min) per la bici
+                const cadUnit = workout.activity_type === 'cycling' ? 'rpm' : 'spm';
+                items.push(detailItem('fa-shoe-prints', 'Cadenza', escapeHtml(String(workout.cadence_avg)) + ' ' + cadUnit));
+            }
         } else {
             // Per le schede da svolgere contano difficoltà e obiettivo.
             // Su un'attività importata l'obiettivo è sempre "Attività

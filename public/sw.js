@@ -221,7 +221,8 @@
 //         lasciato vuoto NON azzera quello inserito dalla dashboard.
 //   v69 → Stati scheda: Riposo/Saltato (dashboard) + aderenza (stats)
 //         + puntini sul calendario (archivio) + contesto IA.
-const CACHE_NAME  = 'didio-v69';
+//   v70 → Cadenza dai file Garmin (TCX/GPX): import, dettaglio, archivio.
+const CACHE_NAME  = 'didio-v70';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
