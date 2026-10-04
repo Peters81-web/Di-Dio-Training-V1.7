@@ -29,6 +29,7 @@
   var maxHr  = null;   // FC massima: misurata se disponibile, altrimenti stimata
   var restHr = null;   // FC a riposo: abilita il metodo Karvonen
   var age    = null;
+  var zoneLowers = null; // confini personalizzati copiati da Garmin (o null)
   var maxIsMeasured = false;
   var profileLoaded = false;
   var lastWorkouts  = null; // per ri-renderizzare quando arriva il profilo
@@ -90,11 +91,14 @@
 
         if (row.resting_heart_rate > 0) restHr = row.resting_heart_rate;
 
+        zoneLowers = (window.HrModel && window.HrModel.validLowers)
+          ? window.HrModel.validLowers(row.hr_zone_lowers) : null;
+
         if (lastWorkouts) render(lastWorkouts); // ridisegna ora che sappiamo i parametri
       }
 
       sc.from('profiles')
-        .select('birthdate, max_heart_rate, resting_heart_rate')
+        .select('birthdate, max_heart_rate, resting_heart_rate, hr_zone_lowers')
         .eq('id', uid).single()
         .then(function (r) {
           if (!r.error) return apply(r.data);
@@ -121,8 +125,8 @@
       return;
     }
 
-    // Senza data di nascita non possiamo stimare la FC massima.
-    if (!maxHr) {
+    // Senza FC massima (né confini personalizzati) non possiamo calcolare le zone.
+    if (!maxHr && !zoneLowers) {
       box.innerHTML = msgBox(
         'fa-user-clock',
         'Per calcolare le zone serve la tua data di nascita.',
@@ -145,21 +149,16 @@
     }
 
     // Accumula minuti e sessioni per zona
-    // Confini in bpm, calcolati una volta sola con il metodo attivo
-    // (Karvonen se abbiamo la FC a riposo, altrimenti % della massima).
-    var bounds = ZONES.map(function (z) {
-      return { lo: hrAt(z.lo), hi: hrAt(z.hi) };
-    });
+    // Confini in bpm dal modello unico: usa i confini personalizzati copiati
+    // da Garmin se presenti, altrimenti la formula (Karvonen / % FC max).
+    var bounds = window.HrModel.bounds(maxHr, restHr, zoneLowers);
 
     var acc = ZONES.map(function (z) { return { z: z, min: 0, count: 0 }; });
     withHr.forEach(function (w) {
       var bpm = w.average_heart_rate;
-      var idx = 0;
-      for (var i = 0; i < ZONES.length; i++) {
-        // sotto Z1 viene assorbito in Z1: è comunque lavoro rigenerante
-        if (bpm < bounds[i].hi) { idx = i; break; }
-        idx = ZONES.length - 1;
-      }
+      // zoneOf torna 1-5, stesso criterio del dettaglio "Tempo in zona"
+      var z = window.HrModel.zoneOf(bpm, maxHr, restHr, zoneLowers) || 1;
+      var idx = z - 1;
       acc[idx].min   += (w.total_duration || 0);
       acc[idx].count += 1;
     });
@@ -175,6 +174,11 @@
     var rows = acc.map(function (a, i) {
       var loBpm = bounds[i].lo;
       var hiBpm = bounds[i].hi;
+      // L'ultima zona non ha un tetto (hi = Infinity): si mostra "171+ bpm",
+      // e le altre come intervallo chiuso col battito di confine escluso.
+      var rangeTxt = (hiBpm === Infinity)
+        ? loBpm + '+ bpm'
+        : loBpm + '-' + (hiBpm - 1) + ' bpm';
       var share = totMin > 0 ? (a.min / totMin * 100) : 0;
       return '' +
         '<div class="hrz-row">' +
@@ -182,7 +186,7 @@
           '<div class="hrz-info">' +
             '<div class="hrz-line">' +
               '<span class="hrz-name">' + a.z.name + '</span>' +
-              '<span class="hrz-range">' + loBpm + '-' + hiBpm + ' bpm</span>' +
+              '<span class="hrz-range">' + rangeTxt + '</span>' +
             '</div>' +
             '<div class="hrz-bar"><span style="width:' + share.toFixed(1) + '%;background:' + a.z.color + '"></span></div>' +
             '<div class="hrz-desc">' + a.z.desc + '</div>' +

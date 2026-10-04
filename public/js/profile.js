@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // migrations/002-hr-settings.sql: senza, la select fallisce in blocco e
     // il profilo si mostrerebbe VUOTO (nome, data di nascita, obiettivi
     // compresi). Quindi teniamo pronta una versione ridotta.
-    const PROFILE_COLS_FULL   = 'full_name, birthdate, gender, avatar_url, fitness_goals, max_heart_rate, resting_heart_rate';
+    const PROFILE_COLS_FULL   = 'full_name, birthdate, gender, avatar_url, fitness_goals, max_heart_rate, resting_heart_rate, hr_zone_lowers';
     const PROFILE_COLS_LEGACY = 'full_name, birthdate, gender, avatar_url, fitness_goals';
 
     async function loadProfile() {
@@ -145,6 +145,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         setValue('editWeight',       latestMeasurement.weight);
         setValue('editMaxHr',        currentProfile.max_heart_rate);
         setValue('editRestHr',       currentProfile.resting_heart_rate);
+        setValue('editZoneLowers',   Array.isArray(currentProfile.hr_zone_lowers)
+                                       ? currentProfile.hr_zone_lowers.join(', ') : '');
         setValue('editGoal',         goals.primary_goal);
         setValue('editLevel',        goals.level);
         setValue('editFrequency',    goals.frequency);
@@ -188,9 +190,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         // e va perso TUTTO il salvataggio (nome, data di nascita, obiettivi),
         // non solo i due campi nuovi. Quindi al primo errore riproviamo senza:
         // meglio salvare il profilo perdendo i dati FC che non salvare nulla.
+        // Confini zone personalizzati: 5 interi crescenti (bpm), o null.
+        // Se compilati male, meglio fermarsi e dirlo che salvare zone sbagliate.
+        const zoneLowersRaw = (document.getElementById('editZoneLowers').value || '').trim();
+        let zoneLowers = null;
+        if (zoneLowersRaw) {
+            const parts = zoneLowersRaw.split(/[\s,;]+/).filter(Boolean).map(function (x) { return parseInt(x, 10); });
+            const ok = parts.length === 5 && parts.every(function (n, i) {
+                return !isNaN(n) && n >= 60 && n <= 230 && (i === 0 || n > parts[i - 1]);
+            });
+            if (!ok) {
+                showToast('Confini zone non validi: servono 5 numeri crescenti in bpm ' +
+                          '(es. 118, 133, 146, 159, 172).', 'error');
+                return;
+            }
+            zoneLowers = parts;
+        }
+
         const hrFields = {
             max_heart_rate:     intOrNull('editMaxHr'),
-            resting_heart_rate: intOrNull('editRestHr')
+            resting_heart_rate: intOrNull('editRestHr'),
+            hr_zone_lowers:     zoneLowers
         };
 
         let { error: profileErr } = await supabaseClient

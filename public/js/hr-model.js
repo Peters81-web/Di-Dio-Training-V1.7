@@ -62,7 +62,33 @@
         return !!(restHr && maxHr > restHr);
     }
 
-    function bounds(maxHr, restHr) {
+    /**
+     * Confini personalizzati: 5 valori di INIZIO zona in bpm, copiati da
+     * Garmin (es. [118,133,146,159,172]). Validi solo se sono 5 numeri
+     * strettamente crescenti; altrimenti si ignora e si torna alla formula.
+     */
+    function validLowers(lowers) {
+        if (!Array.isArray(lowers) || lowers.length !== 5) return null;
+        var out = [];
+        for (var i = 0; i < 5; i++) {
+            var v = Math.round(Number(lowers[i]));
+            if (!(v > 0)) return null;
+            if (i > 0 && v <= out[i - 1]) return null; // strettamente crescenti
+            out.push(v);
+        }
+        return out;
+    }
+
+    function boundsFromLowers(lo) {
+        return ZONES.map(function (z, i) {
+            return { n: z.n, name: z.name, color: z.color, desc: z.desc,
+                     lo: lo[i], hi: (i < 4 ? lo[i + 1] : Infinity) };
+        });
+    }
+
+    function bounds(maxHr, restHr, lowers) {
+        var lo = validLowers(lowers);
+        if (lo) return boundsFromLowers(lo);
         return ZONES.map(function (z) {
             return { n: z.n, name: z.name, color: z.color, desc: z.desc,
                      lo: hrAt(z.lo, maxHr, restHr), hi: hrAt(z.hi, maxHr, restHr) };
@@ -71,11 +97,19 @@
 
     /**
      * Zona (1-5) in cui cade una frequenza cardiaca.
+     * Con i confini personalizzati: la zona più alta il cui INIZIO è ≤ bpm,
+     * come fa Garmin (il battito di confine sta nella zona bassa).
      * Sotto la Z1 viene assorbito in Z1: è comunque lavoro rigenerante.
      * Ritorna null se mancano i parametri.
      */
-    function zoneOf(bpm, maxHr, restHr) {
-        if (!(bpm > 0) || !(maxHr > 0)) return null;
+    function zoneOf(bpm, maxHr, restHr, lowers) {
+        if (!(bpm > 0)) return null;
+        var lo = validLowers(lowers);
+        if (lo) {
+            for (var k = 4; k >= 0; k--) { if (bpm >= lo[k]) return k + 1; }
+            return 1; // sotto l'inizio della Z1
+        }
+        if (!(maxHr > 0)) return null;
         var b = bounds(maxHr, restHr);
         for (var i = 0; i < b.length; i++) {
             if (bpm < b[i].hi) return b[i].n;
@@ -104,8 +138,10 @@
      * Ritorna { secs: [null,z1..z5], total, pct: [null,z1..z5] } oppure
      * null se la serie non è utilizzabile.
      */
-    function timeInZones(series, maxHr, restHr) {
-        if (!Array.isArray(series) || series.length < 2 || !(maxHr > 0)) return null;
+    function timeInZones(series, maxHr, restHr, lowers) {
+        var lo = validLowers(lowers);
+        if (!Array.isArray(series) || series.length < 2) return null;
+        if (!lo && !(maxHr > 0)) return null; // senza confini espliciti serve la FC max
 
         var secs = [null, 0, 0, 0, 0, 0];
         var total = 0;
@@ -119,7 +155,7 @@
             var d = Number(b[0]) - Number(a[0]);
             if (!(d > 0) || d > 60) d = 1;
 
-            var z = zoneOf(bpm, maxHr, restHr);
+            var z = zoneOf(bpm, maxHr, restHr, lo);
             if (!z) continue;
             secs[z] += d;
             total += d;
@@ -188,12 +224,16 @@
                 age: age,
                 maxHr: maxHr,
                 restHr: row.resting_heart_rate > 0 ? row.resting_heart_rate : null,
-                maxIsMeasured: measured
+                maxIsMeasured: measured,
+                // Confini personalizzati copiati da Garmin (o null)
+                zoneLowers: validLowers(row.hr_zone_lowers)
             };
         }
 
+        // hr_zone_lowers arriva dalla migrazione add_hr_zone_lowers: se manca,
+        // il ripiego toglie solo quella colonna, non le altre.
         return sc.from('profiles')
-            .select('birthdate, max_heart_rate, resting_heart_rate')
+            .select('birthdate, max_heart_rate, resting_heart_rate, hr_zone_lowers')
             .eq('id', userId).single()
             .then(function (r) {
                 if (!r.error) return apply(r.data);
@@ -228,7 +268,8 @@
      * @param {Function} esc   la funzione di escape della pagina chiamante
      */
     function zoneBreakdownHtml(series, profile, esc) {
-        if (!profile || !profile.maxHr) return '';
+        var lowers = profile ? validLowers(profile.zoneLowers) : null;
+        if (!profile || (!profile.maxHr && !lowers)) return '';
         // jsonb di solito arriva già come array, ma non si dà per scontato
         // il tipo: se fosse una stringa la si interpreta lo stesso.
         var data = series;
@@ -237,7 +278,7 @@
         }
         if (!Array.isArray(data) || data.length < 2) return '';
 
-        var tz = timeInZones(data, profile.maxHr, profile.restHr);
+        var tz = timeInZones(data, profile.maxHr, profile.restHr, lowers);
         if (!tz) return '';
         var load = trimp(data, profile.maxHr, profile.restHr);
         var e = typeof esc === 'function' ? esc : function (s) { return String(s); };
@@ -247,12 +288,18 @@
             return m ? m + 'm' + (r ? ' ' + r + 's' : '') : r + 's';
         }
 
-        var rows = bounds(profile.maxHr, profile.restHr).map(function (z) {
+        function rangeTxt(z) {
+            var hi = (z.hi === Infinity) ? '+' : '–' + (z.hi - 1);
+            return z.lo + hi;
+        }
+
+        var rows = bounds(profile.maxHr, profile.restHr, lowers).map(function (z) {
             var sec = tz.secs[z.n];
             if (!sec) return '';
             return '<div class="hrz-row">' +
                 '<span class="hrz-tag" style="background:' + z.color + '">Z' + z.n + '</span>' +
-                '<span class="hrz-name">' + e(z.name) + '</span>' +
+                '<span class="hrz-name">' + e(z.name) +
+                    ' <span style="color:#94a3b8;font-weight:500;font-size:.85em">' + rangeTxt(z) + '</span></span>' +
                 '<span class="hrz-bar"><span class="hrz-fill" style="width:' + tz.pct[z.n] +
                     '%;background:' + z.color + '"></span></span>' +
                 '<span class="hrz-time">' + e(fmt(sec)) + '</span>' +
@@ -270,7 +317,12 @@
                       'non è il valore di Garmin, che non lo espone">carico ' + load + '</span>'
                     : '') +
             '</div>' + rows +
-            '<p class="hrz-note">Dal tracciato cardiaco della sessione, ' + data.length +
+            '<p class="hrz-note">' +
+            (lowers
+              ? 'Zone con i confini che hai copiato da Garmin. '
+              : 'Zone calcolate dal tuo profilo (FC max/riposo). Per farle combaciare ' +
+                'con Garmin, copia i confini esatti nel profilo. ') +
+            'Dal tracciato cardiaco della sessione, ' + data.length +
             ' campioni. Il carico è una nostra stima con il metodo TRIMP: Garmin non ' +
             'espone il proprio, quindi i due numeri non sono confrontabili.</p>' +
         '</div>';
@@ -283,6 +335,7 @@
         estimateMaxHr: estimateMaxHr,
         hrAt: hrAt,
         usingKarvonen: usingKarvonen,
+        validLowers: validLowers,
         bounds: bounds,
         zoneOf: zoneOf,
         isMissingColumnError: isMissingColumnError,

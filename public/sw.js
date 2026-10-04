@@ -222,7 +222,8 @@
 //   v69 → Stati scheda: Riposo/Saltato (dashboard) + aderenza (stats)
 //         + puntini sul calendario (archivio) + contesto IA.
 //   v70 → Cadenza dai file Garmin (TCX/GPX): import, dettaglio, archivio.
-const CACHE_NAME  = 'didio-v70';
+//   v71 → Zone FC personalizzate: confini esatti copiati da Garmin.
+const CACHE_NAME  = 'didio-v71';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE = [
